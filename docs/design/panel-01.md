@@ -1,7 +1,7 @@
 # PANEL-01 — edge proxy + panel skeleton with 2FA (design draft)
 
-Status: [PROPOSED]. Stack choice (PANEL-STACK-1) waiting for the owner; this draft assumes the recommended option A
-(Go, server-rendered HTML, SQLite). Roadmap slot PANEL-01, owner thread "Rancang panel Docker untuk VPS fresh".
+Status: building. Stack (PANEL-STACK-1, owner 2026-11-11 12:56 WIB): Go, server-rendered HTML, SQLite; UI animation
+with Motion and anime.js (both MIT), vendored and pinned, honouring `prefers-reduced-motion`. Roadmap slot PANEL-01, owner thread "Rancang panel Docker untuk VPS fresh".
 
 ## Containers (one Docker Compose project `nostek-core`)
 
