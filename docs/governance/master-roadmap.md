@@ -15,6 +15,7 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 | 8 | SITE-02 | File manager + database admin per site | Rancang panel Docker untuk VPS fresh | ○ |
 | 9 | WP-01 | WordPress Tools per site (like WP Toolkit): site card with preview + one-click wp-admin login; tabs Dashboard, Plugins, Themes, Database; updates (core, plugins, themes, autoupdate); security (TLS status, hardening, hotlink protection); tools (PHP version, debug, password protection); performance (search indexing, system cron instead of wp-cron); WordPress integrity check; maintenance mode; clone, copy data, backup, logs, WP-CLI | Rancang panel Docker untuk VPS fresh | ○ (owner 2026-11-11 16:49) |
 | 10 | BAK-01 | Per-site backup + restore from the panel | Rancang panel Docker untuk VPS fresh | ○ |
-| 11 | MIG-01 | WordPress migration into the panel (plugin / SSH / archive) | Rancang panel Docker untuk VPS fresh | ○ |
-| 12 | OPS-01 | Logs, resource usage, cron jobs, readable alerts | Rancang panel Docker untuk VPS fresh | ○ |
-| 13 | INST-01 | Public one-command installer for any fresh Ubuntu VPS | Rancang panel Docker untuk VPS fresh | ○ |
+| 11 | NATIVE-01 | Optional native site engine: Nginx/Apache + PHP-FPM directly on the host (cPanel-style, lighter on RAM), behind the same edge proxy; add-website page explains Docker vs native (ENGINE-1) | Rancang panel Docker untuk VPS fresh | ○ later |
+| 12 | MIG-01 | WordPress migration into the panel (plugin / SSH / archive) | Rancang panel Docker untuk VPS fresh | ○ |
+| 13 | OPS-01 | Logs, resource usage, cron jobs, readable alerts | Rancang panel Docker untuk VPS fresh | ○ |
+| 14 | INST-01 | Public one-command installer for any fresh Ubuntu VPS | Rancang panel Docker untuk VPS fresh | ○ |
