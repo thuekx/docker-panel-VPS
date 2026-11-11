@@ -116,7 +116,7 @@ No secret, password, token or private e-mail belongs in this file or in any file
 - **One identity only:** every commit, push, branch, PR and comment shows only `thuekx <thuekx@kolu.web.id>` as
   author AND committer. Set `git config user.name/user.email` first in every clone. Never add Co-Authored-By AI
   trailers, session links, "Generated with …" lines or any AI mention in commits, PR titles/bodies or comments.
-  Pre-push check: `git log --format='%an %ae %cn %ce' origin/main..HEAD | grep -ciE 'co-authored|noreply'` = 0.
+  Pre-push check: `git log --format='%an %ae %cn %ce %B' origin/main..HEAD | grep -ciE 'co-authored|noreply'` = 0.
 - **Branch names:** `step/<id>-<slug>` from `main`. Never a branch name containing the AI's name.
 - **Git flow ("jalan tengah"):** doc-only changes that never run on a host (docs, register, roadmap, tree, KB cards,
   runbook text, notes) go straight to `main` after local checks (gitleaks, lock check, KB check), pulling main
