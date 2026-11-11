@@ -1,0 +1,47 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "profile.saved.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+<section class="card wide profile-head" data-anim="card">
+  <div class="avatar" aria-hidden="true">{{slice $d.Email 0 1}}</div>
+  <div>
+    <div class="stat-big small">{{$d.Email}}</div>
+    <div class="row">{{if $d.TOTP}}<span class="pill s-ok">{{t $l "profile.2fa.on"}}</span>{{else}}<span class="pill s-warn">{{t $l "profile.2fa.off"}}</span>{{end}}<span class="pill s-info">{{t $l "profile.role.admin"}}</span></div>
+  </div>
+</section>
+<section class="grid pair">
+<article class="card accent-card" data-anim="card">
+  <h2><span class="h-ico c-violet" aria-hidden="true">{{template "ico-palette"}}</span>{{t $l "profile.look"}}</h2>
+  <p class="muted">{{t $l "profile.look.help"}}</p>
+  <form method="post" action="/profile/appearance" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <fieldset class="choice"><legend>{{t $l "profile.theme"}}</legend>
+      {{$th := .Theme}}{{range $v := list3 "system" "light" "dark"}}<label class="tile"><input type="radio" name="theme" value="{{$v}}"{{if eq $v $th}} checked{{end}}><span>{{t $l (printf "theme.%s" $v)}}</span></label>{{end}}
+    </fieldset>
+    <fieldset class="choice swatches"><legend>{{t $l "profile.accent"}}</legend>
+      {{range $d.Accents}}<label class="swatch sw-{{.}}"><input type="radio" name="accent" value="{{.}}"{{if eq . $d.Accent}} checked{{end}}><i aria-hidden="true"></i><span>{{t $l (printf "accent.%s" .)}}</span></label>{{end}}
+    </fieldset>
+    <button class="primary" type="submit">{{t $l "settings.save"}}</button>
+  </form>
+</article>
+<article class="card" data-anim="card">
+  <h2><span class="h-ico c-blue" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "profile.pw"}}</h2>
+  <p class="muted">{{t $l "profile.pw.help"}}</p>
+  <form method="post" action="/profile/password" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <label>{{t $l "profile.pw.current"}}<input type="password" name="current" autocomplete="current-password" required></label>
+    <label>{{t $l "profile.pw.new"}}<input type="password" name="password" autocomplete="new-password" minlength="12" required></label>
+    <label>{{t $l "profile.pw.new2"}}<input type="password" name="password2" autocomplete="new-password" minlength="12" required></label>
+    <button class="primary" type="submit">{{t $l "profile.pw.go"}}</button>
+  </form>
+</article>
+<article class="card" data-anim="card">
+  <h2><span class="h-ico c-amber" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "settings.codes"}}</h2>
+  <p class="muted">{{t $l "settings.codes.left" $d.CodesLeft}}</p>
+  <form method="post" action="/settings/recovery" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button class="secondary" type="submit">{{t $l "settings.codes.new"}}</button>
+  </form>
+</article>
+</section>
+{{end}}

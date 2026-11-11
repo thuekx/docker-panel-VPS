@@ -84,7 +84,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -147,6 +147,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /sites/{id}", s.need(true, s.siteShow))
 	mux.HandleFunc("POST /sites/{id}", s.need(true, s.siteAction))
 	mux.HandleFunc("POST /trash/{entry}/restore", s.need(true, s.siteRestore))
+	mux.HandleFunc("GET /sites/job/{job}/status", s.need(true, s.siteJobStatus))
+	mux.HandleFunc("GET /profile", s.need(true, s.profile))
+	mux.HandleFunc("POST /profile/appearance", s.need(true, s.profileAppearance))
+	mux.HandleFunc("POST /profile/password", s.need(true, s.profilePassword))
 	mux.HandleFunc("GET /settings", s.need(true, s.settings))
 	mux.HandleFunc("POST /settings", s.need(true, s.settingsSubmit))
 	mux.HandleFunc("POST /settings/recovery", s.need(true, s.newRecoveryCodes))
@@ -330,7 +334,7 @@ func (s *Server) loc() *time.Location {
 // ---------- rendering
 
 type page struct {
-	Lang, Theme, Back                 string
+	Lang, Theme, Accent, Back         string
 	Title, CSRF, Error, Flash, Active string
 	User                              *store.User
 	Version                           string
@@ -341,6 +345,7 @@ type page struct {
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p page) {
 	p.Lang = s.lang(r)
 	p.Theme = s.theme(r)
+	p.Accent = s.accent(r)
 	p.Back = safeBack(r.URL.Path)
 	p.Version = s.cfg.Version
 	p.Now = s.now().In(s.loc()).Format("02 Jan 2006 15:04 MST")
