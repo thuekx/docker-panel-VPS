@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Nostek Panel - PANEL-01: core stack (edge HTTPS proxy, read-only Docker socket proxy, Nostek Panel).
-# Modes: PREFLIGHT (read-only) | APPLY | SETUP-LINK | ADMIN-ROTATE | VERIFY (read-only) | REVERT
+# Modes: PREFLIGHT (read-only) | APPLY | UPDATE | SETUP-LINK | ADMIN-ROTATE | VERIFY (read-only) | REVERT
 # Usage: sudo bash panel-01-core.sh MODE --ack PANEL-01 --expect-ip ADDR --expect-host NAME --domain PANEL_DOMAIN
-#        APPLY also: --src-commit SHA (40 hex; the repository commit to build from)
+#        APPLY and UPDATE also: --src-commit SHA (40 hex; the repository commit to build from)
 #        ADMIN-ROTATE also: --email ADMIN_EMAIL
 # Source is fetched by commit id and checked with git (the id is a hash of the content), images are pinned by digest.
 # Licence: MIT
 set -u   # no pipefail: "cmd | grep -q" must not fail on SIGPIPE
 umask 022
 
-STEP="PANEL-01"; VERSION="1"
+STEP="PANEL-01"; VERSION="2"
 R="${PANEL01_TEST_ROOT:-}"
 NOSTEK="$R/srv/nostek"
 CORE="$NOSTEK/core"
@@ -71,13 +71,13 @@ state_set() {
 }
 
 check_invocation() {
-  case "$MODE" in PREFLIGHT|APPLY|SETUP-LINK|ADMIN-ROTATE|VERIFY|REVERT) ;; *) refuse "mode must be PREFLIGHT|APPLY|SETUP-LINK|ADMIN-ROTATE|VERIFY|REVERT" ;; esac
+  case "$MODE" in PREFLIGHT|APPLY|UPDATE|SETUP-LINK|ADMIN-ROTATE|VERIFY|REVERT) ;; *) refuse "mode must be PREFLIGHT|APPLY|UPDATE|SETUP-LINK|ADMIN-ROTATE|VERIFY|REVERT" ;; esac
   [ "$ACK" = "$STEP" ] || refuse "--ack $STEP is required"
   [ "$(id -u)" = "0" ] || refuse "run with sudo"
   if [ "$AUTO" = "0" ] && [ -z "${SUDO_USER:-}" ]; then refuse "no root shell: run from your normal user with sudo"; fi
   [ -n "$EXPECT_IP" ] && [ -n "$EXPECT_HOST" ] || refuse "--expect-ip and --expect-host are required"
   [[ "$DOMAIN" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$ ]] || refuse "--domain must be a lower-case host name such as panel.example.com"
-  if [ "$MODE" = APPLY ]; then [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || refuse "--src-commit must be a full 40-character commit id"; fi
+  if [ "$MODE" = APPLY ] || [ "$MODE" = UPDATE ]; then [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || refuse "--src-commit must be a full 40-character commit id"; fi
   if [ "$MODE" = ADMIN-ROTATE ]; then [[ "$EMAIL" =~ ^[^@[:space:]]+@[^@[:space:]]+$ ]] || refuse "--email must be the admin e-mail"; fi
 }
 check_host() {
@@ -155,18 +155,40 @@ fetch_source() {
   git -C "$tmp" init -q && git -C "$tmp" fetch -q --depth 1 "$REPO_URL" "$COMMIT" && git -C "$tmp" -c advice.detachedHead=false checkout -q FETCH_HEAD || { mv "$tmp" "$BK/fetch-failed"; return 1; }
   [ "$(git -C "$tmp" rev-parse HEAD)" = "$COMMIT" ] || { echo "FAIL fetched commit does not match"; mv "$tmp" "$BK/fetch-mismatch"; return 1; }
   [ -f "$tmp/deploy/core/compose.yml" ] && [ -f "$tmp/panel/Dockerfile" ] || { echo "FAIL commit has no panel source"; mv "$tmp" "$BK/fetch-nosource"; return 1; }
+  grep -qxE '[0-9]+\.[0-9]+\.[0-9]+' "$tmp/VERSION" 2>/dev/null || { echo "FAIL commit has no release VERSION file"; mv "$tmp" "$BK/fetch-noversion"; return 1; }
   mv "$tmp" "$dst" && pass "source $COMMIT fetched and checked"
 }
 
+release_of() { tr -d '[:space:]' < "$SRC_ROOT/$COMMIT/VERSION" 2>/dev/null; }
+
 build_image() {
-  local tag="nostek/panel:${COMMIT:0:12}" rev
+  local tag rev
+  REL="v$(release_of)"; tag="nostek/panel:$REL"
   IMAGE="$tag"
   rev="$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$tag" 2>/dev/null)"
   if [ "$rev" = "$COMMIT" ]; then pass "image $tag already built from $COMMIT"; return 0; fi
   info "building $tag (a few minutes)"
-  docker build -q --build-arg "VERSION=${COMMIT:0:12}" --build-arg "REVISION=$COMMIT" -t "$tag" "$SRC_ROOT/$COMMIT/panel" >/dev/null || return 1
+  docker build -q --build-arg "VERSION=$REL" --build-arg "REVISION=$COMMIT" -t "$tag" "$SRC_ROOT/$COMMIT/panel" >/dev/null || return 1
   [ "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$tag" 2>/dev/null)" = "$COMMIT" ] || return 1
   pass "image $tag built"
+}
+
+# The dashboard reads the nightly backup result from $VARLIB/backup/last. HOST-02 runs the backup as
+# nostek-backup.service; this drop-in records its result after every run (success or failure).
+install_backup_status() {
+  local d="$R/etc/systemd/system/nostek-backup.service.d"
+  mkdir -p "$R/usr/local/sbin" "$d" "$VARLIB/backup"
+  cat > "$R/usr/local/sbin/nostek-backup-status" <<'HOOK'
+#!/bin/sh
+# Written by PANEL-01: records the nightly backup result for the Nostek Panel dashboard.
+d=/var/lib/nostek/backup; mkdir -p "$d"
+if [ "${SERVICE_RESULT:-}" = success ]; then r=PASS; else r=FAIL; fi
+printf 'result=%s unix=%s\n' "$r" "$(date +%s)" > "$d/last.tmp" && chmod 644 "$d/last.tmp" && mv "$d/last.tmp" "$d/last"
+HOOK
+  chmod 0755 "$R/usr/local/sbin/nostek-backup-status"
+  printf '[Service]\nExecStopPost=/usr/local/sbin/nostek-backup-status\n' > "$d/50-nostek-panel-status.conf"
+  [ -z "$R" ] && systemctl daemon-reload >/dev/null 2>&1
+  pass "nightly backup result shown on the dashboard from the next run"
 }
 
 write_core() {
@@ -213,13 +235,35 @@ apply() {
   preflight
   [ "$FAILS" = 0 ] || die "preflight failed ($FAILS)"
   PREV_PHASE="$(state_get phase)"
-  case "$PREV_PHASE" in ""|REVERTED) ;; *) refuse "already applied (phase=$PREV_PHASE); use VERIFY or REVERT" ;; esac
+  case "$PREV_PHASE" in ""|REVERTED) ;; *) refuse "already applied (phase=$PREV_PHASE); use UPDATE, VERIFY or REVERT" ;; esac
   BK="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)"; mkdir -p "$BK"
   progress A1/5 "fetch source $COMMIT"; fetch_source || die "cannot fetch source $COMMIT"
   progress A2/5 "build panel image"; build_image || die "image build failed"
+  start_core
+}
+
+# UPDATE: build the new version while the current one keeps running, then swap. Any failure after the swap
+# puts the previous version back (rollback restores the previous core files and starts them).
+update() {
+  check_host
+  PREV_PHASE="$(state_get phase)"
+  [ "$PREV_PHASE" = APPLIED ] || refuse "panel not applied (phase=$PREV_PHASE); use APPLY"
+  [ "$(state_get commit)" = "$COMMIT" ] && refuse "already running commit $COMMIT"
+  BK="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)-update"; mkdir -p "$BK"
+  progress U1/3 "fetch source $COMMIT"; fetch_source || die "cannot fetch source $COMMIT (current version still running)"
+  progress U2/3 "build panel image"; build_image || die "image build failed (current version still running)"
+  progress U3/3 "swap to $REL"
+  dc down --remove-orphans >/dev/null 2>&1
+  preflight
+  if [ "$FAILS" != 0 ]; then dc up -d >/dev/null 2>&1; die "preflight failed ($FAILS); current version started again"; fi
+  start_core
+}
+
+start_core() {
   progress A3/5 "core files"
   if [ -d "$CORE" ]; then mv "$CORE" "$BK/core"; info "previous core moved aside to $BK/core"; fi
   write_core
+  install_backup_status
   state_set phase APPLYING; state_set commit "$COMMIT"
   progress A4/5 "start edge, socket proxy, panel"
   dc up -d --remove-orphans >/dev/null 2>&1 || rollback "compose up failed"
@@ -236,9 +280,9 @@ apply() {
   for _ in $(seq 1 $((CERT_WAIT/5))); do cert_ok && { cert=valid; break; }; sleep 5; done
   [ "$TLS_TEST" = 1 ] && cert="test"
   if [ "$cert" = pending ]; then warn "certificate not issued yet; VERIFY will check again"; else pass "certificate $cert"; fi
-  state_set phase APPLIED
-  summary "PASS" "panel https://$DOMAIN running (image $IMAGE)" "certificate: $cert" "NEXT run SETUP-LINK to create the first admin"
-  echo "RESULT $STEP APPLY PASS image=${COMMIT:0:12} cert=$cert"; exit 0
+  state_set phase APPLIED; state_set release "$REL"
+  summary "PASS" "Nostek Panel $REL running at https://$DOMAIN" "certificate: $cert" "NEXT first install: run SETUP-LINK; admin already exists: just log in"
+  echo "RESULT $STEP $MODE PASS version=$REL cert=$cert"; exit 0
 }
 
 setup_link() {
@@ -269,7 +313,7 @@ admin_rotate() {
 
 verify() {
   progress 1/6 "host identity"; check_host
-  progress 2/6 "phase"; [ "$(state_get phase)" = APPLIED ] && pass "phase APPLIED (commit $(state_get commit))" || fail "phase is $(state_get phase), not APPLIED"
+  progress 2/6 "phase"; [ "$(state_get phase)" = APPLIED ] && pass "phase APPLIED (version $(state_get release), commit $(state_get commit))" || fail "phase is $(state_get phase), not APPLIED"
   progress 3/6 "containers"
   local s
   for s in edge panel; do [ "$(svc_state $s)" = "running healthy" ] && pass "$s running healthy" || fail "$s: $(svc_state $s)"; done
@@ -285,7 +329,7 @@ verify() {
   if [ "$TLS_TEST" = 1 ]; then info "certificate check skipped (test)"; CERT="test"
   elif cert_ok; then pass "certificate valid for $DOMAIN"; CERT=valid
   else fail "certificate for $DOMAIN not valid yet"; CERT=invalid; fi
-  if [ "$FAILS" = 0 ]; then summary PASS "panel https://$DOMAIN" "certificate $CERT"; echo "RESULT $STEP VERIFY PASS cert=$CERT sisa_uji=0"; exit 0; fi
+  if [ "$FAILS" = 0 ]; then summary PASS "Nostek Panel $(state_get release) at https://$DOMAIN" "certificate $CERT"; echo "RESULT $STEP VERIFY PASS version=$(state_get release) cert=$CERT sisa_uji=0"; exit 0; fi
   summary FAIL "$FAILS check(s) failed"; echo "RESULT $STEP VERIFY FAIL fails=$FAILS"; exit 1
 }
 
@@ -307,6 +351,7 @@ case "$MODE" in
     if [ "$FAILS" = 0 ]; then summary PASS "nothing changed" "NEXT APPLY (run inside tmux)"; echo "RESULT $STEP PREFLIGHT PASS"; exit 0; fi
     summary FAIL "$FAILS check(s) failed; nothing changed"; echo "RESULT $STEP PREFLIGHT FAIL fails=$FAILS"; exit 1 ;;
   APPLY) apply ;;
+  UPDATE) update ;;
   SETUP-LINK) setup_link ;;
   ADMIN-ROTATE) admin_rotate ;;
   VERIFY) verify ;;
