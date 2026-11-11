@@ -9,9 +9,9 @@ Nostek Panel
 │   └── GUIDE-01 change default user guide ................ ✓
 ├── Host (our VPS, details in project files only)
 │   ├── HOST-01 own user + SSH port ........................ ✓ 2026-11-11 12:34 WIB
-│   └── HOST-02 baseline + Docker + backup ................ ✱ merged, owner run pending
+│   └── HOST-02 baseline + Docker + backup ................ ✓ done 2026-11-11
 ├── Panel
-│   ├── PANEL-01 edge proxy + panel + 2FA ................. ✱ building
+│   ├── PANEL-01 edge proxy + panel + 2FA ................. ✱ PR in review
 │   ├── SITE-01 one-click WordPress (Apache/Nginx) ........ ○
 │   ├── SITE-02 file manager + DB admin ................... ○
 │   ├── BAK-01 backup / restore ........................... ○

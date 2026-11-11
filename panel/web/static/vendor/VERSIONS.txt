@@ -1,0 +1,2 @@
+motion 14.12.0 (MIT) dist/motion.js
+animejs 4.5.0 (MIT) dist/bundles/anime.umd.min.js

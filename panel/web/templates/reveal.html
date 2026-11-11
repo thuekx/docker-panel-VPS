@@ -1,0 +1,9 @@
+{{define "content"}}
+<p class="lead">{{t .Lang "reveal.lead"}}</p>
+{{if .Data}}
+<div class="reveal" data-anim="pop"><code id="pw">{{.Data}}</code><button class="secondary" type="button" data-copy="pw">{{t .Lang "reveal.copy"}}</button></div>
+<a class="primary btn" href="/login">{{t .Lang "reveal.login"}}</a>
+{{else}}
+<form method="post" class="form"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="primary" type="submit">{{t .Lang "reveal.show"}}</button></form>
+{{end}}
+{{end}}

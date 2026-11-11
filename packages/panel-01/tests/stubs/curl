@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# public address lookups are faked; everything else goes to the real curl
+case "$*" in *api.ipify.org*|*ifconfig.me*) echo "${FAKE_PUBLIC_IP:-}"; [ -n "${FAKE_PUBLIC_IP:-}" ]; exit ;; esac
+exec /usr/bin/curl "$@"

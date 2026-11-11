@@ -1,7 +1,7 @@
 name: packages
 on:
   pull_request:
-    paths: ['packages/**', '.github/workflows/packages.yml']
+    paths: ['packages/**', 'panel/**', 'deploy/**', '.github/workflows/packages.yml']
 permissions:
   contents: read
 jobs:
@@ -10,6 +10,8 @@ jobs:
     outputs:
       host01: ${{ steps.f.outputs.host01 }}
       host02: ${{ steps.f.outputs.host02 }}
+      panel01: ${{ steps.f.outputs.panel01 }}
+      app: ${{ steps.f.outputs.app }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -21,6 +23,8 @@ jobs:
             k="${p/-0/0}"
             if grep -qE "^(packages/$p/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "$k=true" >> "$GITHUB_OUTPUT"; else echo "$k=false" >> "$GITHUB_OUTPUT"; fi
           done
+          if grep -qE "^(packages/panel-01/|panel/|deploy/core/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "panel01=true" >> "$GITHUB_OUTPUT"; else echo "panel01=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE "^(panel/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "app=true" >> "$GITHUB_OUTPUT"; else echo "app=false" >> "$GITHUB_OUTPUT"; fi
   host-01:
     needs: select
     if: needs.select.outputs.host01 == 'true'
@@ -53,3 +57,38 @@ jobs:
         run: sudo bash packages/host-02/tests/harness.sh
       - name: mutants
         run: sudo bash packages/host-02/tests/mutants.sh
+  app:
+    needs: select
+    if: needs.select.outputs.app == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: panel/go.mod, cache-dependency-path: panel/go.sum }
+      - name: gofmt
+        run: cd panel && test -z "$(gofmt -l .)"
+      - name: vet
+        run: cd panel && go vet ./...
+      - name: test
+        run: cd panel && go test ./...
+      - name: vendored UI libraries unchanged
+        run: cd panel/web/static/vendor && sha256sum -c VERSIONS.sha256
+  panel-01:
+    needs: select
+    if: needs.select.outputs.panel01 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: shellcheck
+        run: shellcheck -S warning packages/panel-01/panel-01-core.sh packages/panel-01/tests/*.sh packages/panel-01/tests/stubs/*
+      - name: lock
+        run: cd packages/panel-01 && sha256sum -c panel-01.lock
+      - name: compose file valid
+        run: PANEL_DOMAIN=panel.example.test PANEL_IMAGE=nostek/panel:ci docker compose -f deploy/core/compose.yml config -q
+      - name: harness (real Docker; builds the image, runs the stack on 80/443)
+        run: sudo bash packages/panel-01/tests/harness.sh
+      - name: mutants
+        run: sudo bash packages/panel-01/tests/mutants.sh

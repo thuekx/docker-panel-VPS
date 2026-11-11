@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# getent ahostsv4 NAME -> fake DNS answer
+[ "${1:-}" = ahostsv4 ] || exec /usr/bin/getent "$@"
+[ -n "${FAKE_DNS:-}" ] || exit 2
+echo "$FAKE_DNS      STREAM ${2:-}"

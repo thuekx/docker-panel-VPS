@@ -1,0 +1,5 @@
+{{define "content"}}
+<p class="lead">{{t .Lang "codes.lead"}}</p>
+<ol class="codes">{{range .Data}}<li data-anim="item"><code>{{.}}</code></li>{{end}}</ol>
+<a class="primary btn" href="/">{{t .Lang "codes.done"}}</a>
+{{end}}
