@@ -1,7 +1,7 @@
 # Nostek Panel core stack (PANEL-01). Installed by packages/panel-01 to /srv/nostek/core.
 # Only `edge` publishes ports. The panel never mounts the Docker socket; it talks to a read-only socket proxy.
 # Values come from .env next to this file (written by the installer): PANEL_DOMAIN, PANEL_IMAGE, PANEL_HOSTNAME,
-# NOSTEK_DATA (default /srv/nostek), ACME_CA_SERVER (default Let's Encrypt production).
+# NOSTEK_DATA (default /srv/nostek), NOSTEK_STATE (default /var/lib/nostek), ACME_CA_SERVER (default Let's Encrypt production).
 name: nostek-core
 
 x-hardening: &hardening
@@ -89,7 +89,7 @@ services:
       TZ: Asia/Jakarta
     volumes:
       - ${NOSTEK_DATA:-/srv/nostek}/panel:/data
-      - /var/lib/nostek/backup:/host/backup:ro
+      - ${NOSTEK_STATE:-/var/lib/nostek}/backup:/host/backup:ro
     labels:
       traefik.enable: "true"
       traefik.http.routers.panel.rule: Host(`${PANEL_DOMAIN}`)
