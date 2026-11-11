@@ -247,7 +247,7 @@ No secret, password, token or private e-mail belongs in this file or in any file
 ## 11. Paste-ready prompt (Project instructions)
 
 ```text
-Standing rules for this project are in the file "template-aturan-project-baru.md" (project files / repo INFO.md).
+Standing rules for this project are in the file "template-aturan-project-baru-terisi.md" (project files / repo INFO.md).
 Read it at the start of every thread and follow it; this summary wins only where the file is silent.
 
 1. Owner = only decision authority. Reviewer (e.g. ChatGPT) is advisory: relay, explain, recommend; never wait on it.
