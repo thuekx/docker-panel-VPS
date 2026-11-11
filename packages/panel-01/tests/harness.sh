@@ -23,7 +23,7 @@ new_env() {
   mkdir -p "$PANEL01_TEST_ROOT/var/lib/nostek/host-02"
   echo "phase=DONE" > "$PANEL01_TEST_ROOT/var/lib/nostek/host-02/state"
   export PATH="$HERE/stubs:/usr/sbin:/usr/bin:/sbin:/bin"
-  export SUDO_USER=testadmin FAKE_HOSTNAME=fake-vps FAKE_LOCAL_IP=198.51.100.7 FAKE_DNS=198.51.100.7
+  export SUDO_USER=testadmin FAKE_HOSTNAME=fake-vps FAKE_LOCAL_IP=198.51.100.7 FAKE_DNS=198.51.100.7; unset FAKE_PUBLIC_IP || true
 }
 D=panel.example.test
 A=(--ack PANEL-01 --expect-ip 198.51.100.7 --expect-host fake-vps --domain "$D")
@@ -35,7 +35,7 @@ CORE() { echo "$PANEL01_TEST_ROOT/srv/nostek/core"; }
 
 # --- refusals and preflight (nothing changes)
 new_env; FAKE_HOSTNAME=other; run PREFLIGHT "${A[@]}"; ok "wrong host name stops" '[ $RC = 4 ] && grep -q "WRONG HOST" "$T/stderr"'
-new_env; FAKE_LOCAL_IP=10.0.0.5 FAKE_PUBLIC_IP=203.0.113.1; run PREFLIGHT "${A[@]}"; ok "wrong address stops" '[ $RC = 4 ]'
+new_env; export FAKE_LOCAL_IP=10.0.0.5 FAKE_PUBLIC_IP=203.0.113.1; run PREFLIGHT "${A[@]}"; ok "wrong address stops" '[ $RC = 4 ]'
 new_env; unset SUDO_USER; run PREFLIGHT "${A[@]}"; ok "root shell refused" '[ $RC = 3 ]'
 new_env; run PREFLIGHT --ack PANEL-01 --expect-ip 198.51.100.7 --expect-host fake-vps --domain 'Panel.Example.test;x'; ok "bad domain refused" '[ $RC = 3 ]'
 new_env; run APPLY "${A[@]}" --src-commit main; ok "commit must be a full id" '[ $RC = 3 ] && [ ! -d "$(CORE)" ]'

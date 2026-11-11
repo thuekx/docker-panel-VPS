@@ -1,6 +1,6 @@
-# PANEL-01 — edge proxy + panel skeleton with 2FA (design draft)
+# PANEL-01 — edge proxy + panel skeleton with 2FA
 
-Status: building. Stack (PANEL-STACK-1, owner 2026-11-11 12:56 WIB): Go, server-rendered HTML, SQLite; UI animation
+Status: built, in review (package `packages/panel-01`, app `panel/`, stack `deploy/core/compose.yml`). Stack (PANEL-STACK-1, owner 2026-11-11 12:56 WIB): Go, server-rendered HTML, SQLite; UI animation
 with Motion and anime.js (both MIT), vendored and pinned, honouring `prefers-reduced-motion`. Roadmap slot PANEL-01, owner thread "Rancang panel Docker untuk VPS fresh".
 
 ## Containers (one Docker Compose project `nostek-core`)
@@ -34,6 +34,11 @@ UI text in locale files (`id`, `en`), parity checked by a test.
 
 ## Delivery
 
-- Package `packages/panel-01/` (PREFLIGHT / APPLY / VERIFY / REVERT) on the host, images pinned by digest.
-- Harness: compose up in CI with a fake domain and a local ACME test server, login + 2FA end-to-end test,
-  isolation test (no container besides `edge` publishes ports).
+- Package `packages/panel-01/` (PREFLIGHT / APPLY / SETUP-LINK / ADMIN-ROTATE / VERIFY / REVERT). The image is built
+  on the host from a pinned commit; base and service images are pinned by digest.
+- The first-admin link comes from `SETUP-LINK`, run outside tmux and without a log file, so the link is not stored.
+- Harness (CI, real Docker): builds the image, runs the stack on 80/443 with a fake domain (the certificate step is
+  skipped there), tests redirect, login page, setup link renewal, port isolation, socket proxy write refusal,
+  revert with data kept, and re-apply. Mutation check on the safety properties.
+- App tests (`go test`): full login + 2FA flow, CSRF, lockout, rate limit, admin rotate reveal-once, tenant
+  isolation (404), locale parity, open redirect, spoofed forwarded address, setup link renewal, system status levels.

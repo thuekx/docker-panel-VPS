@@ -189,8 +189,8 @@ write_core() {
 }
 
 wait_healthy() {
-  local i e p
-  for i in $(seq 1 45); do
+  local e p
+  for _ in $(seq 1 45); do
     e="$(svc_state edge)"; p="$(svc_state panel)"
     [ "$e" = "running healthy" ] && [ "$p" = "running healthy" ] && { pass "edge and panel healthy"; return 0; }
     sleep 2
@@ -229,9 +229,9 @@ apply() {
   pass "only edge publishes ports"
   [ "$(https_check /healthz)" = 200 ] || rollback "panel not reachable through the edge"
   progress A5/5 "HTTPS certificate (up to $((CERT_WAIT/60)) min)"
-  local cert=pending i
-  for i in $(seq 1 $((CERT_WAIT/5))); do cert_ok && { cert=valid; break; }; sleep 5; done
-  [ "$TLS_TEST" = 1 ] && cert=test
+  local cert=pending
+  for _ in $(seq 1 $((CERT_WAIT/5))); do cert_ok && { cert=valid; break; }; sleep 5; done
+  [ "$TLS_TEST" = 1 ] && cert="test"
   if [ "$cert" = pending ]; then warn "certificate not issued yet; VERIFY will check again"; else pass "certificate $cert"; fi
   state_set phase APPLIED
   summary "PASS" "panel https://$DOMAIN running (image $IMAGE)" "certificate: $cert" "NEXT run SETUP-LINK to create the first admin"
@@ -279,7 +279,7 @@ verify() {
   [ "$h" = 301 ] || [ "$h" = 308 ] && pass "http redirects to https" || fail "http answered $h, expected redirect"
   [ "$(https_check /healthz)" = 200 ] && pass "panel healthy through the edge" || fail "panel not reachable through the edge"
   progress 6/6 "certificate"
-  if [ "$TLS_TEST" = 1 ]; then info "certificate check skipped (test)"; CERT=test
+  if [ "$TLS_TEST" = 1 ]; then info "certificate check skipped (test)"; CERT="test"
   elif cert_ok; then pass "certificate valid for $DOMAIN"; CERT=valid
   else fail "certificate for $DOMAIN not valid yet"; CERT=invalid; fi
   if [ "$FAILS" = 0 ]; then summary PASS "panel https://$DOMAIN" "certificate $CERT"; echo "RESULT $STEP VERIFY PASS cert=$CERT sisa_uji=0"; exit 0; fi
