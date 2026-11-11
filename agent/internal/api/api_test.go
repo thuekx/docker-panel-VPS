@@ -160,6 +160,23 @@ func TestCreateStrictBodyAndSecretOnce(t *testing.T) {
 	if code, _ := do(t, c, "GET", "/v1/sites/voltix-id/logs?service=php&lines=50", ""); code != 200 {
 		t.Errorf("logs answered %d", code)
 	}
+	if code, out := do(t, c, "GET", "/v1/sites/voltix-id/stack", ""); code != 200 || out["project"] != "np-site-voltix-id" {
+		t.Errorf("stack = %d %v", code, out)
+	}
+	if code, _ := do(t, c, "GET", "/v1/sites/voltix-id/stack?all=1", ""); code != 400 {
+		t.Errorf("query on stack answered %d", code)
+	}
+	if code, _ := do(t, c, "GET", "/v1/sites/nope/stack", ""); code != 404 {
+		t.Errorf("stack of unknown site answered %d", code)
+	}
+	for _, svc := range []string{"cli", "edge", "x"} {
+		if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/services/"+svc+"/restart", ""); code != 400 {
+			t.Errorf("restart of %s answered %d", svc, code)
+		}
+	}
+	if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/services/php/restart", ""); code != 200 {
+		t.Errorf("restart php answered %d", code)
+	}
 	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/delete", ""); code != 200 || out["days"] != float64(7) {
 		t.Errorf("delete = %d %v", code, out)
 	}
@@ -167,7 +184,7 @@ func TestCreateStrictBodyAndSecretOnce(t *testing.T) {
 	if strings.Contains(string(b), pw) {
 		t.Fatal("audit log holds the admin password")
 	}
-	for _, want := range []string{`"action":"create"`, `"action":"secret"`, `"action":"delete"`} {
+	for _, want := range []string{`"action":"create"`, `"action":"secret"`, `"action":"delete"`, `"action":"restart-service php"`} {
 		if !strings.Contains(string(b), want) {
 			t.Errorf("audit lacks %s", want)
 		}

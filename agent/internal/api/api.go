@@ -69,6 +69,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/restart", s.action("restart"))
 	mux.HandleFunc("POST /v1/sites/{id}/delete", s.delete)
 	mux.HandleFunc("GET /v1/sites/{id}/logs", s.logs)
+	mux.HandleFunc("GET /v1/sites/{id}/stack", s.stack)
+	mux.HandleFunc("POST /v1/sites/{id}/services/{svc}/restart", s.restartService)
 	mux.HandleFunc("GET /v1/trash", s.trash)
 	mux.HandleFunc("POST /v1/trash/{entry}/restore", s.restore)
 	mux.HandleFunc("GET /v1/jobs/{id}", s.job)
@@ -140,6 +142,13 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 type siteView struct {
 	sites.Site
 	Status string `json:"status"`
+	Up     int    `json:"containers_up"`
+	Total  int    `json:"containers_total"`
+}
+
+func (s *Server) view(r *http.Request, x sites.Site) siteView {
+	st, up, total := s.M.StatusCount(r.Context(), x.ID)
+	return siteView{x, st, up, total}
 }
 
 func (s *Server) list(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +159,7 @@ func (s *Server) list(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []siteView{}
 	for _, x := range all {
-		out = append(out, siteView{x, s.M.Status(r.Context(), x.ID)})
+		out = append(out, s.view(r, x))
 	}
 	writeJSON(w, 200, map[string]any{"sites": out})
 }
@@ -161,7 +170,7 @@ func (s *Server) get(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 404, "site not found")
 		return
 	}
-	writeJSON(w, 200, siteView{x, s.M.Status(r.Context(), x.ID)})
+	writeJSON(w, 200, s.view(r, x))
 }
 
 func (s *Server) plan(w http.ResponseWriter, r *http.Request) {
@@ -222,6 +231,30 @@ func (s *Server) result(w http.ResponseWriter, r *http.Request, action, id strin
 		s.note(r, action, id, "ok", "")
 		writeJSON(w, 200, ok)
 	}
+}
+
+func (s *Server) stack(w http.ResponseWriter, r *http.Request) {
+	st, err := s.M.Stack(r.Context(), r.PathValue("id"))
+	if errors.Is(err, sites.ErrNotFound) {
+		writeErr(w, 404, "site not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, 502, err.Error())
+		return
+	}
+	writeJSON(w, 200, st)
+}
+
+func (s *Server) restartService(w http.ResponseWriter, r *http.Request) {
+	id, svc := r.PathValue("id"), r.PathValue("svc")
+	err := s.M.RestartService(r.Context(), id, svc)
+	if errors.Is(err, sites.ErrBadInput) {
+		s.note(r, "restart-service", id, "refused", err.Error())
+		writeErr(w, 400, err.Error())
+		return
+	}
+	s.result(w, r, "restart-service "+svc, id, err, map[string]any{"ok": true})
 }
 
 func (s *Server) delete(w http.ResponseWriter, r *http.Request) {

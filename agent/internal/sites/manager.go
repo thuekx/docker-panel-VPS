@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -96,6 +97,9 @@ var ErrNotFound = errors.New("site not found")
 
 // Busy is returned while another change runs.
 var ErrBusy = errors.New("another change is running; try again when it is done")
+
+// ErrBadInput marks a request the caller can fix (answered as 400).
+var ErrBadInput = errors.New("bad input")
 
 func readSite(dir string) (Site, error) {
 	var s Site
@@ -442,39 +446,24 @@ func (m *Manager) create(j *Job, s Site) {
 
 // Status reads the state of each container of a site: running | stopped | partial | unknown.
 func (m *Manager) Status(ctx context.Context, id string) string {
+	st, _, _ := m.StatusCount(ctx, id)
+	return st
+}
+
+// StatusCount is Status plus how many containers are up out of how many (STACK-01).
+func (m *Manager) StatusCount(ctx context.Context, id string) (string, int, int) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	out, err := m.compose(ctx, id, nil, "ps", "--all", "--format", "json")
 	if err != nil {
-		return "unknown"
+		return "unknown", 0, 0
 	}
-	type row struct {
-		Service string `json:"Service"`
-		State   string `json:"State"`
-		Health  string `json:"Health"`
-	}
-	var rows []row
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		if strings.HasPrefix(line, "[") {
-			var many []row
-			if json.Unmarshal([]byte(line), &many) != nil {
-				return "unknown"
-			}
-			rows = append(rows, many...)
-			continue
-		}
-		var r row
-		if json.Unmarshal([]byte(line), &r) != nil {
-			return "unknown"
-		}
-		rows = append(rows, r)
+	rows, err := parsePS(out)
+	if err != nil {
+		return "unknown", 0, 0
 	}
 	if len(rows) == 0 {
-		return "stopped"
+		return "stopped", 0, 0
 	}
 	up := 0
 	for _, r := range rows {
@@ -484,11 +473,11 @@ func (m *Manager) Status(ctx context.Context, id string) string {
 	}
 	switch {
 	case up == len(rows):
-		return "running"
+		return "running", up, len(rows)
 	case up == 0:
-		return "stopped"
+		return "stopped", up, len(rows)
 	default:
-		return "partial"
+		return "partial", up, len(rows)
 	}
 }
 
@@ -622,4 +611,220 @@ func (m *Manager) Purge() ([]string, error) {
 		gone = append(gone, t.Entry)
 	}
 	return gone, nil
+}
+
+// Container is one container of a site's stack, as the panel shows it (STACK-01).
+type Container struct {
+	Service  string  `json:"service"`   // web | php | db
+	Name     string  `json:"name"`      // docker container name
+	Image    string  `json:"image"`     // image reference without the digest
+	State    string  `json:"state"`     // running | exited | restarting | created | paused | dead
+	Health   string  `json:"health"`    // healthy | unhealthy | starting | "" (no health check)
+	Status   string  `json:"status"`    // docker's own short text, e.g. "Up 2 hours (healthy)"
+	CPU      float64 `json:"cpu"`       // percent of one CPU, -1 when unknown
+	MemBytes int64   `json:"mem"`       // bytes in use, -1 when unknown
+	MemLimit int64   `json:"mem_limit"` // bytes, 0 when unknown
+	Restarts int     `json:"restarts"`
+	Started  int64   `json:"started"` // unix seconds, 0 when not running
+}
+
+// Stack is a site's compose project and its containers.
+type Stack struct {
+	Project    string      `json:"project"`
+	Containers []Container `json:"containers"`
+}
+
+// services lists the services a site may have; anything else in the project is ignored.
+func services(s Site) []string {
+	if s.Server == "nginx" {
+		return []string{"web", "php", "db"}
+	}
+	return []string{"web", "db"}
+}
+
+func validService(s Site, svc string) bool {
+	for _, x := range services(s) {
+		if x == svc {
+			return true
+		}
+	}
+	return false
+}
+
+type psRow struct {
+	ID      string `json:"ID"`
+	Name    string `json:"Name"`
+	Service string `json:"Service"`
+	Image   string `json:"Image"`
+	State   string `json:"State"`
+	Health  string `json:"Health"`
+	Status  string `json:"Status"`
+}
+
+// parsePS reads `docker compose ps --format json` (one object per line, or one array on older versions).
+func parsePS(out []byte) ([]psRow, error) {
+	var rows []psRow
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case line == "":
+		case strings.HasPrefix(line, "["):
+			var many []psRow
+			if err := json.Unmarshal([]byte(line), &many); err != nil {
+				return nil, err
+			}
+			rows = append(rows, many...)
+		default:
+			var r psRow
+			if err := json.Unmarshal([]byte(line), &r); err != nil {
+				return nil, err
+			}
+			rows = append(rows, r)
+		}
+	}
+	return rows, nil
+}
+
+var sizeRe = regexp.MustCompile(`^([0-9.]+)\s*([KMGT]?i?B)$`)
+
+// parseSize reads docker's sizes like "45.2MiB" or "1.5GB" (B, kB, MB, GB, KiB, MiB, GiB, TiB).
+func parseSize(s string) int64 {
+	m := sizeRe.FindStringSubmatch(strings.TrimSpace(strings.Replace(s, "kB", "KB", 1)))
+	if m == nil {
+		return -1
+	}
+	v, err := strconv.ParseFloat(m[1], 64)
+	if err != nil {
+		return -1
+	}
+	mult := map[string]float64{"B": 1, "KB": 1e3, "MB": 1e6, "GB": 1e9, "TB": 1e12, "KiB": 1 << 10, "MiB": 1 << 20, "GiB": 1 << 30, "TiB": 1 << 40}[m[2]]
+	if mult == 0 {
+		return -1
+	}
+	return int64(v * mult)
+}
+
+// Stack reads the containers of a site with their live usage. A docker failure gives an error
+// (the panel then shows "unknown", never green).
+func (m *Manager) Stack(ctx context.Context, id string) (Stack, error) {
+	s, err := m.Get(id)
+	if err != nil {
+		return Stack{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	out, err := m.compose(ctx, id, nil, "ps", "--all", "--format", "json")
+	if err != nil {
+		return Stack{}, fmt.Errorf("cannot read containers: %s", tail(out))
+	}
+	rows, err := parsePS(out)
+	if err != nil {
+		return Stack{}, errors.New("cannot read containers: unexpected docker output")
+	}
+	st := Stack{Project: Project(id), Containers: []Container{}}
+	byID := map[string]int{}
+	var ids []string
+	for _, r := range rows {
+		if !validService(s, r.Service) {
+			continue
+		}
+		img := r.Image
+		if i := strings.Index(img, "@"); i > 0 {
+			img = img[:i]
+		}
+		c := Container{Service: r.Service, Name: r.Name, Image: img, State: r.State, Health: r.Health, Status: r.Status, CPU: -1, MemBytes: -1}
+		byID[r.ID] = len(st.Containers)
+		st.Containers = append(st.Containers, c)
+		if r.ID != "" {
+			ids = append(ids, r.ID)
+		}
+	}
+	if len(ids) == 0 {
+		return st, nil
+	}
+	// restart counts and start times
+	if out, err := m.run.Docker(ctx, m.dir(id), nil, append([]string{"inspect", "--format", "json"}, ids...)...); err == nil {
+		var ins []struct {
+			ID           string `json:"Id"`
+			RestartCount int    `json:"RestartCount"`
+			State        struct {
+				Running   bool   `json:"Running"`
+				StartedAt string `json:"StartedAt"`
+			} `json:"State"`
+		}
+		if json.Unmarshal(out, &ins) == nil {
+			for _, x := range ins {
+				for short, i := range byID {
+					if short != "" && strings.HasPrefix(x.ID, short) {
+						st.Containers[i].Restarts = x.RestartCount
+						if t, err := time.Parse(time.RFC3339Nano, x.State.StartedAt); err == nil && x.State.Running {
+							st.Containers[i].Started = t.Unix()
+						}
+					}
+				}
+			}
+		}
+	}
+	// live CPU and memory of running containers
+	var running []string
+	for short, i := range byID {
+		if st.Containers[i].State == "running" && short != "" {
+			running = append(running, short)
+		}
+	}
+	if len(running) > 0 {
+		args := append([]string{"stats", "--no-stream", "--no-trunc", "--format", "json"}, running...)
+		if out, err := m.run.Docker(ctx, m.dir(id), nil, args...); err == nil {
+			for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+				var x struct {
+					ID       string `json:"ID"`
+					CPUPerc  string `json:"CPUPerc"`
+					MemUsage string `json:"MemUsage"`
+				}
+				if json.Unmarshal([]byte(strings.TrimSpace(line)), &x) != nil {
+					continue
+				}
+				for short, i := range byID {
+					if short == "" || !(strings.HasPrefix(x.ID, short) || strings.HasPrefix(short, x.ID)) {
+						continue
+					}
+					if v, err := strconv.ParseFloat(strings.TrimSuffix(strings.TrimSpace(x.CPUPerc), "%"), 64); err == nil {
+						st.Containers[i].CPU = v
+					}
+					if used, limit, ok := strings.Cut(x.MemUsage, "/"); ok {
+						st.Containers[i].MemBytes = parseSize(used)
+						if l := parseSize(limit); l > 0 {
+							st.Containers[i].MemLimit = l
+						}
+					}
+				}
+			}
+		}
+	}
+	sort.Slice(st.Containers, func(a, b int) bool {
+		order := map[string]int{"web": 0, "php": 1, "db": 2}
+		return order[st.Containers[a].Service] < order[st.Containers[b].Service]
+	})
+	return st, nil
+}
+
+// RestartService restarts one container of a site (web, php or db).
+func (m *Manager) RestartService(ctx context.Context, id, svc string) error {
+	s, err := m.Get(id)
+	if err != nil {
+		return err
+	}
+	if !validService(s, svc) {
+		return fmt.Errorf("%w: service %q is not part of this site", ErrBadInput, svc)
+	}
+	if !m.mu.TryLock() {
+		return ErrBusy
+	}
+	defer m.mu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+	if out, err := m.compose(ctx, id, nil, "restart", svc); err != nil {
+		return fmt.Errorf("restart %s failed: %s", svc, tail(out))
+	}
+	return nil
 }
