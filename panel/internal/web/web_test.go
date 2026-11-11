@@ -338,3 +338,30 @@ func TestOpenRedirectBlocked(t *testing.T) {
 		t.Fatal("open redirect")
 	}
 }
+
+func TestClientIPIgnoresSpoofedForwardedFor(t *testing.T) {
+	s := &Server{cfg: Config{TrustProxy: true}}
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Forwarded-For", "1.2.3.4, 203.0.113.9")
+	if got := s.clientIP(r); got != "203.0.113.9" {
+		t.Fatalf("clientIP = %q, want the entry added by the edge", got)
+	}
+	s.cfg.TrustProxy = false
+	if got := s.clientIP(r); got == "203.0.113.9" || got == "1.2.3.4" {
+		t.Fatalf("header trusted without TrustProxy: %q", got)
+	}
+}
+
+func TestNewSetupLinkRevokesOld(t *testing.T) {
+	e := newEnv(t)
+	old, err := SetupLink(e.st, e.ts.URL, e.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetupLink(e.st, e.ts.URL, e.clock); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, _ := e.get(e.client(), strings.TrimPrefix(old, e.ts.URL)); code == 200 {
+		t.Fatal("older setup link still works after a new one was made")
+	}
+}

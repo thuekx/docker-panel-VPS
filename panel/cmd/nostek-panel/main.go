@@ -3,6 +3,8 @@
 //	nostek-panel serve
 //	nostek-panel setup-link      (first admin, one-time link, 30 min)
 //	nostek-panel admin-rotate EMAIL  (new random password via one-time link, 15 min)
+//	nostek-panel healthcheck     (container health probe, exit 0 when /healthz answers ok)
+//	nostek-panel version
 package main
 
 import (
@@ -35,8 +37,15 @@ func env(k, def string) string {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: nostek-panel serve | setup-link | admin-rotate EMAIL")
+		fmt.Fprintln(os.Stderr, "usage: nostek-panel serve | setup-link | admin-rotate EMAIL | healthcheck | version")
 		os.Exit(2)
+	}
+	switch os.Args[1] {
+	case "healthcheck":
+		os.Exit(healthcheck(env("NP_LISTEN", ":8080")))
+	case "version":
+		fmt.Println(version)
+		return
 	}
 	st, err := store.Open(env("NP_DB", "/data/panel.db"))
 	if err != nil {
@@ -71,6 +80,25 @@ func main() {
 		fmt.Fprintln(os.Stderr, "unknown command")
 		os.Exit(2)
 	}
+}
+
+func healthcheck(listen string) int {
+	addr := listen
+	if strings.HasPrefix(addr, ":") {
+		addr = "127.0.0.1" + addr
+	}
+	cl := &http.Client{Timeout: 3 * time.Second}
+	resp, err := cl.Get("http://" + addr + "/healthz")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "FAIL", err)
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintln(os.Stderr, "FAIL status", resp.StatusCode)
+		return 1
+	}
+	return 0
 }
 
 func serve(st *store.Store) {

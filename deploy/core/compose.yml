@@ -1,0 +1,109 @@
+# Nostek Panel core stack (PANEL-01). Installed by packages/panel-01 to /srv/nostek/core.
+# Only `edge` publishes ports. The panel never mounts the Docker socket; it talks to a read-only socket proxy.
+# Values come from .env next to this file (written by the installer): PANEL_DOMAIN, PANEL_IMAGE, PANEL_HOSTNAME,
+# NOSTEK_DATA (default /srv/nostek), ACME_CA_SERVER (default Let's Encrypt production).
+name: nostek-core
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  edge:
+    <<: *hardening
+    image: traefik:v3.7.18@sha256:9c437ac4f09ce6f4980a8544902d3475fdf70a1a7c578729581d2535dfa7d635
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    depends_on: [docker-api]
+    ports:
+      - "80:8000"
+      - "443:8443"
+    command:
+      - --global.checkNewVersion=false
+      - --global.sendAnonymousUsage=false
+      - --log.level=INFO
+      - --ping=true
+      - --ping.entryPoint=ping
+      - --entryPoints.ping.address=:8082
+      - --entryPoints.web.address=:8000
+      - --entryPoints.web.http.redirections.entryPoint.to=:443
+      - --entryPoints.web.http.redirections.entryPoint.scheme=https
+      - --entryPoints.web.http.redirections.entryPoint.permanent=true
+      - --entryPoints.websecure.address=:8443
+      - --entryPoints.websecure.http.tls=true
+      - --entryPoints.websecure.http3=false
+      - --providers.docker=true
+      - --providers.docker.endpoint=tcp://docker-api:2375
+      - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=nostek-edge
+      - --certificatesResolvers.le.acme.storage=/acme/acme.json
+      - --certificatesResolvers.le.acme.caServer=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
+      - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web
+    volumes:
+      - ${NOSTEK_DATA:-/srv/nostek}/edge/acme:/acme
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping", "--ping.entryPoint=ping", "--entryPoints.ping.address=:8082"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks: [nostek-edge, nostek-ctl]
+
+  docker-api:
+    <<: *hardening
+    image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    read_only: true
+    tmpfs: [/run, /tmp]
+    environment:
+      # read-only allow-list; everything not listed (exec, build, secrets, POST, ...) is refused
+      CONTAINERS: "1"
+      INFO: "1"
+      NETWORKS: "1"
+      VERSION: "1"
+      PING: "1"
+      EVENTS: "1"
+      POST: "0"
+      DISABLE_IPV6: "1"   # internal network is IPv4 only; also avoids a crash on hosts without IPv6
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [nostek-ctl]
+
+  panel:
+    <<: *hardening
+    image: ${PANEL_IMAGE:?PANEL_IMAGE is required}
+    read_only: true
+    cap_drop: [ALL]
+    depends_on: [docker-api]
+    environment:
+      NP_BASE_URL: https://${PANEL_DOMAIN:?PANEL_DOMAIN is required}
+      NP_HOSTNAME: ${PANEL_HOSTNAME:-}
+      NP_PROC: /proc
+      NP_DOCKER_URL: http://docker-api:2375
+      NP_BACKUP_STATUS: /host/backup/last
+      NP_TRUST_PROXY: "1"
+      NP_LANG: id
+      TZ: Asia/Jakarta
+    volumes:
+      - ${NOSTEK_DATA:-/srv/nostek}/panel:/data
+      - /var/lib/nostek/backup:/host/backup:ro
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.panel.rule: Host(`${PANEL_DOMAIN}`)
+      traefik.http.routers.panel.entrypoints: websecure
+      traefik.http.routers.panel.tls.certresolver: le
+      traefik.http.routers.panel.middlewares: panel-hsts
+      traefik.http.middlewares.panel-hsts.headers.stsSeconds: "31536000"
+      traefik.http.middlewares.panel-hsts.headers.stsIncludeSubdomains: "false"
+      traefik.http.services.panel.loadbalancer.server.port: "8080"
+    networks: [nostek-edge, nostek-ctl]
+
+networks:
+  nostek-edge:
+    name: nostek-edge
+  nostek-ctl:
+    name: nostek-ctl
+    internal: true

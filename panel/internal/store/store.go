@@ -238,6 +238,12 @@ func (s *Store) CreateToken(hash, kind string, userID int64, sealed []byte, exp 
 	return err
 }
 
+// RevokeTokens marks every unused token of this kind and user as used, so only the newest link works.
+func (s *Store) RevokeTokens(kind string, userID int64) error {
+	_, err := s.DB.Exec(`UPDATE tokens SET used=1 WHERE kind=? AND user_id=? AND used=0`, kind, userID)
+	return err
+}
+
 // PeekToken returns a valid (unused, unexpired) token without using it.
 func (s *Store) PeekToken(hash, kind string, now time.Time) (int64, []byte, error) {
 	var uid sql.NullInt64

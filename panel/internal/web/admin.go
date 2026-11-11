@@ -17,6 +17,9 @@ func SetupLink(st *store.Store, base string, now time.Time) (string, error) {
 	if n > 0 {
 		return "", errors.New("an admin already exists; use admin-rotate")
 	}
+	if err := st.RevokeTokens("setup", 0); err != nil {
+		return "", err
+	}
 	tok := auth.NewToken()
 	if err := st.CreateToken(auth.TokenHash(tok), "setup", 0, nil, now.Add(30*time.Minute)); err != nil {
 		return "", err
@@ -45,6 +48,9 @@ func AdminRotate(st *store.Store, email, base string, now time.Time) (string, er
 		return "", err
 	}
 	_ = st.DeleteUserSessions(u.ID)
+	if err := st.RevokeTokens("reveal", u.ID); err != nil {
+		return "", err
+	}
 	if err := st.CreateToken(auth.TokenHash(tok), "reveal", u.ID, sealed, now.Add(15*time.Minute)); err != nil {
 		return "", err
 	}

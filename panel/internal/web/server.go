@@ -259,7 +259,9 @@ func (s *Server) preCSRFOK(r *http.Request) bool {
 func (s *Server) clientIP(r *http.Request) string {
 	if s.cfg.TrustProxy {
 		if xf := r.Header.Get("X-Forwarded-For"); xf != "" {
-			return strings.TrimSpace(strings.Split(xf, ",")[0])
+			// the right-most entry is the one our edge proxy added; earlier ones come from the client
+			parts := strings.Split(xf, ",")
+			return strings.TrimSpace(parts[len(parts)-1])
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
