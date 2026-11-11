@@ -12,7 +12,7 @@ Nostek Panel
 │   └── HOST-02 baseline + Docker + backup ................ ✓ done 2026-11-11
 ├── Panel
 │   ├── PANEL-01 edge proxy + panel + 2FA ................. ✓ done 2026-11-11
-│   ├── SITE-01 one-click WordPress (Apache/Nginx) ........ ○
+│   ├── SITE-01 one-click WordPress (Apache/Nginx) ........ ✓ v1.2.0 2026-11-11
 │   ├── SITE-02 file manager + DB admin ................... ○
 │   ├── BAK-01 backup / restore ........................... ○
 │   ├── MIG-01 WordPress migration ........................ ○
