@@ -15,7 +15,7 @@ cleanup() {
   docker network rm nostek-edge nostek-ctl >/dev/null 2>&1
   rm -rf "$TMP_ALL"
 }
-trap cleanup EXIT
+trap 'cleanup; docker rmi -f nostek/panel:v9.9.9 >/dev/null 2>&1' EXIT
 new_env() {
   cleanup; TMP_ALL="$(mktemp -d)"
   T="$(mktemp -d "$TMP_ALL/t.XXXX")"
@@ -62,12 +62,26 @@ echo keep > "$PANEL01_TEST_ROOT/srv/nostek/panel/marker"
 run REVERT "${A[@]}"; ok "revert stops stack, moves core aside, keeps data" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -d "$(CORE)" ] && ls -d "$PANEL01_TEST_ROOT"/var/backups/nostek/panel-01/*-revert/core >/dev/null 2>&1 && [ -f "$PANEL01_TEST_ROOT/srv/nostek/panel/marker" ] && [ -z "$(docker ps -q --filter label=com.docker.compose.project=nostek-core)" ]'
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again after revert reuses source and image" '[ $RC = 0 ] && has "already present" && has "already built"'
 
+# --- UPDATE: a second commit (release 9.9.9) in a scratch clone of this repository
+UPD="$(mktemp -d)"; git clone -q "$REPO" "$UPD/repo"; git -C "$UPD/repo" checkout -q "$COMMIT"
+echo 9.9.9 > "$UPD/repo/VERSION"; GIT_AUTHOR_DATE=2026-01-01T00:00:00Z GIT_COMMITTER_DATE=2026-01-01T00:00:00Z git -C "$UPD/repo" -c user.name=t -c user.email=t@example.test commit -qam "test release"  # fixed dates: same id every run
+C2="$(git -C "$UPD/repo" rev-parse HEAD)"
+new_env; run UPDATE "${A[@]}" --src-commit "$C2"; ok "update refused when nothing is applied" '[ $RC = 3 ]'
+export PANEL01_TEST_REPO="file://$UPD/repo"
+run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply shows the release, not a commit" '[ $RC = 0 ] && has "version=v$(tr -d "[:space:]" < "$REPO/VERSION")" && ! has "image=${COMMIT:0:12}"'
+ok "backup result hook installed" 'grep -qx "ExecStopPost=/usr/local/sbin/nostek-backup-status" "$PANEL01_TEST_ROOT/etc/systemd/system/nostek-backup.service.d/50-nostek-panel-status.conf" && grep -q "result=%s unix=%s" "$PANEL01_TEST_ROOT/usr/local/sbin/nostek-backup-status"'
+run UPDATE "${A[@]}" --src-commit "$COMMIT"; ok "update to the running commit refused" '[ $RC = 3 ]'
+echo keep > "$PANEL01_TEST_ROOT/srv/nostek/panel/marker"
+run UPDATE "${A[@]}" --src-commit "$C2"; ok "update swaps to the new release, data kept" '[ $RC = 0 ] && has "RESULT PANEL-01 UPDATE PASS version=v9.9.9" && [ "$(phase)" = APPLIED ] && [ -f "$PANEL01_TEST_ROOT/srv/nostek/panel/marker" ] && [ "$(docker run --rm nostek/panel:v9.9.9 version)" = v9.9.9 ]'
+run VERIFY "${A[@]}"; ok "verify after update names the release" '[ $RC = 0 ] && has "version=v9.9.9"'
+rm -rf "$UPD"; export PANEL01_TEST_REPO="file://$REPO"
+
 # --- production certificate path: no certificate yet must not block APPLY, but VERIFY must not pass
 new_env; export PANEL01_TEST_STRICT_TLS=1; run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply passes while certificate is pending" '[ $RC = 0 ] && has "cert=pending" && [ "$(phase)" = APPLIED ]'
 run VERIFY "${A[@]}"; ok "verify fails without a valid certificate" '[ $RC = 1 ] && has "certificate for '"$D"' not valid"'
 unset PANEL01_TEST_STRICT_TLS
 
-cleanup; TMP_ALL="$(mktemp -d)"
+cleanup; docker rmi -f nostek/panel:v9.9.9 >/dev/null 2>&1; TMP_ALL="$(mktemp -d)"
 LEFT="$( { docker ps -aq --filter label=com.docker.compose.project=nostek-core; docker ps -aq --filter name=np-test-pub; } | wc -l)"
 if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT PANEL-01 HARNESS PASS tests=$TESTS sisa_uji=0"; exit 0; fi
 echo "RESULT PANEL-01 HARNESS FAIL bad=$BAD/$TESTS sisa_uji=$LEFT"; exit 1

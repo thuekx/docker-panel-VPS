@@ -8,7 +8,8 @@ pinned by digest in `panel/Dockerfile` and `deploy/core/compose.yml`.
 | Mode | What it does |
 |---|---|
 | `PREFLIGHT` | Read-only: host identity (name + address), HOST-02 done, Docker engine + compose, git, the panel domain points to this host, ports 80/443 free, disk. |
-| `APPLY` | Fetches the source at `--src-commit`, builds `nostek/panel:<commit>`, writes `/srv/nostek/core` (`compose.yml`, `.env` 600), creates data dirs owned by the panel user, starts the stack, waits until healthy, checks that only the edge publishes ports, waits for the HTTPS certificate. Any failure before the certificate step rolls back (stack stopped, previous core files restored). |
+| `APPLY` | Fetches the source at `--src-commit`, builds `nostek/panel:v<release>` (release from the `VERSION` file at that commit), writes `/srv/nostek/core` (`compose.yml`, `.env` 600), creates data dirs owned by the panel user, starts the stack, waits until healthy, checks that only the edge publishes ports, waits for the HTTPS certificate. Also records the nightly backup result for the dashboard (drop-in on `nostek-backup.service`). Any failure before the certificate step rolls back (stack stopped, previous core files restored). |
+| `UPDATE` | `--src-commit`: fetches and builds the new release while the current one keeps running, then swaps. Any failure after the swap starts the previous release again. Panel data, admin account and certificates are kept. |
 | `SETUP-LINK` | Prints a one-time link (30 min) to create the first admin; older links stop working. Refused once an admin exists. |
 | `ADMIN-ROTATE` | `--email`: sets a new random admin password, signs out all sessions, prints a one-time link (15 min) that shows the password once (ADMIN-ROTATE-1). The password is never printed. |
 | `VERIFY` | Read-only: containers healthy, only the edge publishes ports, the socket proxy refuses writes, HTTP redirects to HTTPS, panel healthy through the edge, certificate valid. |
@@ -31,7 +32,7 @@ network, read-only allow-list), `panel` (non-root, read-only root filesystem, no
 
 ```bash
 shellcheck -S warning packages/panel-01/panel-01-core.sh packages/panel-01/tests/*.sh packages/panel-01/tests/stubs/*
-sudo bash packages/panel-01/tests/harness.sh   # RESULT PANEL-01 HARNESS PASS tests=24 sisa_uji=0  (real Docker, ports 80/443)
+sudo bash packages/panel-01/tests/harness.sh   # RESULT PANEL-01 HARNESS PASS tests=30 sisa_uji=0  (real Docker, ports 80/443)
 sudo bash packages/panel-01/tests/mutants.sh   # RESULT PANEL-01 MUTANTS PASS killed=7/7 sisa_uji=0
 (cd packages/panel-01 && sha256sum -c panel-01.lock)
 ```

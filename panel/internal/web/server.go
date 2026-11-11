@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
@@ -26,6 +27,7 @@ import (
 const (
 	cookieSession = "np_session"
 	cookieLang    = "np_lang"
+	cookieTheme   = "np_theme"
 	cookiePre     = "np_pre" // CSRF for forms shown before login
 	idleTimeout   = 12 * time.Hour
 	maxFails      = 10
@@ -95,7 +97,8 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 				}
 				return int(a * 100 / b)
 			},
-			"f1": func(f float64) string { return strconv.FormatFloat(f, 'f', 1, 64) },
+			"f1":    func(f float64) string { return strconv.FormatFloat(f, 'f', 1, 64) },
+			"list3": func(a, b, c string) []string { return []string{a, b, c} },
 			"dict2": func(st sysinfo.Status, label string) map[string]any {
 				return map[string]any{"S": string(st), "L": label}
 			},
@@ -126,6 +129,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /2fa/enrol", s.need(false, s.enrolSubmit))
 	mux.HandleFunc("POST /logout", s.need(false, s.logout))
 	mux.HandleFunc("POST /lang", s.setLang)
+	mux.HandleFunc("POST /theme", s.setTheme)
 	mux.HandleFunc("GET /{$}", s.need(true, s.dashboard))
 	mux.HandleFunc("GET /audit", s.need(true, s.audit))
 	mux.HandleFunc("GET /audit/{id}", s.need(true, s.auditEntry))
@@ -278,6 +282,29 @@ func (s *Server) lang(r *http.Request) string {
 	return s.cfg.DefaultLang
 }
 
+// Themes: "system" follows the device; "light" and "dark" are fixed. Saved per account when signed in
+// (setting theme:user:<id>), otherwise per browser (cookie).
+var themes = map[string]bool{"system": true, "light": true, "dark": true}
+
+func (s *Server) theme(r *http.Request) string {
+	if u := userOf(r); u != nil {
+		if t := s.st.Setting(fmt.Sprintf("theme:user:%d", u.ID), ""); themes[t] {
+			return t
+		}
+	}
+	if c, err := r.Cookie(cookieTheme); err == nil && themes[c.Value] {
+		return c.Value
+	}
+	return "system"
+}
+
+func safeBack(p string) string {
+	if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.HasPrefix(p, "/setup/") || strings.HasPrefix(p, "/reveal/") {
+		return "/"
+	}
+	return p
+}
+
 func (s *Server) loc() *time.Location {
 	l, err := time.LoadLocation(s.st.Setting("timezone", "Asia/Jakarta"))
 	if err != nil {
@@ -289,15 +316,18 @@ func (s *Server) loc() *time.Location {
 // ---------- rendering
 
 type page struct {
-	Lang, Title, CSRF, Error, Flash, Active string
-	User                                    *store.User
-	Version                                 string
-	Now                                     string
-	Data                                    any
+	Lang, Theme, Back                 string
+	Title, CSRF, Error, Flash, Active string
+	User                              *store.User
+	Version                           string
+	Now                               string
+	Data                              any
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p page) {
 	p.Lang = s.lang(r)
+	p.Theme = s.theme(r)
+	p.Back = safeBack(r.URL.Path)
 	p.Version = s.cfg.Version
 	p.Now = s.now().In(s.loc()).Format("02 Jan 2006 15:04 MST")
 	if p.User == nil {
@@ -599,6 +629,19 @@ func (s *Server) setLang(w http.ResponseWriter, r *http.Request) {
 		back = "/"
 	}
 	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+func (s *Server) setTheme(w http.ResponseWriter, r *http.Request) {
+	_ = r.ParseForm()
+	t := r.PostForm.Get("theme")
+	if themes[t] {
+		http.SetCookie(w, &http.Cookie{Name: cookieTheme, Value: t, Path: "/", MaxAge: 365 * 24 * 3600, Secure: s.cfg.SecureCookies, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+		// signed in with finished 2FA and a valid form token: also keep it on the account
+		if sess, u := s.currentSession(r); sess != nil && sess.MFAOK && s.csrfOK(r, sess.CSRF) {
+			_ = s.st.SetSetting(fmt.Sprintf("theme:user:%d", u.ID), t)
+		}
+	}
+	http.Redirect(w, r, safeBack(r.PostForm.Get("back")), http.StatusSeeOther)
 }
 
 // ---------- pages

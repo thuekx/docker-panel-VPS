@@ -404,3 +404,42 @@ func TestEnrolShowsQRAndRenewsSecret(t *testing.T) {
 		t.Fatal("current secret did not enable 2FA")
 	}
 }
+
+func TestThemeSetting(t *testing.T) {
+	e := newEnv(t)
+	c := e.client()
+	// default follows the device: no fixed attribute, both schemes allowed
+	_, body, _ := e.get(c, "/login")
+	if strings.Contains(body, "data-theme=") || !strings.Contains(body, `content="light dark"`) {
+		t.Fatal("default must follow the system")
+	}
+	// before login: per browser (cookie)
+	code, _, h := e.post(c, "/theme", url.Values{"theme": {"light"}, "back": {"/login"}}, "/login")
+	if code != 303 || h.Get("Location") != "/login" {
+		t.Fatalf("theme: %d %s", code, h.Get("Location"))
+	}
+	if _, body, _ = e.get(c, "/login"); !strings.Contains(body, `data-theme="light"`) {
+		t.Fatal("light theme not applied before login")
+	}
+	// unknown value and unsafe back target are ignored
+	if _, _, h = e.post(c, "/theme", url.Values{"theme": {"neon"}, "back": {"//evil.example"}}, "/login"); h.Get("Location") != "/" {
+		t.Fatal("open redirect via back")
+	}
+	if _, body, _ = e.get(c, "/login"); !strings.Contains(body, `data-theme="light"`) {
+		t.Fatal("unknown theme value changed the setting")
+	}
+	// signed in: saved on the account, so a fresh browser gets it after login
+	secret, _ := e.setupAdmin(e.c, "admin@example.test")
+	_, dash, _ := e.get(e.c, "/")
+	if code, _, _ := e.postWith(e.c, "/theme", url.Values{"theme": {"dark"}, "back": {"/"}}, dash); code != 303 {
+		t.Fatal("theme save failed")
+	}
+	fresh := e.client()
+	e.clock = e.clock.Add(2 * time.Minute)
+	e.post(fresh, "/login", url.Values{"email": {"admin@example.test"}, "password": {pw}}, "/login")
+	totp, _ := auth.TOTPCode(secret, e.clock)
+	e.post(fresh, "/login/2fa", url.Values{"code": {totp}}, "/login/2fa")
+	if _, body, _ = e.get(fresh, "/"); !strings.Contains(body, `data-theme="dark"`) {
+		t.Fatal("theme not kept on the account")
+	}
+}

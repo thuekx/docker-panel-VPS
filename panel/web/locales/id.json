@@ -76,5 +76,10 @@
   "err.login": "E-mail atau kata sandi salah.",
   "err.code": "Kode tidak valid. Coba kode yang terbaru.",
   "err.toomany": "Terlalu banyak percobaan. Tunggu satu menit lalu coba lagi.",
-  "foot.version": "Versi %s"
+  "foot.version": "Versi %s",
+  "theme.light": "Terang",
+  "theme.dark": "Gelap",
+  "theme.system": "Ikuti sistem",
+  "settings.theme": "Tampilan",
+  "settings.theme.help": "Terang, gelap, atau ikuti perangkat. Tersimpan di akun Anda."
 }

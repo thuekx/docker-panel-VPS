@@ -12,6 +12,16 @@
   </form>
 </article>
 <article class="card" data-anim="card">
+  <h2>{{t .Lang "settings.theme"}}</h2>
+  <p class="muted">{{t .Lang "settings.theme.help"}}</p>
+  <form method="post" action="/theme" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="back" value="/settings">
+    <label class="sr" for="theme">{{t .Lang "settings.theme"}}</label>
+    <select id="theme" name="theme">{{$th := .Theme}}{{range $v := list3 "system" "light" "dark"}}<option value="{{$v}}" {{if eq $v $th}}selected{{end}}>{{t $.Lang (printf "theme.%s" $v)}}</option>{{end}}</select>
+    <button class="primary" type="submit">{{t .Lang "settings.save"}}</button>
+  </form>
+</article>
+<article class="card" data-anim="card">
   <h2>{{t .Lang "settings.codes"}}</h2>
   <p class="muted">{{t .Lang "settings.codes.left" .Data.CodesLeft}}</p>
   <form method="post" action="/settings/recovery" class="form">
