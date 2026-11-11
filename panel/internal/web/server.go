@@ -504,24 +504,28 @@ func (s *Server) enrolForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login/2fa", http.StatusSeeOther)
 		return
 	}
-	if u.TOTPSecret == "" {
-		u.TOTPSecret = auth.NewTOTPSecret()
-		if err := s.st.SetTOTPSecret(u.ID, u.TOTPSecret); err != nil {
-			http.Error(w, "internal error", 500)
-			return
-		}
+	// A fresh secret on every visit until 2FA is enabled: a key that was shown before (and may have been
+	// seen or shared) never becomes the active one unless it is confirmed with a code right away.
+	u.TOTPSecret = auth.NewTOTPSecret()
+	if err := s.st.SetTOTPSecret(u.ID, u.TOTPSecret); err != nil {
+		http.Error(w, "internal error", 500)
+		return
 	}
 	s.render(w, r, "enrol", page{Title: s.tr.T(s.lang(r), "enrol.title"), Data: s.enrolData(u)})
 }
 
-type enrolData struct{ QR, Secret string }
+// QR is a template.URL: html/template replaces a plain-string data: URL in src with "#ZgotmplZ".
+type enrolData struct {
+	QR     template.URL
+	Secret string
+}
 
 func (s *Server) enrolData(u *store.User) enrolData {
 	uri := auth.OTPAuthURL(s.cfg.Issuer, u.Email, u.TOTPSecret)
 	png, err := qrcode.Encode(uri, qrcode.Medium, 240)
-	qr := ""
+	var qr template.URL
 	if err == nil {
-		qr = "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
+		qr = template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(png)) // built here from our own PNG bytes only
 	}
 	return enrolData{QR: qr, Secret: u.TOTPSecret}
 }

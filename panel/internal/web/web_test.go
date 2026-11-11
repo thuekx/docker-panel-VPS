@@ -79,6 +79,11 @@ var csrfRe = regexp.MustCompile(`name="csrf" value="([^"]+)"`)
 
 func (e *env) post(c *http.Client, path string, form url.Values, csrfFrom string) (int, string, http.Header) {
 	_, body, _ := e.get(c, csrfFrom)
+	return e.postWith(c, path, form, body)
+}
+
+// postWith takes the CSRF token from a page already loaded (loading the enrol page again would renew the secret).
+func (e *env) postWith(c *http.Client, path string, form url.Values, body string) (int, string, http.Header) {
 	m := csrfRe.FindStringSubmatch(body)
 	if m != nil {
 		form.Set("csrf", m[1])
@@ -119,7 +124,7 @@ func (e *env) setupAdmin(c *http.Client, email string) (string, []string) {
 		e.t.Fatal("no secret on enrol page")
 	}
 	totp, _ := auth.TOTPCode(sec[1], e.clock)
-	code, body, _ = e.post(c, "/2fa/enrol", url.Values{"code": {totp}}, "/2fa/enrol")
+	code, body, _ = e.postWith(c, "/2fa/enrol", url.Values{"code": {totp}}, body)
 	if code != 200 || !strings.Contains(body, "recovery codes") {
 		e.t.Fatalf("enrol: %d", code)
 	}
@@ -363,5 +368,39 @@ func TestNewSetupLinkRevokesOld(t *testing.T) {
 	}
 	if code, _, _ := e.get(e.client(), strings.TrimPrefix(old, e.ts.URL)); code == 200 {
 		t.Fatal("older setup link still works after a new one was made")
+	}
+}
+
+func TestEnrolShowsQRAndRenewsSecret(t *testing.T) {
+	e := newEnv(t)
+	c := e.client()
+	link, err := SetupLink(e.st, e.ts.URL, e.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := strings.TrimPrefix(link, e.ts.URL)
+	if code, _, _ := e.post(c, path, url.Values{"email": {"admin@example.test"}, "password": {pw}, "password2": {pw}}, path); code != 303 {
+		t.Fatalf("setup: %d", code)
+	}
+	_, body1, _ := e.get(c, "/2fa/enrol")
+	if !regexp.MustCompile(`<img src="data:image/png;base64,(?:[A-Za-z0-9/=]|&#43;){100,}"`).MatchString(body1) {
+		t.Fatal("enrol page has no QR image (data URL filtered?)")
+	}
+	if strings.Contains(body1, "ZgotmplZ") {
+		t.Fatal("template replaced the QR URL")
+	}
+	sec := regexp.MustCompile(`class="secret">([A-Z2-7]+)<`)
+	_, body2, _ := e.get(c, "/2fa/enrol")
+	s1, s2 := sec.FindStringSubmatch(body1), sec.FindStringSubmatch(body2)
+	if s1 == nil || s2 == nil || s1[1] == s2[1] {
+		t.Fatal("secret not renewed on a new visit before 2FA is enabled")
+	}
+	old, _ := auth.TOTPCode(s1[1], e.clock)
+	if _, b, _ := e.postWith(c, "/2fa/enrol", url.Values{"code": {old}}, body2); strings.Contains(b, "recovery codes") {
+		t.Fatal("an earlier, replaced secret enabled 2FA")
+	}
+	cur, _ := auth.TOTPCode(s2[1], e.clock)
+	if _, b, _ := e.postWith(c, "/2fa/enrol", url.Values{"code": {cur}}, body2); !strings.Contains(b, "recovery codes") {
+		t.Fatal("current secret did not enable 2FA")
 	}
 }
