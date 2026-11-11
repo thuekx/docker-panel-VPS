@@ -3,7 +3,9 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
-## [1.1.0] — unreleased
+## [1.1.0] — 2026-11-11
+
+Running at the owner's server since 15:48 WIB (updated with `UPDATE`, VERIFY PASS).
 
 ### Added
 - Appearance setting: Light, Dark or Follow system. Switch in the header and in Settings; saved on the account

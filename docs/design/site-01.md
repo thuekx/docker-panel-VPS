@@ -1,6 +1,6 @@
 # SITE-01 — one-click WordPress, Apache or Nginx per site (design draft)
 
-Status: draft for the owner's decision. Builds on PANEL-01 (done 2026-11-11) and the architecture in
+Status: design. Owner decided SITE-DOCKER-1 = **A** (2026-11-11 15:43 WIB), PHP 8.1..latest (SITE-PHP-1). Builds on PANEL-01 (done 2026-11-11) and the architecture in
 [architecture.md](architecture.md): one stack per site, MariaDB per site, per-site network, edge proxy in front.
 Roadmap slot SITE-01, owner thread "Rancang panel Docker untuk VPS fresh". Also carries THEME-1 (light/dark setting)
 and two PANEL-01 follow-ups (APPLY summary text, backup status on the dashboard).
@@ -30,7 +30,7 @@ and two PANEL-01 follow-ups (APPLY summary text, backup status on the dashboard)
 - `www.` and the bare domain both answer; the other one redirects to the one the owner picks.
 - WordPress install via WP-CLI inside the container (no installer page left open on the internet).
 
-## Decision needed: how the panel is allowed to change Docker (SITE-DOCKER-1)
+## Decided: how the panel is allowed to change Docker (SITE-DOCKER-1 = A)
 
 Today the panel can only **read** Docker (socket proxy refuses all writes). Creating sites needs writes.
 Write access to Docker is equal to root on the server, so this is the main security choice.
@@ -45,7 +45,7 @@ Write access to Docker is equal to root on the server, so this is the main secur
 
 | Code | Choice | Recommendation |
 |---|---|---|
-| SITE-PHP-1 | PHP versions offered | 8.3 (default) and 8.2; more later. |
+| SITE-PHP-1 | PHP versions offered | **Decided:** 8.1 (labelled end-of-life) up to the latest; default 8.3. |
 | SITE-WPADMIN-1 | First WordPress admin | Created by WP-CLI with a random password shown once via one-time link. |
 | SITE-DELETE-1 | Deleting a site | Stop + move to trash, removed after 7 days; restore from trash in the panel. |
 | THEME-1 | Light/dark | Light / Dark / Follow system; per user, in the header and in Settings. |

@@ -19,3 +19,9 @@ for all rows below unless stated.
 | 2026-11-11 14:10 | **FINDING PANEL-01-F1** | First host APPLY failed: the reachability check demanded a valid certificate before ACME had issued one; rollback worked. Fixed in PR #4 with a harness test on the production certificate path. Lesson: test hooks must not skip the path production takes. | PANEL-01 |
 | 2026-11-11 14:46 | **FINDING PANEL-01-F2** | 2FA QR code not shown: html/template blocks plain-string data URLs. Fixed in PR #5 (template.URL, secret renewed on each enrol visit so a key seen in a screenshot never becomes active). Lesson: check rendered images in UI screenshots, not only text. | PANEL-01 |
 | 2026-11-11 15:06 | **THEME-1 (owner)** | Panel gets a light/dark theme setting (Light / Dark / Follow system), with the next package. | next package |
+| 2026-11-11 15:08 | **VERSION-1 (owner)** | The panel shows release versions (`v1.0.0`, `v1.1.0`), never commit ids; `CHANGELOG.md` and git tags per release. | all |
+| 2026-11-11 15:13 | **SITE-PHP-1 (owner)** | PHP versions offered: 8.1 up to the latest supported release; 8.1 labelled end-of-life. | SITE-01 |
+| 2026-11-11 15:31 | **MAIL-1 (owner)** | No mail server for now. | — |
+| 2026-11-11 15:30 | **EDITION-1 (owner)** | Nostek Panel stays MIT and fully usable on its own. Paid add-ons are separate products and are not in this repository; nothing here depends on them. | all |
+| 2026-11-11 15:43 | **SITE-DOCKER-1 = A (owner)** | Docker changes go through a separate host agent with fixed, checked actions (option A in [site-01.md](../design/site-01.md)); the panel itself never gets Docker write access. | SITE-01 |
+| 2026-11-11 15:48 | **v1.1.0 released** | Updated on the owner's server with `panel-01 UPDATE` (no REVERT), VERIFY PASS, certificate valid. THEME-1 and VERSION-1 done. | PANEL-01 |
