@@ -20,14 +20,14 @@ No secret, password, token or private e-mail belongs in this file or in any file
 | Reply language | Indonesian (artefacts — scripts, docs, register — stay in English) |
 | Owner time zone | WIB (Asia/Jakarta, UTC+7) |
 | GitHub identity (only one allowed) | thuekx <thuekx@kolu.web.id> |
-| Main repo (governance, docs, packages) | `thuekx/docker-panel-VPS` [VERIFIED] (public repo, empty on 2026-11-11) |
+| Main repo (governance, docs, packages) | `thuekx/docker-panel-VPS` [VERIFIED] (public repo, MIT) |
 | Product repos | belum ada (`thuekx/nostek-id-web` is reading material only, not a product repo of this project) |
 | Reviewer (advisory only) | ChatGPT (feed path: belum ada) |
-| Production hosts | new VPS for this project : host name belum ada : role belum ada : access details are in the project file, not written in this public repo [STATED] (one line each) |
+| Production hosts | `nostek-panel` (Ubuntu 24.04 VPS) : all-in-one Nostek Panel host (edge proxy, panel, nostek-agent, website stacks) : address, login user and SSH port are in the project file only, never in this public repo [VERIFIED] (one line each) |
 | Hard maintenance windows | belum ada (no mutating step inside them) |
 | Notification channels / bots | belum ada (reuse, never create new without need) |
 | Secret store | Bitwarden (items named, never values) |
-| Console / web UI name & domain | Docker VPS Panel [PROPOSED] (from the project name); domain belum ada |
+| Console / web UI name & domain | Nostek Panel, https://panel.nostek.dev [VERIFIED] (live since 2026-11-11 15:06 WIB; v1.2.0 since 16:41 WIB) |
 | Product module names | belum ada (only our own names, see NO-BRAND-1) |
 | Roadmap / tree / register paths | `docs/governance/master-roadmap.md`, `docs/governance/project-status-tree.md`, `docs/governance/decisions-and-findings-register.md` [PROPOSED] (files not created yet) |
 
@@ -235,7 +235,7 @@ No secret, password, token or private e-mail belongs in this file or in any file
 
 ## 10. Optional — project-specific additions
 
-- Hosts: new VPS for this project; IP, login user and SSH port are in the project file only, never in this public repo [STATED]. Host name, role, tailnet name: belum ada. Full details follow from the owner.
+- Hosts: `nostek-panel`, Ubuntu 24.04 VPS, role: all-in-one Nostek Panel host (edge proxy, panel, nostek-agent, website stacks). Own login user with password + sudo, SSH on a non-default port only (HOST-01, 2026-11-11 12:34 WIB); firewall, fail2ban, Docker and restic backup (HOST-02, 13:24 WIB); panel live (PANEL-01, 15:06 WIB). IP, login user and SSH port are in the project file only, never in this public repo [VERIFIED by RESULT lines]. Tailnet name: belum ada.
 - Hard windows per host: belum ada
 - Bots / channels: belum ada
 - Standing decisions: belum ada. Owner note 2026-11-11: this project runs on its own new VPS; `thuekx/nostek-id-web` is reading material only and is touched only for work that concerns that repo [STATED].
