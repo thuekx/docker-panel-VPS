@@ -9,6 +9,7 @@ MUTANTS=(
   's/\[ -z "$f" \] \&\& pass "only edge publishes ports" ||/true ||/'                  # port isolation not verified
   's/chmod 600 "$CORE\/.env"/chmod 644 "$CORE\/.env"/'                                 # settings readable by all
   's/if \[ -d "$CORE" \]; then mv "$CORE" "$BK\/core" \&\& pass/if [ -d "$CORE" ]; then rm -rf "$CORE" \&\& pass/'  # revert deletes instead of moving aside
+  's/  curl -sS -k --noproxy/  curl -sS --noproxy/'                                   # reachability check demands a certificate (bug of 2026-11-11)
   's/printf .%s\\n. $a | grep -qxF "$EXPECT_IP"/true/'                                 # DNS not checked
 )
 killed=0; n=0

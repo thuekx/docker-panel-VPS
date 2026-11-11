@@ -62,6 +62,11 @@ echo keep > "$PANEL01_TEST_ROOT/srv/nostek/panel/marker"
 run REVERT "${A[@]}"; ok "revert stops stack, moves core aside, keeps data" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -d "$(CORE)" ] && ls -d "$PANEL01_TEST_ROOT"/var/backups/nostek/panel-01/*-revert/core >/dev/null 2>&1 && [ -f "$PANEL01_TEST_ROOT/srv/nostek/panel/marker" ] && [ -z "$(docker ps -q --filter label=com.docker.compose.project=nostek-core)" ]'
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again after revert reuses source and image" '[ $RC = 0 ] && has "already present" && has "already built"'
 
+# --- production certificate path: no certificate yet must not block APPLY, but VERIFY must not pass
+new_env; export PANEL01_TEST_STRICT_TLS=1; run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply passes while certificate is pending" '[ $RC = 0 ] && has "cert=pending" && [ "$(phase)" = APPLIED ]'
+run VERIFY "${A[@]}"; ok "verify fails without a valid certificate" '[ $RC = 1 ] && has "certificate for '"$D"' not valid"'
+unset PANEL01_TEST_STRICT_TLS
+
 cleanup; TMP_ALL="$(mktemp -d)"
 LEFT="$( { docker ps -aq --filter label=com.docker.compose.project=nostek-core; docker ps -aq --filter name=np-test-pub; } | wc -l)"
 if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT PANEL-01 HARNESS PASS tests=$TESTS sisa_uji=0"; exit 0; fi
