@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+grep "^$2:" "$HOST01_TEST_ROOT/etc/passwd"

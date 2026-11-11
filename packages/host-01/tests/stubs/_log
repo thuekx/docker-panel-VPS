@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+echo "$(basename "$1") ${*:2}" >> "$FAKE/argv.log"
