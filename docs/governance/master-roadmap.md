@@ -10,8 +10,10 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 | 3 | HOST-02 | Baseline: updates, firewall, fail2ban, WIB, Docker Engine, backup first (BACKUP-FIRST) | Rancang panel Docker untuk VPS fresh | ✓ done 2026-11-11 13:24 WIB (all steps PASS, restore proven) |
 | 4 | PANEL-01 | Edge proxy + panel skeleton with 2FA login at panel.nostek.dev | Rancang panel Docker untuk VPS fresh | ✓ done 2026-11-11 15:06 WIB (VERIFY PASS, cert valid; fixes PR #4, #5); v1.1.0 (THEME-1, VERSION-1) 15:48 WIB |
 | 5 | SITE-01 | One-click WordPress, Apache or Nginx per site; first owner domains on preview addresses | Rancang panel Docker untuk VPS fresh | ✓ v1.2.0 live 2026-11-11 16:41 WIB (agent + Websites page, PR #7); first test website next ([site-01.md](../design/site-01.md)) |
-| 6 | SITE-02 | File manager + database admin per site | Rancang panel Docker untuk VPS fresh | ○ |
-| 7 | BAK-01 | Per-site backup + restore from the panel | Rancang panel Docker untuk VPS fresh | ○ |
-| 8 | MIG-01 | WordPress migration into the panel (plugin / SSH / archive) | Rancang panel Docker untuk VPS fresh | ○ |
-| 9 | OPS-01 | Logs, resource usage, cron jobs, readable alerts | Rancang panel Docker untuk VPS fresh | ○ |
-| 10 | INST-01 | Public one-command installer for any fresh Ubuntu VPS | Rancang panel Docker untuk VPS fresh | ○ |
+| 6 | UI-02 | Live progress without page reloads, Profile page (change password, theme, accent colour), more colourful UI (teal stays default) | Rancang panel Docker untuk VPS fresh | ✱ in progress (v1.3.0) |
+| 7 | SITE-02 | File manager + database admin per site | Rancang panel Docker untuk VPS fresh | ○ |
+| 8 | WP-01 | WordPress Tools per site (like cPanel WP Toolkit): WP and PHP version, update core/plugins/themes, plugin and theme list (on/off), maintenance mode, debug mode, reset admin password, search-replace domain, clone to staging, security hardening checks | Rancang panel Docker untuk VPS fresh | ○ (owner 2026-11-11 16:49) |
+| 9 | BAK-01 | Per-site backup + restore from the panel | Rancang panel Docker untuk VPS fresh | ○ |
+| 10 | MIG-01 | WordPress migration into the panel (plugin / SSH / archive) | Rancang panel Docker untuk VPS fresh | ○ |
+| 11 | OPS-01 | Logs, resource usage, cron jobs, readable alerts | Rancang panel Docker untuk VPS fresh | ○ |
+| 12 | INST-01 | Public one-command installer for any fresh Ubuntu VPS | Rancang panel Docker untuk VPS fresh | ○ |
