@@ -6,8 +6,8 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 |---|---|---|---|---|
 | 0 | GOV-00 | Repo polish: MIT licence, README, brand kit, governance files | Rancang panel Docker untuk VPS fresh | ✓ 2026-11-11 |
 | 1 | GUIDE-01 | Guide: change the default VPS user + SSH port safely (for other users) | Rancang panel Docker untuk VPS fresh | ✓ 2026-11-11 |
-| 2 | HOST-01 | Our VPS: own login user (password) + new SSH port, lock-out safe; user/port/address only in project files | Rancang panel Docker untuk VPS fresh | ✱ PR #1 merged 2026-11-11 12:29 WIB, waiting for owner run H01-1 |
-| 3 | HOST-02 | Baseline: updates, firewall, fail2ban, WIB, Docker Engine, backup first (BACKUP-FIRST) | Rancang panel Docker untuk VPS fresh | ○ |
+| 2 | HOST-01 | Our VPS: own login user (password) + new SSH port, lock-out safe; user/port/address only in project files | Rancang panel Docker untuk VPS fresh | ✓ 2026-11-11 12:34 WIB (PR #1, RESULT CONFIRM PASS phase=DONE) |
+| 3 | HOST-02 | Baseline: updates, firewall, fail2ban, WIB, Docker Engine, backup first (BACKUP-FIRST) | Rancang panel Docker untuk VPS fresh | ✱ waiting for owner choice: backup target |
 | 4 | PANEL-01 | Edge proxy + panel skeleton with 2FA login at panel.nostek.dev | Rancang panel Docker untuk VPS fresh | ○ |
 | 5 | SITE-01 | One-click WordPress, Apache or Nginx per site; first 2-3 owner domains | Rancang panel Docker untuk VPS fresh | ○ |
 | 6 | SITE-02 | File manager + database admin per site | Rancang panel Docker untuk VPS fresh | ○ |
