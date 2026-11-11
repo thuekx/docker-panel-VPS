@@ -13,7 +13,7 @@ Nostek Panel
 ├── Panel
 │   ├── PANEL-01 edge proxy + panel + 2FA ................. ✓ done 2026-11-11
 │   ├── SITE-01 one-click WordPress (Apache/Nginx) ........ ✓ v1.2.0 2026-11-11
-│   ├── UI-02 live progress, profile, colours ............. ✱ v1.3.0
+│   ├── UI-02 live progress, profile, colours ............. ✓ v1.3.0 2026-11-12
 │   ├── SITE-02 file manager + DB admin ................... ○
 │   ├── WP-01 WordPress Tools (like WP Toolkit) ........... ○
 │   ├── BAK-01 backup / restore ........................... ○

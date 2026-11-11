@@ -26,3 +26,4 @@ for all rows below unless stated.
 | 2026-11-11 15:43 | **SITE-DOCKER-1 = A (owner)** | Docker changes go through a separate host agent with fixed, checked actions (option A in [site-01.md](../design/site-01.md)); the panel itself never gets Docker write access. | SITE-01 |
 | 2026-11-11 15:48 | **v1.1.0 released** | Updated on the owner's server with `panel-01 UPDATE` (no REVERT), VERIFY PASS, certificate valid. THEME-1 and VERSION-1 done. | PANEL-01 |
 | 2026-11-11 16:41 | **v1.2.0 released** | `site-01` PREFLIGHT, APPLY and VERIFY PASS on the owner's server (agent v1.2.0, preview DNS ok), then `panel-01 UPDATE` PASS (certificate valid). Websites page live. | SITE-01 |
+| 2026-11-12 01:07 | **v1.3.0 released** | UI-02 on the owner's server with `panel-01 UPDATE`, VERIFY PASS, certificate valid: live progress without reloads, Profile page (password, theme, accent colour), more colour. | UI-02 |

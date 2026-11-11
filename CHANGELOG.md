@@ -3,7 +3,9 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
-## [1.3.0] — unreleased
+## [1.3.0] — 2026-11-12
+
+Running at the owner's server since 01:07 WIB (`panel-01 UPDATE` + VERIFY PASS, certificate valid).
 
 ### Added
 - **Profile** page: change your password (current password needed; every other device is signed out),
