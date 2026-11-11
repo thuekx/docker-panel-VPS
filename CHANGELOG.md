@@ -3,6 +3,21 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.2.0] — unreleased
+
+### Added
+- **Websites** (SITE-01): add a WordPress website with Apache or Nginx + PHP-FPM, PHP 8.1 to 8.5 (8.1 marked end of
+  life), extra domains that redirect to the main address, `www` or bare domain as main address. An approve card shows
+  what is created before anything changes; progress is shown live; the first admin password is shown once.
+- Website list with honest status (never green when unknown), start, stop, restart, logs, delete to a 7-day trash
+  and restore.
+- Preview addresses (`<site>.<preview zone>`) so a website can be built before its domain moves to this server.
+- **nostek-agent**: the host service that is the only part allowed to change Docker; fixed actions, strict input
+  checks, audit log. Package `site-01` installs, updates, verifies and removes it.
+
+### Changed
+- The panel runs on its own network with the edge proxy; websites cannot reach it.
+
 ## [1.1.0] — 2026-11-11
 
 Running at the owner's server since 15:48 WIB (updated with `UPDATE`, VERIFY PASS).

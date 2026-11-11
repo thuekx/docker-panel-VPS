@@ -63,5 +63,13 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); });
+  // A running job page reloads itself until the job ends (data-reload = seconds).
+  function reload() {
+    var el = document.querySelector("[data-reload]");
+    if (!el) return;
+    var sec = parseInt(el.getAttribute("data-reload"), 10);
+    if (sec > 0 && sec < 60) setTimeout(function () { location.reload(); }, sec * 1000);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); reload(); });
 })();

@@ -1,0 +1,22 @@
+{{define "content"}}
+{{$l := .Lang}}{{$j := .Data.Job}}
+<section class="card wide" data-anim="card"{{if eq $j.State "running"}} data-reload="3"{{end}}>
+  <div class="stat-head"><span>{{t $l "sites.job"}}: {{if .Data.Site.Domain}}{{.Data.Site.Domain}}{{else}}{{$j.Site}}{{end}}</span>
+  {{if eq $j.State "running"}}<span class="pill s-unknown">{{t $l "sites.st.creating"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok">{{t $l "sites.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "sites.st.failed"}}</span>{{end}}</div>
+  <ol class="steps">{{range $j.Steps}}<li>{{t $l (printf "sites.step.%s" .)}}</li>{{end}}</ol>
+  {{if eq $j.State "running"}}<p class="muted">{{t $l "sites.job.wait"}}</p>{{end}}
+  {{if $j.Error}}<p class="err" role="alert">{{$j.Error}}</p><p class="muted">{{t $l "sites.job.failhelp"}}</p>{{end}}
+  {{if eq $j.State "done"}}
+    <p>{{t $l "sites.job.url"}} <a href="{{.Data.Site.URL}}" target="_blank" rel="noopener noreferrer">{{.Data.Site.URL}}</a> · <a href="{{.Data.Site.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></p>
+    <p>{{t $l "sites.job.user"}} <code>{{.Data.Site.AdminUser}}</code></p>
+    {{if .Data.Password}}
+      <p class="banner warn">{{t $l "sites.job.pwonce"}}</p>
+      <div class="reveal" data-anim="pop"><code id="pw">{{.Data.Password}}</code><button class="secondary" type="button" data-copy="pw">{{t $l "reveal.copy"}}</button></div>
+    {{else if and $j.HasSecret .Data.Mine}}
+      <form method="post" action="/sites/job/{{$j.ID}}/secret" class="form"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="primary" type="submit">{{t $l "sites.job.showpw"}}</button></form>
+      <p class="muted">{{t $l "sites.job.pwhelp"}}</p>
+    {{else}}<p class="muted">{{t $l "sites.job.pwgone"}}</p>{{end}}
+  {{end}}
+  <p><a href="/sites">{{t $l "sites.back.list"}}</a></p>
+</section>
+{{end}}

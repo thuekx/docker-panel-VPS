@@ -1,0 +1,31 @@
+{{define "content"}}
+{{$l := .Lang}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "sites.done.%s" .Flash)}}</p>{{end}}
+{{if .Data.NoAgent}}<p class="banner warn" data-anim="card">{{t $l "sites.noagent"}}</p>{{else if .Data.Err}}<p class="err" role="alert">{{.Data.Err}}</p>{{end}}
+<section class="card wide" data-anim="card">
+  <div class="stat-head"><span>{{t $l "nav.sites"}}</span>{{if not .Data.NoAgent}}<a class="primary btn" href="/sites/new">{{t $l "sites.new"}}</a>{{end}}</div>
+  {{if .Data.Sites}}
+  <div class="table-wrap"><table>
+  <thead><tr><th>{{t $l "sites.domain"}}</th><th>{{t $l "sites.status"}}</th><th>{{t $l "sites.server"}}</th><th>PHP</th><th>{{t $l "sites.address"}}</th></tr></thead>
+  <tbody>{{range .Data.Sites}}<tr data-anim="item">
+    <td><a href="/sites/{{.ID}}">{{.Domain}}</a></td>
+    <td>{{template "sitestatus" (dict3 $l .Status .Phase)}}</td>
+    <td>{{t $l (printf "sites.server.%s" .Server)}}</td>
+    <td>{{.PHP}}</td>
+    <td><a href="{{.URL}}" rel="noopener noreferrer" target="_blank">{{.URL}}</a></td>
+  </tr>{{end}}</tbody>
+  </table></div>
+  {{else if not .Data.Err}}<p class="muted">{{t $l "sites.empty"}}</p>{{end}}
+</section>
+{{if .Data.Trash}}
+<section class="card wide" data-anim="card">
+  <div class="stat-head"><span>{{t $l "sites.trash"}}</span></div>
+  <p class="muted">{{t $l "sites.trash.help"}}</p>
+  <div class="table-wrap"><table>
+  <thead><tr><th>{{t $l "sites.domain"}}</th><th>{{t $l "sites.trash.deleted"}}</th><th>{{t $l "sites.trash.purge"}}</th><th></th></tr></thead>
+  <tbody>{{range .Data.Trash}}<tr data-anim="item"><td>{{.Domain}}</td><td class="nowrap">{{.DeletedAt}}</td><td class="nowrap">{{.PurgeAt}}</td>
+    <td><form method="post" action="/trash/{{.Entry}}/restore"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="secondary" type="submit">{{t $l "sites.restore"}}</button></form></td></tr>{{end}}</tbody>
+  </table></div>
+</section>
+{{end}}
+{{end}}
