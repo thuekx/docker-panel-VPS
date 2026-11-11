@@ -22,6 +22,7 @@ REPO_URL="https://github.com/thuekx/docker-panel-VPS.git"
 ACME_CA=""; TLS_TEST=0
 if [ -n "$R" ]; then   # test hooks: only active with a test root
   REPO_URL="${PANEL01_TEST_REPO:-$REPO_URL}"; ACME_CA="${PANEL01_TEST_ACME_CA:-}"; TLS_TEST=1
+  [ "${PANEL01_TEST_STRICT_TLS:-0}" = 1 ] && TLS_TEST=0   # exercise the production certificate path
 fi
 PANEL_UID=65532
 CERT_WAIT="${PANEL01_CERT_WAIT:-150}"
@@ -109,9 +110,8 @@ svc_state() { # prints "running healthy" etc for a compose service
   [ -n "$id" ] || { echo "absent"; return; }
   docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$id" 2>/dev/null
 }
-https_check() { # $1 path; prints http code; strict certificate unless test mode
-  local k=(); [ "$TLS_TEST" = 1 ] && k=(-k)
-  curl -sS "${k[@]}" --noproxy '*' --max-time 8 -o /dev/null -w '%{http_code}' --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN$1" 2>/dev/null
+https_check() { # $1 path; prints http code. Reachability only: the certificate may still be pending (cert_ok checks it)
+  curl -sS -k --noproxy '*' --max-time 8 -o /dev/null -w '%{http_code}' --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN$1" 2>/dev/null
 }
 cert_ok() {
   [ "$TLS_TEST" = 1 ] && return 0
@@ -227,7 +227,10 @@ apply() {
   local f; f="$(foreign_publishers)"
   [ -z "$f" ] || rollback "containers other than edge publish ports: $f"
   pass "only edge publishes ports"
-  [ "$(https_check /healthz)" = 200 ] || rollback "panel not reachable through the edge"
+  local reach=""
+  for _ in $(seq 1 15); do reach="$(https_check /healthz)"; [ "$reach" = 200 ] && break; sleep 2; done
+  [ "$reach" = 200 ] || rollback "panel not reachable through the edge (https answered ${reach:-nothing})"
+  pass "panel answers through the edge"
   progress A5/5 "HTTPS certificate (up to $((CERT_WAIT/60)) min)"
   local cert=pending
   for _ in $(seq 1 $((CERT_WAIT/5))); do cert_ok && { cert=valid; break; }; sleep 5; done
