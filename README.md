@@ -11,10 +11,10 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0A6CFF"></a>
-  <img alt="Status: design" src="https://img.shields.io/badge/status-design%20phase-14E6FF">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0FB5A6"></a>
+  <img alt="Status: design" src="https://img.shields.io/badge/status-design%20phase-2EE6C5">
   <img alt="Ubuntu 22.04 / 24.04" src="https://img.shields.io/badge/ubuntu-22.04%20%7C%2024.04-0B1530">
-  <img alt="Runs on Docker" src="https://img.shields.io/badge/runs%20on-Docker-0040E0">
+  <img alt="Runs on Docker" src="https://img.shields.io/badge/runs%20on-Docker-0A6E8A">
 </p>
 
 ---

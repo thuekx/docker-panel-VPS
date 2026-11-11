@@ -5,10 +5,10 @@ Updated 2026-11-11 (WIB).
 ```text
 Nostek Panel
 ├── Governance
-│   ├── GOV-00 repo polish, licence, brand kit ............ ✓ (BRAND-1 draft waiting for owner)
+│   ├── GOV-00 repo polish, licence, brand kit ............ ✓ (BRAND-1 approved: teal)
 │   └── GUIDE-01 change default user guide ................ ✓
 ├── Host (our VPS, details in project files only)
-│   ├── HOST-01 own user + SSH port ........................ ✱ waiting on owner answers
+│   ├── HOST-01 own user + SSH port ........................ ✱ package in PR
 │   └── HOST-02 baseline + Docker + backup ................ ○
 ├── Panel
 │   ├── PANEL-01 edge proxy + panel + 2FA ................. ○

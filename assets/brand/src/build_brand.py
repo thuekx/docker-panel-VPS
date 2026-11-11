@@ -65,7 +65,7 @@ def mark(t, p, tf=''):
 
 FONT='/usr/share/fonts/opentype/inter/InterDisplay-SemiBold.otf'
 def horizontal(theme, suffix, bg):
-    t=THEMES[theme]; p=theme[:2]
+    t=THEMES[theme]; p=theme[:3]
     ink = '#FFFFFF' if bg=='dark' else '#0B1530'
     acc = t.get('acc', t.get('mono')) if bg=='dark' else t.get('accl', t.get('mono'))
     if 'mono' in t: ink=t['mono']
@@ -83,7 +83,7 @@ def horizontal(theme, suffix, bg):
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 0 {W+4} {H}" width="{(W+4)*2}" height="{H*2}" role="img" aria-label="Nostek{(" "+suffix.title()) if suffix else ""}"><title>Nostek{(" "+suffix.title()) if suffix else ""}</title>{defs(t,p)}{bgrect}{mark(t,p)}{wm}{suf}</svg>'
 
 def icon(theme, bg):
-    t=THEMES[theme]; p=theme[:2]
+    t=THEMES[theme]; p=theme[:3]
     if bg=='none':
         return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512" role="img" aria-label="Nostek"><title>Nostek</title>{defs(t,p)}{mark(t,p)}</svg>'
     fill = '#0B1530' if bg=='dark' else '#FFFFFF'
@@ -91,19 +91,21 @@ def icon(theme, bg):
 
 os.makedirs(OUT, exist_ok=True)
 files={}
-files['nostek-mark.svg']=icon('blue','none')
-files['nostek-app-icon.svg']=icon('blue','dark')
-files['nostek-favicon.svg']=icon('blue','dark')
-for theme,suf,slug in [('blue','PANEL','panel'),('violet','CONTROL PANEL','control-panel'),('teal','DOCKER PANEL','docker-panel')]:
-    files[f'nostek-{slug}-dark.svg']=horizontal(theme,suf,'none-dark')  if False else horizontal(theme,suf,'dark')
-    files[f'nostek-{slug}-light.svg']=horizontal(theme,suf,'light')
+# BRAND-1 (owner 2026-11-11): main logo = Nostek PANEL in the teal colourway
+files['nostek-mark.svg']=icon('teal','none')
+files['nostek-app-icon.svg']=icon('teal','dark')
+files['nostek-favicon.svg']=icon('teal','dark')
+files['nostek-panel-dark.svg']=horizontal('teal','PANEL','dark')
+files['nostek-panel-light.svg']=horizontal('teal','PANEL','light')
 files['nostek-panel-mono-dark.svg']=horizontal('mono-dark','PANEL','dark')
 files['nostek-panel-mono-light.svg']=horizontal('mono-light','PANEL','light')
-# transparent README versions
-def transparent(theme,suf,ink_bg): 
-    s=horizontal(theme,suf,ink_bg); import re
-    return re.sub(r'<rect width="100%" height="100%"[^>]*/>','',s)
-files['nostek-panel-on-dark.svg']=transparent('blue','PANEL','dark')
-files['nostek-panel-on-light.svg']=transparent('blue','PANEL','light')
+# alternative: original NOSTEK blue colourway
+files['nostek-panel-blue-dark.svg']=horizontal('blue','PANEL','dark')
+files['nostek-panel-blue-light.svg']=horizontal('blue','PANEL','light')
+def transparent(theme,suf,ink_bg):
+    import re
+    return re.sub(r'<rect width="100%" height="100%"[^>]*/>','',horizontal(theme,suf,ink_bg))
+files['nostek-panel-on-dark.svg']=transparent('teal','PANEL','dark')
+files['nostek-panel-on-light.svg']=transparent('teal','PANEL','light')
 for n,c in files.items(): open(os.path.join(OUT,n),'w').write(c)
 print('\n'.join(sorted(files)))
