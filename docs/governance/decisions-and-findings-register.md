@@ -13,3 +13,4 @@ for all rows below unless stated.
 | 2026-11-11 11:32 | **MIG-1** | WordPress migration from an old host into the panel goes on the roadmap (options in docs/design/wordpress-migration.md). | MIG-01 |
 | 2026-11-11 11:33 | **USER-1** | On our own VPS the provider default user is replaced by our own login user with a password (name and port kept in project files). This change is for our VPS only; other users get a written guide instead of a package. | HOST-01, GUIDE-01 |
 | 2026-11-11 11:50 | **USER-1 detail** | Our login user logs in over SSH with a password and uses sudo with a password; owner confirms the provider firewall allows the new SSH port and the panel A record points to the VPS. | HOST-01 |
+| 2026-11-11 12:35 | **BACKUP-1 = A** | Server backups go encrypted (restic) to S3-compatible object storage at a different provider than the VPS. Provider, endpoint and bucket: waiting for owner; keys entered hidden on the host only. | HOST-02 |
