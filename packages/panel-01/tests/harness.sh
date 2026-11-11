@@ -55,7 +55,7 @@ run SETUP-LINK "${A[@]}"; L1="$(grep -oE "https://$D/setup/[A-Za-z0-9_-]+" <<<"$
 run SETUP-LINK "${A[@]}"; ok "new setup link cancels the old one" '[ $RC = 0 ] && [ "$(curl -sk -o /dev/null -w "%{http_code}" --resolve '"$D"':443:127.0.0.1 "$L1")" != 200 ]'
 run ADMIN-ROTATE "${A[@]}" --email nobody@example.test; ok "rotate for unknown admin refused" '[ $RC = 3 ]'
 run VERIFY "${A[@]}"; ok "verify passes" '[ $RC = 0 ] && has "RESULT PANEL-01 VERIFY PASS" && has "sisa_uji=0" && has "socket proxy refuses writes"'
-docker run -d --name np-test-pub -p 127.0.0.1:18080:8080 "nostek/panel:${COMMIT:0:12}" >/dev/null 2>&1
+docker run -d --name np-test-pub -p 127.0.0.1:18080:8080 "nostek/panel:v$(tr -d "[:space:]" < "$REPO/VERSION")" >/dev/null 2>&1
 run VERIFY "${A[@]}"; ok "verify fails when another container publishes ports" '[ $RC = 1 ] && has "other than edge publish"'
 docker rm -f np-test-pub >/dev/null 2>&1
 echo keep > "$PANEL01_TEST_ROOT/srv/nostek/panel/marker"
