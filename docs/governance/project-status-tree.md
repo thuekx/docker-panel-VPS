@@ -8,7 +8,7 @@ Nostek Panel
 │   ├── GOV-00 repo polish, licence, brand kit ............ ✓ (BRAND-1 approved: teal)
 │   └── GUIDE-01 change default user guide ................ ✓
 ├── Host (our VPS, details in project files only)
-│   ├── HOST-01 own user + SSH port ........................ ✱ package in PR
+│   ├── HOST-01 own user + SSH port ........................ ✱ merged, owner run pending
 │   └── HOST-02 baseline + Docker + backup ................ ○
 ├── Panel
 │   ├── PANEL-01 edge proxy + panel + 2FA ................. ○
