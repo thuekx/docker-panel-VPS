@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -154,6 +155,84 @@ type jobData struct {
 	Site     agent.Site
 	Password string
 	Mine     bool
+	Steps    []stepRow
+	Percent  int
+}
+
+// jobSteps is the order in which the agent reports the steps of a create job.
+var jobSteps = []string{"files", "pull images", "start containers", "install WordPress"}
+
+// stepRow is one line of the progress list: done, active, failed or todo.
+type stepRow struct {
+	Key   string `json:"key"`
+	State string `json:"state"`
+}
+
+// jobProgress turns the agent's job (each step is reported when it starts) into the full list of
+// steps with a state each, and the share of finished steps in percent.
+func jobProgress(j agent.Job) ([]stepRow, int) {
+	keys := append([]string{}, jobSteps...)
+	for _, st := range j.Steps { // a step this panel does not know yet still shows up
+		known := false
+		for _, k := range keys {
+			known = known || k == st
+		}
+		if !known {
+			keys = append(keys, st)
+		}
+	}
+	started := map[string]bool{}
+	for _, st := range j.Steps {
+		started[st] = true
+	}
+	last := ""
+	if n := len(j.Steps); n > 0 {
+		last = j.Steps[n-1]
+	}
+	rows, done := make([]stepRow, 0, len(keys)), 0
+	for _, k := range keys {
+		state := "todo"
+		switch {
+		case j.State == "done" && started[k]:
+			state = "done"
+		case k == last && j.State == "failed":
+			state = "failed"
+		case k == last && j.State == "running":
+			state = "active"
+		case started[k]:
+			state = "done"
+		}
+		if state == "done" {
+			done++
+		}
+		rows = append(rows, stepRow{k, state})
+	}
+	return rows, done * 100 / len(rows)
+}
+
+// siteJobStatus answers the job page's progress poll (JSON, no secrets).
+func (s *Server) siteJobStatus(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("job")
+	if !jobRe.MatchString(id) {
+		http.NotFound(w, r)
+		return
+	}
+	ctx, cancel := s.agentCtx(r, 10*time.Second)
+	defer cancel()
+	j, err := s.ag.Job(ctx, id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	rows, pct := jobProgress(j)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(struct {
+		State   string    `json:"state"`
+		Percent int       `json:"percent"`
+		Steps   []stepRow `json:"steps"`
+		Failed  bool      `json:"failed"`
+	}{j.State, pct, rows, j.State == "failed"})
 }
 
 func (s *Server) siteJob(w http.ResponseWriter, r *http.Request) {
@@ -171,8 +250,9 @@ func (s *Server) siteJob(w http.ResponseWriter, r *http.Request) {
 	}
 	site, _ := s.ag.Site(ctx, j.Site)
 	owner, ok := s.owners.owner(id)
+	steps, pct := jobProgress(j)
 	s.render(w, r, "sitejob", page{Title: s.tr.T(s.lang(r), "sites.job"), Active: "sites",
-		Data: jobData{Job: j, Site: site, Mine: ok && owner == userOf(r).ID}})
+		Data: jobData{Job: j, Site: site, Mine: ok && owner == userOf(r).ID, Steps: steps, Percent: pct}})
 }
 
 // siteSecret shows the new site's admin password once; the agent forgets it in the same step.
@@ -197,8 +277,9 @@ func (s *Server) siteSecret(w http.ResponseWriter, r *http.Request) {
 	}
 	site, _ := s.ag.Site(ctx, j.Site)
 	s.audit1(userOf(r), r, "site.password_shown", j.Site+" admin password shown once")
+	steps, pct := jobProgress(j)
 	s.render(w, r, "sitejob", page{Title: s.tr.T(s.lang(r), "sites.job"), Active: "sites",
-		Data: jobData{Job: j, Site: site, Password: pw, Mine: true}})
+		Data: jobData{Job: j, Site: site, Password: pw, Mine: true, Steps: steps, Percent: pct}})
 }
 
 type siteData struct {

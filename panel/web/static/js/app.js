@@ -63,13 +63,68 @@
     });
   }
 
-  // A running job page reloads itself until the job ends (data-reload = seconds).
-  function reload() {
-    var el = document.querySelector("[data-reload]");
-    if (!el) return;
-    var sec = parseInt(el.getAttribute("data-reload"), 10);
-    if (sec > 0 && sec < 60) setTimeout(function () { location.reload(); }, sec * 1000);
+  // A running job page follows its progress without reloading: it polls the job status (JSON),
+  // moves the progress bar and the steps, and swaps in the finished card once when the job ends.
+  function job() {
+    var card = document.querySelector("[data-job]");
+    if (!card) return;
+    var url = card.getAttribute("data-job"), started = Date.now(), fails = 0, timer = null;
+    var bar = card.querySelector(".progress i"), meter = card.querySelector(".progress"), clock = card.querySelector("[data-elapsed]");
+    function tick() {
+      if (!clock) return;
+      var s = Math.floor((Date.now() - started) / 1000);
+      clock.textContent = Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2);
+    }
+    var clockTimer = setInterval(tick, 1000); tick();
+    function setBar(p) {
+      if (!bar) return;
+      bar.removeAttribute("data-pct");
+      bar.style.width = Math.max(6, p) + "%";
+      if (meter) meter.setAttribute("aria-valuenow", String(p));
+    }
+    function setSteps(steps) {
+      steps.forEach(function (st) {
+        var li = card.querySelector('[data-step="' + (window.CSS && CSS.escape ? CSS.escape(st.key) : st.key) + '"]');
+        if (!li || li.classList.contains("st-" + st.state)) return;
+        li.className = "st-" + st.state;
+        if (!reduce && window.Motion && (st.state === "done" || st.state === "active" || st.state === "failed")) {
+          window.Motion.animate(li.querySelector(".dot"), { scale: [0.6, 1.15, 1] }, { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] });
+          window.Motion.animate(li.querySelector(".txt"), { opacity: [0.3, 1], x: [-6, 0] }, { duration: 0.35 });
+        }
+      });
+    }
+    function finish() {
+      clearInterval(clockTimer);
+      fetch(location.href, { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.text(); }).then(function (html) {
+        var next = new DOMParser().parseFromString(html, "text/html").getElementById("job");
+        if (!next) { location.reload(); return; }
+        card.replaceWith(next);
+        copy();
+        if (!reduce && window.Motion) {
+          var parts = next.querySelectorAll(".job-done, [data-anim=pop]");
+          if (parts.length) window.Motion.animate(parts, { opacity: [0, 1], y: [12, 0], scale: [0.97, 1] }, { duration: 0.5, delay: window.Motion.stagger(0.12), ease: [0.22, 1, 0.36, 1] });
+        }
+      }).catch(function () { location.reload(); });
+    }
+    function poll() {
+      fetch(url, { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
+        .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then(function (d) {
+          fails = 0;
+          setSteps(d.steps || []);
+          setBar(d.percent || 0);
+          if (d.state === "running") { timer = setTimeout(poll, 1500); return; }
+          setBar(d.state === "done" ? 100 : (d.percent || 0));
+          setTimeout(finish, d.state === "done" ? 700 : 300);
+        })
+        .catch(function () {
+          fails++;
+          if (fails > 5) { setTimeout(function () { location.reload(); }, 5000); return; }
+          timer = setTimeout(poll, 1500 * fails);
+        });
+    }
+    timer = setTimeout(poll, 800);
   }
 
-  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); reload(); });
+  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); });
 })();

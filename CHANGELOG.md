@@ -3,6 +3,19 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.3.0] — unreleased
+
+### Added
+- **Profile** page: change your password (current password needed; every other device is signed out),
+  theme (Light, Dark, Follow system), highlight colour (Teal default, Ocean, Violet, Sunset, Rose) and recovery codes.
+- Creating a website shows live progress without reloading the page: progress bar, each step with its own
+  animation, elapsed time, and the finished result slides in when done.
+
+### Changed
+- More colour: dashboard cards, website list and headings get their own colour tones and icons; teal stays the
+  default brand colour.
+- Theme and recovery codes moved from Settings to Profile.
+
 ## [1.2.0] — 2026-11-11
 
 Running at the owner's server since 16:41 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` PASS).

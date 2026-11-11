@@ -2,42 +2,42 @@
 {{$l := .Lang}}{{$s := .Data.S}}
 {{if .Data.CodesLow}}<p class="banner warn" data-anim="card">{{t $l "dash.codeslow"}}</p>{{end}}
 <section class="grid">
-  <article class="card stat" data-anim="card">
-    <div class="stat-head"><span>{{t $l "dash.server"}}</span></div>
+  <article class="card stat tone c-teal" data-anim="card">
+    <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-server"}}</span>{{t $l "dash.server"}}</span></div>
     <div class="stat-big">{{$s.Hostname}}</div>
     <div class="muted">{{t $l "dash.uptime" $s.UptimeHours}} · {{t $l "dash.timezone" .Data.TZ}}</div>
   </article>
-  <article class="card stat" data-anim="card">
-    <div class="stat-head"><span>{{t $l "dash.memory"}}</span>{{template "status" (dict2 $s.MemStatus (t $l (printf "status.%s" $s.MemStatus)))}}</div>
+  <article class="card stat tone c-blue" data-anim="card">
+    <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-chip"}}</span>{{t $l "dash.memory"}}</span>{{template "status" (dict2 $s.MemStatus (t $l (printf "status.%s" $s.MemStatus)))}}</div>
     {{if eq (printf "%s" $s.MemStatus) "unknown"}}<div class="stat-big">—</div>{{else}}
     <div class="stat-big"><span data-count="{{pcti $s.MemUsedMB $s.MemTotalMB}}">{{pcti $s.MemUsedMB $s.MemTotalMB}}</span>%</div>
     <div class="bar"><i data-bar="{{pcti $s.MemUsedMB $s.MemTotalMB}}" class="b-{{$s.MemStatus}}"></i></div>
     <div class="muted">{{$s.MemUsedMB}} / {{$s.MemTotalMB}} MB</div>{{end}}
   </article>
-  <article class="card stat" data-anim="card">
-    <div class="stat-head"><span>{{t $l "dash.disk"}}</span>{{template "status" (dict2 $s.DiskStatus (t $l (printf "status.%s" $s.DiskStatus)))}}</div>
+  <article class="card stat tone c-violet" data-anim="card">
+    <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-disk"}}</span>{{t $l "dash.disk"}}</span>{{template "status" (dict2 $s.DiskStatus (t $l (printf "status.%s" $s.DiskStatus)))}}</div>
     {{if eq (printf "%s" $s.DiskStatus) "unknown"}}<div class="stat-big">—</div>{{else}}
     <div class="stat-big"><span data-count="{{pct $s.DiskUsedGB $s.DiskTotalGB}}">{{pct $s.DiskUsedGB $s.DiskTotalGB}}</span>%</div>
     <div class="bar"><i data-bar="{{pct $s.DiskUsedGB $s.DiskTotalGB}}" class="b-{{$s.DiskStatus}}"></i></div>
     <div class="muted">{{f1 $s.DiskUsedGB}} / {{f1 $s.DiskTotalGB}} GB</div>{{end}}
   </article>
-  <article class="card stat" data-anim="card">
-    <div class="stat-head"><span>{{t $l "dash.load"}}</span>{{template "status" (dict2 $s.LoadStatus (t $l (printf "status.%s" $s.LoadStatus)))}}</div>
+  <article class="card stat tone c-orange" data-anim="card">
+    <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-pulse"}}</span>{{t $l "dash.load"}}</span>{{template "status" (dict2 $s.LoadStatus (t $l (printf "status.%s" $s.LoadStatus)))}}</div>
     <div class="stat-big">{{if eq (printf "%s" $s.LoadStatus) "unknown"}}—{{else}}{{f1 $s.Load1}}{{end}}</div>
     <div class="muted">{{t $l "dash.cpus" $s.CPUs}}</div>
   </article>
-  <article class="card stat" data-anim="card">
-    <div class="stat-head"><span>{{t $l "dash.docker"}}</span>{{template "status" (dict2 $s.DockerStatus (t $l (printf "status.%s" $s.DockerStatus)))}}</div>
+  <article class="card stat tone c-green" data-anim="card">
+    <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-box"}}</span>{{t $l "dash.docker"}}</span>{{template "status" (dict2 $s.DockerStatus (t $l (printf "status.%s" $s.DockerStatus)))}}</div>
     <div class="stat-big">{{if $s.DockerVersion}}{{$s.DockerVersion}}{{else}}—{{end}}</div>
     <div class="muted">{{t $l "dash.containers" $s.ContainersRunning $s.ContainersTotal}}</div>
   </article>
-  <article class="card stat" data-anim="card">
-    <div class="stat-head"><span>{{t $l "dash.backup"}}</span>{{template "status" (dict2 $s.BackupStatus (t $l (printf "status.%s" $s.BackupStatus)))}}</div>
+  <article class="card stat tone c-amber" data-anim="card">
+    <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-cloud"}}</span>{{t $l "dash.backup"}}</span>{{template "status" (dict2 $s.BackupStatus (t $l (printf "status.%s" $s.BackupStatus)))}}</div>
     <div class="stat-big small">{{if .Data.Backup}}{{.Data.Backup}}{{else}}{{t $l "dash.backup.none"}}{{end}}</div>
   </article>
 </section>
-<section class="card wide" data-anim="card">
-  <div class="stat-head"><span>{{t $l "dash.sites"}}</span></div>
+<section class="card wide tone c-acc" data-anim="card">
+  <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "dash.sites"}}</span></div>
   <p class="muted">{{t $l "dash.sites.go"}}</p>
   <a class="secondary btn" href="/sites">{{t $l "dash.sites.open"}}</a>
 </section>
