@@ -1,0 +1,23 @@
+{{define "content"}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t .Lang "settings.saved"}}</p>{{end}}
+<section class="grid two">
+<article class="card" data-anim="card">
+  <h2>{{t .Lang "settings.tz"}}</h2>
+  <p class="muted">{{t .Lang "settings.tz.help"}}</p>
+  <form method="post" action="/settings" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <label class="sr" for="tz">{{t .Lang "settings.tz"}}</label>
+    <select id="tz" name="timezone">{{$tz := .Data.TZ}}{{range .Data.Zones}}<option value="{{.}}" {{if eq . $tz}}selected{{end}}>{{.}}</option>{{end}}</select>
+    <button class="primary" type="submit">{{t .Lang "settings.save"}}</button>
+  </form>
+</article>
+<article class="card" data-anim="card">
+  <h2>{{t .Lang "settings.codes"}}</h2>
+  <p class="muted">{{t .Lang "settings.codes.left" .Data.CodesLeft}}</p>
+  <form method="post" action="/settings/recovery" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button class="secondary" type="submit">{{t .Lang "settings.codes.new"}}</button>
+  </form>
+</article>
+</section>
+{{end}}

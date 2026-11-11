@@ -1,0 +1,11 @@
+{{define "content"}}
+<p class="lead">{{t .Lang "audit.lead"}}</p>
+<section class="card wide" data-anim="card">
+{{if .Data}}
+<div class="table-wrap"><table>
+<thead><tr><th>{{t .Lang "audit.time"}}</th><th>{{t .Lang "audit.user"}}</th><th>{{t .Lang "audit.action"}}</th><th>{{t .Lang "audit.detail"}}</th><th>{{t .Lang "audit.ip"}}</th></tr></thead>
+<tbody>{{range .Data}}<tr data-anim="item"><td class="nowrap">{{.At}}</td><td>{{.Email}}</td><td><code>{{.Action}}</code></td><td>{{.Detail}}</td><td>{{.IP}}</td></tr>{{end}}</tbody>
+</table></div>
+{{else}}<p class="muted">{{t .Lang "audit.empty"}}</p>{{end}}
+</section>
+{{end}}

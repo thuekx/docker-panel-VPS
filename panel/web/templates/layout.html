@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>{{.Title}} · {{t .Lang "app.name"}}</title>
+<link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/css/app.css">
+<script src="/static/vendor/motion.js" defer></script>
+<script src="/static/vendor/anime.umd.min.js" defer></script>
+<script src="/static/js/app.js" defer></script>
+</head>
+<body class="{{if .Active}}shell{{else}}auth{{end}}">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-glow" aria-hidden="true"></div>
+{{if .Active}}
+<aside class="side">
+  <a class="brand" href="/" aria-label="{{t .Lang "app.name"}}">{{template "mark"}}<span class="brand-word">NOSTEK <b>PANEL</b></span></a>
+  <nav class="nav">
+    <a href="/" class="{{if eq .Active "dashboard"}}on{{end}}" data-anim="nav">{{template "ico-grid"}}<span>{{t .Lang "nav.dashboard"}}</span></a>
+    <a href="/audit" class="{{if eq .Active "audit"}}on{{end}}" data-anim="nav">{{template "ico-list"}}<span>{{t .Lang "nav.audit"}}</span></a>
+    <a href="/settings" class="{{if eq .Active "settings"}}on{{end}}" data-anim="nav">{{template "ico-gear"}}<span>{{t .Lang "nav.settings"}}</span></a>
+  </nav>
+  <div class="side-foot">
+    <div class="who">{{if .User}}{{.User.Email}}{{end}}</div>
+    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="ghost" type="submit">{{t .Lang "nav.logout"}}</button></form>
+  </div>
+</aside>
+<main class="main">
+  <header class="top">
+    <h1 data-anim="title">{{.Title}}</h1>
+    <div class="top-right"><span class="clock">{{.Now}}</span>{{template "langform" .}}</div>
+  </header>
+  {{template "content" .}}
+  <footer class="foot">{{t .Lang "foot.version" .Version}}</footer>
+</main>
+{{else}}
+<main class="auth-wrap">
+  <div class="auth-brand">{{template "mark"}}<div class="brand-word big">NOSTEK <b>PANEL</b></div><div class="tag">{{t .Lang "app.tagline"}}</div></div>
+  <section class="card auth-card" data-anim="card">
+    <h1>{{.Title}}</h1>
+    {{template "content" .}}
+  </section>
+  <div class="auth-foot">{{template "langform" .}}<span class="clock">{{.Now}}</span></div>
+</main>
+{{end}}
+</body>
+</html>
+{{define "langform"}}<form class="lang" method="post" action="/lang"><input type="hidden" name="back" value="/{{if eq .Active "audit"}}audit{{else if eq .Active "settings"}}settings{{end}}"><label class="sr" for="lang">{{t .Lang "nav.lang"}}</label><button name="lang" value="id" class="{{if eq .Lang "id"}}on{{end}}" type="submit">ID</button><button name="lang" value="en" class="{{if eq .Lang "en"}}on{{end}}" type="submit">EN</button></form>{{end}}
+{{define "mark"}}<svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="mt" x1="8" y1="10" x2="68" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#5EF2D0"/><stop offset=".6" stop-color="#5EF2D0"/><stop offset="1" stop-color="#0FB5A6"/></linearGradient><linearGradient id="mb" x1="32" y1="45" x2="90" y2="88" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0A6E8A"/><stop offset=".6" stop-color="#0FB5A6"/><stop offset="1" stop-color="#5EF2D0"/></linearGradient><linearGradient id="ml" x1="0" y1="20" x2="0" y2="94" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0A6E8A"/><stop offset=".5" stop-color="#0FB5A6"/><stop offset="1" stop-color="#0A6E8A"/></linearGradient><linearGradient id="mr" x1="0" y1="6" x2="0" y2="80" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0A6E8A"/><stop offset="1" stop-color="#0FB5A6"/></linearGradient></defs><path class="m-part" d="M32,38 L92,80 L74,91.4 L32,62 Z" fill="url(#mb)"/><path class="m-part" d="M72,20 L92,6 L92,80 L72,66 Z" fill="url(#mr)"/><path class="m-part" d="M8,20 L28,34 L28,80 L8,94 Z" fill="url(#ml)"/><path class="m-part" d="M32,37.5 L69,63.2 L69,65 L32,46 Z" fill="#020A2A" fill-opacity=".6"/><path class="m-part" d="M8,20 L26,8.6 L68,38 L68,62 Z" fill="url(#mt)"/></svg>{{end}}
+{{define "ico-grid"}}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>{{end}}
+{{define "ico-list"}}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/></svg>{{end}}
+{{define "ico-gear"}}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>{{end}}
+{{define "status"}}<span class="pill s-{{.S}}">{{.L}}</span>{{end}}

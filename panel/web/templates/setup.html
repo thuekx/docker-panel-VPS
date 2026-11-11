@@ -1,0 +1,11 @@
+{{define "content"}}
+<p class="lead">{{t .Lang "setup.lead"}}</p>
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+<form method="post" class="form">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <label>{{t .Lang "setup.email"}}<input type="email" name="email" autocomplete="username" required autofocus></label>
+  <label>{{t .Lang "setup.password"}}<input type="password" name="password" autocomplete="new-password" minlength="12" required></label>
+  <label>{{t .Lang "setup.password2"}}<input type="password" name="password2" autocomplete="new-password" minlength="12" required></label>
+  <button class="primary" type="submit">{{t .Lang "setup.submit"}}</button>
+</form>
+{{end}}

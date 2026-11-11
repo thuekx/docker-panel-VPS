@@ -1,0 +1,9 @@
+{{define "content"}}
+<p class="lead">{{t .Lang "login2fa.lead"}}</p>
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+<form method="post" action="/login/2fa" class="form">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <label>{{t .Lang "login2fa.code"}}<input class="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="20" required autofocus></label>
+  <button class="primary" type="submit">{{t .Lang "login2fa.submit"}}</button>
+</form>
+{{end}}

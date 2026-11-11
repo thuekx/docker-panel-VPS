@@ -1,0 +1,12 @@
+{{define "content"}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+<p>{{t .Lang "enrol.step1"}}</p>
+<div class="qr" data-anim="pop">{{if .Data.QR}}<img src="{{.Data.QR}}" width="200" height="200" alt="QR">{{end}}</div>
+<p class="muted">{{t .Lang "enrol.manual"}}</p>
+<code class="secret">{{.Data.Secret}}</code>
+<form method="post" action="/2fa/enrol" class="form">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <label>{{t .Lang "enrol.step2"}}<input class="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
+  <button class="primary" type="submit">{{t .Lang "enrol.submit"}}</button>
+</form>
+{{end}}
