@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+[ -f "$HOST02_TEST_ROOT/etc/fail2ban/jail.d/nostek.local" ]

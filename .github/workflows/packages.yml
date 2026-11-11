@@ -9,13 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       host01: ${{ steps.f.outputs.host01 }}
+      host02: ${{ steps.f.outputs.host02 }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - id: f
         run: |
           base="${{ github.event.pull_request.base.sha }}"
-          if git diff --name-only "$base" HEAD | grep -qE '^(packages/host-01/|\.github/workflows/packages\.yml)'; then echo "host01=true" >> "$GITHUB_OUTPUT"; else echo "host01=false" >> "$GITHUB_OUTPUT"; fi
+          changed="$(git diff --name-only "$base" HEAD)"
+          for p in host-01 host-02; do
+            k="${p/-0/0}"
+            if grep -qE "^(packages/$p/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "$k=true" >> "$GITHUB_OUTPUT"; else echo "$k=false" >> "$GITHUB_OUTPUT"; fi
+          done
   host-01:
     needs: select
     if: needs.select.outputs.host01 == 'true'
@@ -33,3 +38,18 @@ jobs:
         run: sudo bash packages/host-01/tests/harness.sh
       - name: mutants
         run: sudo bash packages/host-01/tests/mutants.sh
+  host-02:
+    needs: select
+    if: needs.select.outputs.host02 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck -S warning packages/host-02/host-02-baseline.sh packages/host-02/tests/*.sh packages/host-02/tests/stubs/*
+      - name: lock
+        run: cd packages/host-02 && sha256sum -c host-02.lock
+      - name: harness
+        run: sudo bash packages/host-02/tests/harness.sh
+      - name: mutants
+        run: sudo bash packages/host-02/tests/mutants.sh

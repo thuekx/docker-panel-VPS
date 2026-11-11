@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+[ "$1" = --force ] && shift
+case "$1" in
+  status) if [ -f "$FAKE/ufw_on" ]; then echo "Status: active"; while read -r r; do echo "$r ALLOW Anywhere"; done < "$FAKE/ufw_rules"; for i in $(seq 1 20000); do printf 'pad %s\n' "$i" || exit 141; done; else echo "Status: inactive"; fi ;;
+  enable) [ -f "$FAKE/break_ufw_enable" ] && exit 1; touch "$FAKE/ufw_on" ;;
+  disable) rm -f "$FAKE/ufw_on" ;;
+  allow) echo "$2" >> "$FAKE/ufw_rules" ;;
+  show) sed 's/^/ufw allow /' "$FAKE/ufw_rules" 2>/dev/null ;;
+esac
+exit 0

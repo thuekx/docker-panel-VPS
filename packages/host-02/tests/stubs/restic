@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+[ -n "${RESTIC_PASSWORD:-}" ] && [ -n "${AWS_SECRET_ACCESS_KEY:-}" ] && [ -n "${RESTIC_REPOSITORY:-}" ] || exit 1
+echo "$RESTIC_REPOSITORY" > "$FAKE/restic_repo_seen"
+repo="$FAKE/repo"
+tag=""; args=(); target=""; keep=0
+cmd="$1"; shift
+while [ $# -gt 0 ]; do case "$1" in --tag) tag="$2"; shift 2;; --target) target="$2"; shift 2;; --keep-*) keep=1; shift 2;; --*) shift;; *) args+=("$1"); shift;; esac; done
+case "$cmd" in
+  cat) [ -f "$repo/config" ] ;;
+  init) [ -f "$FAKE/break_restic_init" ] && exit 1; mkdir -p "$repo/snap"; touch "$repo/config" ;;
+  backup) [ -f "$repo/config" ] || exit 1; n=$(find "$repo/snap" -mindepth 1 -maxdepth 1 | wc -l); d="$repo/snap/$(printf %04d "$n")-$tag"; mkdir -p "$d"
+          for p in "${args[@]}"; do case "$p" in "$HOST02_TEST_ROOT"*) [ -e "$p" ] && cp -a --parents "$p" "$d/" ;; esac; done ;;
+  restore) d="$(find "$repo/snap" -mindepth 1 -maxdepth 1 -name "*-$tag" | sort | tail -n1)"; [ -n "$d" ] || exit 1; [ -f "$FAKE/break_restore" ] && exit 1; mkdir -p "$target"; cp -a "$d/." "$target/"; [ -f "$FAKE/corrupt_restore" ] && find "$target" -type f -exec sh -c 'echo corrupt > "$1"' _ {} \; ; exit 0 ;;
+  forget) [ "$keep" = 1 ] && exit 0
+          for id in "${args[@]}"; do for d in "$repo"/snap/*; do [ "$(basename "$d" | sha256sum | cut -c1-64)" = "$id" ] && rm -rf "$d"; done; done ;;
+  snapshots) printf '['; for d in "$repo"/snap/*-"$tag"; do [ -e "$d" ] && printf '{"time":"x","tree":"%s","id":"%s"},' "$(echo t | sha256sum | cut -c1-64)" "$(basename "$d" | sha256sum | cut -c1-64)"; done; printf ']\n' ;;
+  check) exit 0 ;;
+esac

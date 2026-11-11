@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+[ -f "$FAKE/break_apt" ] && exit 100
+echo "$*" | grep -q "install.*docker-ce" && touch "$FAKE/docker_installed"
+exit 0
