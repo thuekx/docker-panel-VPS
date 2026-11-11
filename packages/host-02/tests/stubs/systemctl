@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+case "$1" in
+  is-active) [ "$2" = nostek-host02-revert.timer ] && { [ -f "$FAKE/timer" ]; exit; }; exit 0 ;;
+  is-enabled) [ "$2" = nostek-backup.timer ] && { [ -f "$FAKE/backup_timer_on" ]; exit; }; exit 0 ;;
+  stop) for u in "${@:2}"; do [ "$u" = nostek-host02-revert.timer ] && rm -f "$FAKE/timer"; done ;;
+  enable) [ "$*" = "enable --now nostek-backup.timer" ] && touch "$FAKE/backup_timer_on" ;;
+esac
+exit 0

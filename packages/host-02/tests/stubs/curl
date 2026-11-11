@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+[ -f "$FAKE/no_net" ] && exit 7
+out=""; url=""
+while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift 2;; -*) shift;; *) url="$1"; shift;; esac; done
+case "$url" in
+  *ipify*|*ifconfig.me*) [ -n "${FAKE_PUBLIC_IP:-}" ] && echo "$FAKE_PUBLIC_IP" && exit 0; exit 7 ;;
+  *download.docker.com*) [ -n "$out" ] && [ "$out" != /dev/null ] && echo "FAKE KEY" > "$out"; exit 0 ;;
+esac
+exit 0

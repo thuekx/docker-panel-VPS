@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+[ -f "$FAKE/docker_installed" ] || exit 127
+case "$1" in
+  --version) echo "Docker version 27.3.1, build fake" ;;
+  run) touch "$FAKE/hello_image" ;;
+  image) case "$2" in rm) rm -f "$FAKE/hello_image" ;; ls) [ -f "$FAKE/hello_image" ] && echo abc123 ;; esac ;;
+esac
+exit 0
