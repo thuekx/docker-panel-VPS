@@ -1,0 +1,269 @@
+// Package agent is the panel's client for nostek-agent, the host service that is the only part allowed to
+// change Docker (SITE-DOCKER-1 = A). It speaks JSON over a Unix socket; the panel never runs Docker itself.
+package agent
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+)
+
+// Client talks to the agent.
+type Client struct {
+	hc *http.Client
+}
+
+// New returns a client for the socket path ("" = no agent configured: every call fails with ErrNoAgent).
+func New(socket string) *Client {
+	if socket == "" {
+		return &Client{}
+	}
+	return &Client{hc: &http.Client{Timeout: 6 * time.Minute, Transport: &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, "unix", socket)
+		},
+		MaxIdleConns: 2,
+	}}}
+}
+
+// NewHTTP returns a client using a custom transport (tests).
+func NewHTTP(hc *http.Client) *Client { return &Client{hc: hc} }
+
+// ErrNoAgent means the agent is not installed or not reachable.
+var ErrNoAgent = errors.New("agent not reachable")
+
+// Error is an answer from the agent with its message.
+type Error struct {
+	Code int
+	Msg  string
+}
+
+func (e *Error) Error() string { return e.Msg }
+
+// Status returns the HTTP code of an agent error, or 0.
+func Status(err error) int {
+	var e *Error
+	if errors.As(err, &e) {
+		return e.Code
+	}
+	return 0
+}
+
+func (c *Client) call(ctx context.Context, method, path string, body, out any) error {
+	if c.hc == nil {
+		return ErrNoAgent
+	}
+	var rd io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		rd = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, "http://agent"+path, rd)
+	if err != nil {
+		return err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return ErrNoAgent
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return ErrNoAgent
+	}
+	if resp.StatusCode >= 300 {
+		var e struct {
+			Error string `json:"error"`
+		}
+		_ = json.Unmarshal(b, &e)
+		if e.Error == "" {
+			e.Error = fmt.Sprintf("agent answered %d", resp.StatusCode)
+		}
+		return &Error{Code: resp.StatusCode, Msg: e.Error}
+	}
+	if out == nil {
+		return nil
+	}
+	return json.Unmarshal(b, out)
+}
+
+// Host is one name of a site.
+type Host struct {
+	Name   string `json:"name"`
+	Role   string `json:"role"`
+	Routed bool   `json:"routed"`
+}
+
+// Site as the agent reports it.
+type Site struct {
+	ID         string `json:"id"`
+	Domain     string `json:"domain"`
+	Primary    string `json:"primary"`
+	Server     string `json:"server"`
+	PHP        string `json:"php"`
+	AdminEmail string `json:"admin_email"`
+	AdminUser  string `json:"admin_user"`
+	Title      string `json:"title"`
+	Hosts      []Host `json:"hosts"`
+	URL        string `json:"url"`
+	Created    int64  `json:"created"`
+	Phase      string `json:"phase"`
+	Status     string `json:"status"`
+}
+
+// Trashed is a deleted site that can still be restored.
+type Trashed struct {
+	Site
+	Entry   string `json:"entry"`
+	Deleted int64  `json:"deleted"`
+	Purge   int64  `json:"purge"`
+}
+
+// PHP is one offered version.
+type PHP struct {
+	Version       string `json:"version"`
+	EOL           bool   `json:"eol"`
+	SecurityUntil string `json:"security_until"`
+	Default       bool   `json:"default"`
+}
+
+// Catalog lists what can be created.
+type Catalog struct {
+	PHP     []PHP    `json:"php"`
+	Servers []string `json:"servers"`
+}
+
+// Create is a create-site request.
+type Create struct {
+	Domain     string   `json:"domain"`
+	Aliases    []string `json:"aliases"`
+	Primary    string   `json:"primary"`
+	Server     string   `json:"server"`
+	PHP        string   `json:"php"`
+	AdminEmail string   `json:"admin_email"`
+	Title      string   `json:"title"`
+}
+
+// Job is a running or finished change.
+type Job struct {
+	ID        string   `json:"id"`
+	Kind      string   `json:"kind"`
+	Site      string   `json:"site"`
+	State     string   `json:"state"`
+	Steps     []string `json:"steps"`
+	Error     string   `json:"error"`
+	HasSecret bool     `json:"has_secret"`
+}
+
+// Health checks the agent and returns its version.
+func (c *Client) Health(ctx context.Context) (string, error) {
+	var v struct {
+		OK      bool   `json:"ok"`
+		Version string `json:"version"`
+	}
+	err := c.call(ctx, "GET", "/v1/health", nil, &v)
+	return v.Version, err
+}
+
+// Catalog returns the offered versions.
+func (c *Client) Catalog(ctx context.Context) (Catalog, error) {
+	var v Catalog
+	return v, c.call(ctx, "GET", "/v1/catalog", nil, &v)
+}
+
+// Sites lists sites with their status.
+func (c *Client) Sites(ctx context.Context) ([]Site, error) {
+	var v struct {
+		Sites []Site `json:"sites"`
+	}
+	return v.Sites, c.call(ctx, "GET", "/v1/sites", nil, &v)
+}
+
+// Site returns one site.
+func (c *Client) Site(ctx context.Context, id string) (Site, error) {
+	var v Site
+	return v, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id), nil, &v)
+}
+
+// Plan checks a request without changing anything.
+func (c *Client) Plan(ctx context.Context, r Create) (Site, error) {
+	var v Site
+	return v, c.call(ctx, "POST", "/v1/sites/plan", r, &v)
+}
+
+// CreateSite starts a create job.
+func (c *Client) CreateSite(ctx context.Context, r Create) (string, Site, error) {
+	var v struct {
+		Job  string `json:"job"`
+		Site Site   `json:"site"`
+	}
+	err := c.call(ctx, "POST", "/v1/sites", r, &v)
+	return v.Job, v.Site, err
+}
+
+// Job returns a job.
+func (c *Client) Job(ctx context.Context, id string) (Job, error) {
+	var v Job
+	return v, c.call(ctx, "GET", "/v1/jobs/"+url.PathEscape(id), nil, &v)
+}
+
+// Secret fetches a job's secret; the agent hands it out only once.
+func (c *Client) Secret(ctx context.Context, id string) (string, error) {
+	var v struct {
+		Password string `json:"password"`
+	}
+	return v.Password, c.call(ctx, "POST", "/v1/jobs/"+url.PathEscape(id)+"/secret", nil, &v)
+}
+
+// Action runs start, stop or restart.
+func (c *Client) Action(ctx context.Context, id, action string) error {
+	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/"+url.PathEscape(action), nil, nil)
+}
+
+// Delete moves a site to the trash.
+func (c *Client) Delete(ctx context.Context, id string) (string, error) {
+	var v struct {
+		Trash string `json:"trash"`
+	}
+	return v.Trash, c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/delete", nil, &v)
+}
+
+// Trash lists deleted sites.
+func (c *Client) Trash(ctx context.Context) ([]Trashed, error) {
+	var v struct {
+		Trash []Trashed `json:"trash"`
+	}
+	return v.Trash, c.call(ctx, "GET", "/v1/trash", nil, &v)
+}
+
+// Restore brings a trash entry back.
+func (c *Client) Restore(ctx context.Context, entry string) (string, error) {
+	var v struct {
+		Site string `json:"site"`
+	}
+	return v.Site, c.call(ctx, "POST", "/v1/trash/"+url.PathEscape(entry)+"/restore", nil, &v)
+}
+
+// Logs returns the last lines of one service.
+func (c *Client) Logs(ctx context.Context, id, service string, lines int) (string, error) {
+	var v struct {
+		Logs string `json:"logs"`
+	}
+	q := url.Values{"service": {service}, "lines": {strconv.Itoa(lines)}}
+	return v.Logs, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/logs?"+q.Encode(), nil, &v)
+}

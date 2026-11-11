@@ -12,7 +12,7 @@ TESTS=0; BAD=0; TMP_ALL="$(mktemp -d)"
 cleanup() {
   docker rm -f np-test-pub >/dev/null 2>&1
   docker ps -aq --filter label=com.docker.compose.project=nostek-core | xargs -r docker rm -f >/dev/null 2>&1
-  docker network rm nostek-edge nostek-ctl >/dev/null 2>&1
+  docker network rm nostek-edge nostek-panel nostek-ctl >/dev/null 2>&1
   rm -rf "$TMP_ALL"
 }
 trap 'cleanup; docker rmi -f nostek/panel:v9.9.9 >/dev/null 2>&1' EXIT

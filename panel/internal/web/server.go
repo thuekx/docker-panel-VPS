@@ -18,6 +18,7 @@ import (
 
 	qrcode "github.com/skip2/go-qrcode"
 
+	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/auth"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/i18n"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/store"
@@ -51,6 +52,8 @@ type Server struct {
 	sys     sysinfo.Reader
 	ipLimit *auth.Limiter
 	now     func() time.Time
+	ag      *agent.Client
+	owners  jobOwners
 }
 
 func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server, error) {
@@ -64,7 +67,7 @@ func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{cfg: cfg, st: st, tr: tr, sys: sys, ipLimit: auth.NewLimiter(20, time.Minute), now: time.Now}
+	s := &Server{cfg: cfg, st: st, tr: tr, sys: sys, ipLimit: auth.NewLimiter(20, time.Minute), now: time.Now, ag: agent.New("")}
 	if err := s.parseTemplates(assets); err != nil {
 		return nil, err
 	}
@@ -81,7 +84,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -99,6 +102,9 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 			},
 			"f1":    func(f float64) string { return strconv.FormatFloat(f, 'f', 1, 64) },
 			"list3": func(a, b, c string) []string { return []string{a, b, c} },
+			"dict3": func(lang, st, phase string) map[string]string {
+				return map[string]string{"L": lang, "S": st, "P": phase}
+			},
 			"dict2": func(st sysinfo.Status, label string) map[string]any {
 				return map[string]any{"S": string(st), "L": label}
 			},
@@ -133,6 +139,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /{$}", s.need(true, s.dashboard))
 	mux.HandleFunc("GET /audit", s.need(true, s.audit))
 	mux.HandleFunc("GET /audit/{id}", s.need(true, s.auditEntry))
+	mux.HandleFunc("GET /sites", s.need(true, s.sitesList))
+	mux.HandleFunc("GET /sites/new", s.need(true, s.siteForm))
+	mux.HandleFunc("POST /sites/new", s.need(true, s.siteSubmit))
+	mux.HandleFunc("GET /sites/job/{job}", s.need(true, s.siteJob))
+	mux.HandleFunc("POST /sites/job/{job}/secret", s.need(true, s.siteSecret))
+	mux.HandleFunc("GET /sites/{id}", s.need(true, s.siteShow))
+	mux.HandleFunc("POST /sites/{id}", s.need(true, s.siteAction))
+	mux.HandleFunc("POST /trash/{entry}/restore", s.need(true, s.siteRestore))
 	mux.HandleFunc("GET /settings", s.need(true, s.settings))
 	mux.HandleFunc("POST /settings", s.need(true, s.settingsSubmit))
 	mux.HandleFunc("POST /settings/recovery", s.need(true, s.newRecoveryCodes))

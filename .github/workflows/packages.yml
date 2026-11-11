@@ -1,7 +1,7 @@
 name: packages
 on:
   pull_request:
-    paths: ['packages/**', 'panel/**', 'deploy/**', '.github/workflows/packages.yml']
+    paths: ['packages/**', 'panel/**', 'agent/**', 'deploy/**', '.github/workflows/packages.yml']
 permissions:
   contents: read
 jobs:
@@ -12,6 +12,8 @@ jobs:
       host02: ${{ steps.f.outputs.host02 }}
       panel01: ${{ steps.f.outputs.panel01 }}
       app: ${{ steps.f.outputs.app }}
+      agent: ${{ steps.f.outputs.agent }}
+      site01: ${{ steps.f.outputs.site01 }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -25,6 +27,8 @@ jobs:
           done
           if grep -qE "^(packages/panel-01/|panel/|deploy/core/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "panel01=true" >> "$GITHUB_OUTPUT"; else echo "panel01=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(panel/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "app=true" >> "$GITHUB_OUTPUT"; else echo "app=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE "^(agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "agent=true" >> "$GITHUB_OUTPUT"; else echo "agent=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE "^(packages/site-01/|agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "site01=true" >> "$GITHUB_OUTPUT"; else echo "site01=false" >> "$GITHUB_OUTPUT"; fi
   host-01:
     needs: select
     if: needs.select.outputs.host01 == 'true'
@@ -92,3 +96,36 @@ jobs:
         run: sudo bash packages/panel-01/tests/harness.sh
       - name: mutants
         run: sudo bash packages/panel-01/tests/mutants.sh
+  agent:
+    needs: select
+    if: needs.select.outputs.agent == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: agent/go.mod, cache: false }
+      - name: gofmt
+        run: cd agent && test -z "$(gofmt -l .)"
+      - name: vet
+        run: cd agent && go vet ./...
+      - name: test
+        run: cd agent && go test -race ./...
+  site-01:
+    needs: select
+    if: needs.select.outputs.site01 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: agent/go.mod, cache: false }
+      - name: shellcheck
+        run: shellcheck -S warning packages/site-01/site-01-agent.sh packages/site-01/tests/*.sh
+      - name: lock
+        run: cd packages/site-01 && sha256sum -c site-01.lock
+      - name: harness (real Docker; builds the agent, creates Apache and Nginx WordPress sites)
+        run: sudo bash packages/site-01/tests/harness.sh
+      - name: mutants
+        run: sudo env "PATH=$PATH" bash packages/site-01/tests/mutants.sh

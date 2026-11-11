@@ -1,5 +1,8 @@
 # Nostek Panel core stack (PANEL-01). Installed by packages/panel-01 to /srv/nostek/core.
-# Only `edge` publishes ports. The panel never mounts the Docker socket; it talks to a read-only socket proxy.
+# Only `edge` publishes ports. The panel never mounts the Docker socket; it reads Docker through a read-only socket
+# proxy and changes sites only through nostek-agent (host service, fixed actions, socket in /run/nostek-agent).
+# Networks: nostek-panel = edge + panel only; nostek-edge = edge + site web servers (sites never reach the panel);
+# nostek-ctl = internal, panel/edge to the socket proxy.
 # Values come from .env next to this file (written by the installer): PANEL_DOMAIN, PANEL_IMAGE, PANEL_HOSTNAME,
 # NOSTEK_DATA (default /srv/nostek), NOSTEK_STATE (default /var/lib/nostek), ACME_CA_SERVER (default Let's Encrypt production).
 name: nostek-core
@@ -51,7 +54,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    networks: [nostek-edge, nostek-ctl]
+    networks: [nostek-edge, nostek-panel, nostek-ctl]
 
   docker-api:
     <<: *hardening
@@ -84,14 +87,17 @@ services:
       NP_PROC: /proc
       NP_DOCKER_URL: http://docker-api:2375
       NP_BACKUP_STATUS: /host/backup/last
+      NP_AGENT_SOCKET: /run/nostek-agent/agent.sock
       NP_TRUST_PROXY: "1"
       NP_LANG: id
       TZ: Asia/Jakarta
     volumes:
       - ${NOSTEK_DATA:-/srv/nostek}/panel:/data
       - ${NOSTEK_STATE:-/var/lib/nostek}/backup:/host/backup:ro
+      - /run/nostek-agent:/run/nostek-agent:ro
     labels:
       traefik.enable: "true"
+      traefik.docker.network: nostek-panel
       traefik.http.routers.panel.rule: Host(`${PANEL_DOMAIN}`)
       traefik.http.routers.panel.entrypoints: websecure
       traefik.http.routers.panel.tls.certresolver: le
@@ -99,11 +105,13 @@ services:
       traefik.http.middlewares.panel-hsts.headers.stsSeconds: "31536000"
       traefik.http.middlewares.panel-hsts.headers.stsIncludeSubdomains: "false"
       traefik.http.services.panel.loadbalancer.server.port: "8080"
-    networks: [nostek-edge, nostek-ctl]
+    networks: [nostek-panel, nostek-ctl]
 
 networks:
   nostek-edge:
     name: nostek-edge
+  nostek-panel:
+    name: nostek-panel
   nostek-ctl:
     name: nostek-ctl
     internal: true

@@ -9,7 +9,7 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 | 2 | HOST-01 | Our VPS: own login user (password) + new SSH port, lock-out safe; user/port/address only in project files | Rancang panel Docker untuk VPS fresh | ✓ 2026-11-11 12:34 WIB (PR #1, RESULT CONFIRM PASS phase=DONE) |
 | 3 | HOST-02 | Baseline: updates, firewall, fail2ban, WIB, Docker Engine, backup first (BACKUP-FIRST) | Rancang panel Docker untuk VPS fresh | ✓ done 2026-11-11 13:24 WIB (all steps PASS, restore proven) |
 | 4 | PANEL-01 | Edge proxy + panel skeleton with 2FA login at panel.nostek.dev | Rancang panel Docker untuk VPS fresh | ✓ done 2026-11-11 15:06 WIB (VERIFY PASS, cert valid; fixes PR #4, #5); v1.1.0 (THEME-1, VERSION-1) 15:48 WIB |
-| 5 | SITE-01 | One-click WordPress, Apache or Nginx per site; first owner domains on preview addresses | Rancang panel Docker untuk VPS fresh | ✱ design; SITE-DOCKER-1 = A (agent) decided 2026-11-11 ([site-01.md](../design/site-01.md)) |
+| 5 | SITE-01 | One-click WordPress, Apache or Nginx per site; first owner domains on preview addresses | Rancang panel Docker untuk VPS fresh | ✱ built v1.2.0 (agent + Websites page), PR open; waiting for host run ([site-01.md](../design/site-01.md)) |
 | 6 | SITE-02 | File manager + database admin per site | Rancang panel Docker untuk VPS fresh | ○ |
 | 7 | BAK-01 | Per-site backup + restore from the panel | Rancang panel Docker untuk VPS fresh | ○ |
 | 8 | MIG-01 | WordPress migration into the panel (plugin / SSH / archive) | Rancang panel Docker untuk VPS fresh | ○ |

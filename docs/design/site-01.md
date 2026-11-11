@@ -1,6 +1,6 @@
 # SITE-01 — one-click WordPress, Apache or Nginx per site (design draft)
 
-Status: design. Owner decided SITE-DOCKER-1 = **A** (2026-11-11 15:43 WIB), PHP 8.1..latest (SITE-PHP-1). Builds on PANEL-01 (done 2026-11-11) and the architecture in
+Status: **built** (v1.2.0, package `packages/site-01`), waiting for the owner's host run. Owner decided SITE-DOCKER-1 = **A** (2026-11-11 15:43 WIB), PHP 8.1..latest (SITE-PHP-1), preview addresses on a wildcard zone. Builds on PANEL-01 (done 2026-11-11) and the architecture in
 [architecture.md](architecture.md): one stack per site, MariaDB per site, per-site network, edge proxy in front.
 Roadmap slot SITE-01, owner thread "Rancang panel Docker untuk VPS fresh". Also carries THEME-1 (light/dark setting)
 and two PANEL-01 follow-ups (APPLY summary text, backup status on the dashboard).
@@ -19,9 +19,12 @@ and two PANEL-01 follow-ups (APPLY summary text, backup status on the dashboard)
 
 | Container | Apache site | Nginx site |
 |---|---|---|
-| web | `wordpress:<ver>-php8.3-apache` | `nginx` (pinned) serving static files, PHP to `php` |
-| php | — | `wordpress:<ver>-php8.3-fpm` |
-| db | `mariadb:11.x` (pinned), own volume, own password | same |
+| web | `wordpress:7.1.4-php<v>-apache` | `nginx:1.30-alpine` serving static files, PHP to `php` |
+| php | — | `wordpress:7.1.4-php<v>-fpm` |
+| db | `mariadb:11.8`, own folder, own password | same |
+
+All pinned by digest in `agent/internal/catalog`. PHP 8.1 uses the last official image (WordPress 6.9.0, frozen
+2026-01-01) and is labelled end of life; 8.2 ends security support on 2026-12-31; default 8.4.
 
 - Own Docker network per site; only `web` also joins `nostek-edge`. Sites cannot reach each other or the panel.
 - Files: `/srv/nostek/sites/<site-id>/wp` (WordPress) and `/srv/nostek/sites/<site-id>/db` (database); inside the
@@ -62,3 +65,14 @@ Write access to Docker is equal to root on the server, so this is the main secur
   answering, isolation test (site A cannot reach site B's database), delete to trash and restore, agent refuses
   anything outside its fixed actions.
 - Mutants on the agent's input checks.
+
+## As built (v1.2.0)
+
+- The agent offers only the routes listed in `packages/site-01/README.md`; one change at a time (409 when busy).
+- A host name is routed only when its A record points to the server; each routed name gets its own router and
+  certificate, every name other than the WordPress address redirects to it. Until the real domain moves, the site
+  runs on `<site-id>.<preview zone>`; connecting the real domain later is SITE-02.
+- The panel moved to its own network `nostek-panel` (edge + panel), so a compromised website cannot reach the panel
+  directly; websites share `nostek-edge` with the edge only through their web server, databases are internal.
+- Tests: agent unit tests, panel tests with a fake agent, harness on real Docker (39 checks: Apache and Nginx sites
+  answer, isolation, password once, trash/restore, update and revert keep websites running), 14 mutants.
