@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+[ -f "$FAKE/break_timer" ] && exit 1
+printf '%s\n' "$*" > "$FAKE/timer"; exit 0

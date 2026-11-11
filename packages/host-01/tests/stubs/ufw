@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+case "$1" in status) if [ "${FAKE_UFW:-inactive}" = active ]; then echo "Status: active"; for i in $(seq 1 20000); do printf 'rule %s\n' "$i" || exit 141; done; else echo "Status: inactive"; fi ;; esac
+exit 0

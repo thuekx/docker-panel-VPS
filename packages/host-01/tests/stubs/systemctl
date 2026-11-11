@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+case "$1" in
+  is-enabled|is-active)
+    case "$2" in ssh.socket) [ "${FAKE_SSH_MODE:-socket}" = socket ]; exit ;; nostek-host01-revert.timer) [ -f "$FAKE/timer" ]; exit ;; esac; exit 1 ;;
+  stop) for u in "${@:2}"; do [ "$u" = nostek-host01-revert.timer ] && rm -f "$FAKE/timer"; done; exit 0 ;;
+  daemon-reload|reset-failed) exit 0 ;;
+  restart)
+    [ -f "$FAKE/break_restart" ] && exit 1
+    : > "$FAKE/listen"
+    ports="$(cat "$HOST01_TEST_ROOT"/etc/ssh/sshd_config.d/*.conf 2>/dev/null | awk '$1=="Port"{print $2}')"
+    [ -z "$ports" ] && ports=22
+    [ -f "$FAKE/break_listen" ] && ports=22
+    printf '%s\n' "$ports" > "$FAKE/listen"; exit 0 ;;
+esac
+exit 0

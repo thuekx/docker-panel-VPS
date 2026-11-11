@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+args="$*"; p="$(echo "$args" | sed -n 's/.*sport = :\([0-9]*\).*/\1/p')"
+if echo "$args" | grep -q established; then grep -qx "$p" "$FAKE/established" 2>/dev/null && echo "ESTAB 0 0 10.0.0.5:$p 1.2.3.4:5555"; exit 0; fi
+grep -qx "$p" "$FAKE/listen" 2>/dev/null && echo "LISTEN 0 128 0.0.0.0:$p 0.0.0.0:*"; exit 0

@@ -1,0 +1,35 @@
+name: packages
+on:
+  pull_request:
+    paths: ['packages/**', '.github/workflows/packages.yml']
+permissions:
+  contents: read
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      host01: ${{ steps.f.outputs.host01 }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: f
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base" HEAD | grep -qE '^(packages/host-01/|\.github/workflows/packages\.yml)'; then echo "host01=true" >> "$GITHUB_OUTPUT"; else echo "host01=false" >> "$GITHUB_OUTPUT"; fi
+  host-01:
+    needs: select
+    if: needs.select.outputs.host01 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: tools
+        run: sudo apt-get -o Dpkg::Use-Pty=0 install -y -q shellcheck openssh-server < /dev/null
+      - name: shellcheck
+        run: shellcheck -S warning packages/host-01/host-01-user-ssh.sh packages/host-01/tests/*.sh packages/host-01/tests/stubs/*
+      - name: lock
+        run: cd packages/host-01 && sha256sum -c host-01.lock
+      - name: harness
+        run: sudo bash packages/host-01/tests/harness.sh
+      - name: mutants
+        run: sudo bash packages/host-01/tests/mutants.sh

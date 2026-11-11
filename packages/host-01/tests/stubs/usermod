@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+if [ "$1" = "-s" ]; then sed -i "s#^\($3:.*:\)[^:]*\$#\1$2#" "$HOST01_TEST_ROOT/etc/passwd"; fi
+exit 0

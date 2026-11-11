@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+cfg="$HOST01_TEST_ROOT/etc/ssh/sshd_config"
+case "$1" in
+  -t) [ -f "$FAKE/break_sshd_t" ] && exit 1; exec /usr/sbin/sshd -t -f "$cfg" ;;
+  -T) exec /usr/sbin/sshd -T -f "$cfg" -C user=root,host=localhost,addr=127.0.0.1 ;;
+esac
