@@ -8,7 +8,7 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 | 1 | GUIDE-01 | Guide: change the default VPS user + SSH port safely (for other users) | Rancang panel Docker untuk VPS fresh | ✓ 2026-11-11 |
 | 2 | HOST-01 | Our VPS: own login user (password) + new SSH port, lock-out safe; user/port/address only in project files | Rancang panel Docker untuk VPS fresh | ✓ 2026-11-11 12:34 WIB (PR #1, RESULT CONFIRM PASS phase=DONE) |
 | 3 | HOST-02 | Baseline: updates, firewall, fail2ban, WIB, Docker Engine, backup first (BACKUP-FIRST) | Rancang panel Docker untuk VPS fresh | ✓ done 2026-11-11 13:24 WIB (all steps PASS, restore proven) |
-| 4 | PANEL-01 | Edge proxy + panel skeleton with 2FA login at panel.nostek.dev | Rancang panel Docker untuk VPS fresh | ✱ built, PR in review (PANEL-STACK-1 = Go + Motion + anime.js) |
+| 4 | PANEL-01 | Edge proxy + panel skeleton with 2FA login at panel.nostek.dev | Rancang panel Docker untuk VPS fresh | ✱ PR #3 merged 2026-11-11 14:06 WIB; owner run P01-1..5 pending (PANEL-STACK-1 = Go + Motion + anime.js) |
 | 5 | SITE-01 | One-click WordPress, Apache or Nginx per site; first 2-3 owner domains | Rancang panel Docker untuk VPS fresh | ○ |
 | 6 | SITE-02 | File manager + database admin per site | Rancang panel Docker untuk VPS fresh | ○ |
 | 7 | BAK-01 | Per-site backup + restore from the panel | Rancang panel Docker untuk VPS fresh | ○ |
