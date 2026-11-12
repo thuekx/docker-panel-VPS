@@ -293,6 +293,41 @@ PHP
 fi
 api POST /v1/sites/d-example-test/laravel/artisan '{"op":"migrate"}'; ok "no artisan on a plain PHP site" '[ "$CODE" = 400 ]'
 
+# --- APP-02 Node.js: built from the website's own files (the starter app has no dependencies, so no registry is
+# needed), redeploy, a failing build keeps the live release, rollback. Then from Git (this repository's test app)
+# when HARNESS_NODE_GIT_BRANCH names a branch that is on GitHub (the repo's own check sets it).
+app_get() { docker run --rm --network nostek-edge "$CURL_IMG" -s --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-app-1:3000$3"; }
+printf '%s f-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" >> /etc/hosts
+api POST /v1/sites '{"app":"node","domain":"f.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"Situs F","version":"24","source":"files"}'; JF="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "Node.js site built from its own files and started" '[ "$CODE" = 202 ] && [ "$(wait_job "$JF" 200)" = done ]'
+SF="$SITE01_TEST_ROOT/srv/nostek/sites/f-example-test"
+ok "starter app answers on its port through the edge network" 'app_get f-example-test f-example-test.$ZONE / | grep -q "Node.js app is ready"'
+ok "one app container as www-data, the build container is gone, source and release owned by www-data" '[ "$(docker ps -q --filter name=np-site-f-example-test --filter status=running | wc -l)" = 1 ] && [ "$(docker exec np-site-f-example-test-app-1 id -u)" = 33 ] && [ -z "$(docker ps -aq --filter label=nostek.build=f-example-test)" ] && [ "$(stat -c %u "$SF/wp/source/server.js" "$SF/wp/releases/1/server.js" | sort -u)" = 33 ]'
+ok "edge routes the site to port 3000" 'grep -q "loadbalancer.server.port: \"3000\"" "$SF/compose.yml"'
+sed -i 's/This Node.js app is ready/Release two is live/' "$SF/wp/source/server.js"
+api POST /v1/sites/f-example-test/deploys; JF2="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "redeploy builds release 2 and switches to it" '[ "$CODE" = 202 ] && [ "$(wait_job "$JF2" 200)" = done ] && app_get f-example-test f-example-test.$ZONE / | grep -q "Release two is live" && grep -q "./wp/releases/2:/app" "$SF/compose.yml"'
+cp "$SF/wp/source/package.json" "$T/pkg.json"
+printf '{"name":"broken","version":"1.0.0","scripts":{"build":"echo np-broken-build && exit 3","start":"node server.js"}}\n' > "$SF/wp/source/package.json"
+api POST /v1/sites/f-example-test/deploys; JF3="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "a failing build leaves release 2 live" '[ "$(wait_job "$JF3" 200 2>/dev/null)" = failed ] && app_get f-example-test f-example-test.$ZONE / | grep -q "Release two is live" && grep -q "./wp/releases/2:/app" "$SF/compose.yml"'
+api GET /v1/sites/f-example-test/deploys/3/log; ok "build log of the failed release names the error" '[ "$CODE" = 200 ] && grep -q "np-broken-build" <<<"$BODY"'
+cp "$T/pkg.json" "$SF/wp/source/package.json"
+api GET /v1/sites/f-example-test/deploys; ok "history: 3 failed, 2 live, 1 kept" '[ "$CODE" = 200 ] && grep -q "\"release\":3,[^}]*\"result\":\"failed\"" <<<"$BODY" && grep -q "\"release\":2,[^}]*\"result\":\"live\"" <<<"$BODY" && grep -q "\"release\":1,[^}]*\"result\":\"ok\"" <<<"$BODY"'
+MAXT=240 api POST /v1/sites/f-example-test/deploys/1/rollback; ok "rollback puts release 1 live again" '[ "$CODE" = 200 ] && app_get f-example-test f-example-test.$ZONE / | grep -q "Node.js app is ready"'
+api POST /v1/sites/f-example-test/deploys/3/rollback; ok "rollback to a failed release refused" '[ "$CODE" = 400 ]'
+api POST /v1/sites/a-example-test/deploys; ok "no deploy on a WordPress site" '[ "$CODE" = 400 ]'
+api POST /v1/sites '{"app":"node","domain":"g.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"","version":"24","repo":"https://user:pw@github.com/a/b.git","branch":"main"}'
+ok "a repository address with a password is refused" '[ "$CODE" = 422 ]'
+KEPT=$((KEPT+1)); NODEGIT=skipped
+if [ -n "${HARNESS_NODE_GIT_BRANCH:-}" ]; then
+  NODEGIT=tested; KEPT=$((KEPT+1))
+  printf '%s g-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" >> /etc/hosts
+  api POST /v1/sites "{\"app\":\"node\",\"domain\":\"g.example.test\",\"aliases\":[],\"primary\":\"domain\",\"server\":\"\",\"php\":\"\",\"admin_email\":\"\",\"title\":\"\",\"version\":\"22\",\"repo\":\"https://github.com/thuekx/docker-panel-VPS.git\",\"branch\":\"$HARNESS_NODE_GIT_BRANCH\",\"dir\":\"packages/site-01/tests/node-app\"}"; JG="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+  ok "Node.js site built from Git (subfolder) with its build step" '[ "$CODE" = 202 ] && [ "$(wait_job "$JG" 200)" = done ] && app_get g-example-test g-example-test.$ZONE / | grep -q "node-app ok | built by npm run build | uid 33 | port 3000"'
+  api GET /v1/sites/g-example-test/deploys; ok "history holds the commit of the branch" 'grep -q "\"commit\":\"[0-9a-f]\{40\}\"" <<<"$BODY" && ! grep -q "github.com" "$SITE01_TEST_ROOT/srv/nostek/sites/g-example-test/compose.yml"'
+fi
+
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again (update) passes, websites untouched" '[ $RC = 0 ] && has "already built" && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$CIDS" ]'
@@ -308,5 +343,5 @@ run VERIFY "${A[@]}"; ok "verify fails after revert" '[ $RC = 1 ]'
 
 cleanup; TMP_ALL="$(mktemp -d)"
 LEFT="$(docker ps -aq --filter name=np-site- | wc -l)"
-if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT SITE-01 HARNESS PASS tests=$TESTS laravel=$LARAVEL sisa_uji=0"; exit 0; fi
-echo "RESULT SITE-01 HARNESS FAIL bad=$BAD/$TESTS laravel=$LARAVEL sisa_uji=$LEFT"; exit 1
+if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT SITE-01 HARNESS PASS tests=$TESTS laravel=$LARAVEL node_git=$NODEGIT sisa_uji=0"; exit 0; fi
+echo "RESULT SITE-01 HARNESS FAIL bad=$BAD/$TESTS laravel=$LARAVEL node_git=$NODEGIT sisa_uji=$LEFT"; exit 1

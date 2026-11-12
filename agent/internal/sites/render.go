@@ -37,7 +37,40 @@ type Site struct {
 	// APP-01: what the website runs; empty = WordPress (every site made before v1.8.0)
 	App      string `json:"app,omitempty"`
 	Database bool   `json:"database,omitempty"` // php: the app has its own MariaDB
-	Version  string `json:"version,omitempty"`  // laravel: major version installed at create time
+	Version  string `json:"version,omitempty"`  // laravel: major version installed at create time; node: Node.js
+	// APP-02 (node): where the source comes from, how it is built and started, and the live release
+	Source  string `json:"source,omitempty"` // git (empty) | files
+	Dir     string `json:"dir,omitempty"`    // app folder inside the repository or source folder
+	Repo    string `json:"repo,omitempty"`
+	Branch  string `json:"branch,omitempty"`
+	Build   string `json:"build,omitempty"`
+	Start   string `json:"start,omitempty"`
+	Release int    `json:"release,omitempty"` // live release number (0 = none yet)
+}
+
+// IsNode is true for a Node.js app.
+func (s Site) IsNode() bool { return s.AppName() == spec.AppNode }
+
+// FromFiles is true when a Node.js app is built from the website's source/ folder instead of Git.
+func (s Site) FromFiles() bool { return s.Source == spec.SourceFiles }
+
+// NodePort is the port a Node.js app listens on (it gets PORT in its environment).
+const NodePort = 3000
+
+// BuildCmd and StartCmd return the commands of a Node.js app, defaults when none was set.
+func (s Site) BuildCmd() string {
+	if s.Build == "" {
+		return spec.NodeBuild
+	}
+	return s.Build
+}
+
+// StartCmd returns the start command of a Node.js app.
+func (s Site) StartCmd() string {
+	if s.Start == "" {
+		return spec.NodeStart
+	}
+	return s.Start
 }
 
 // AppName is the app the site runs: wordpress, php or static.
@@ -87,12 +120,16 @@ var routerSafe = regexp.MustCompile(`[^a-z0-9-]`)
 // labels returns the Traefik labels: the canonical host is served, every other routed host redirects to it.
 // One router per host, so each name gets its own certificate and one failing name never blocks the others.
 func (s Site) labels() []string {
+	port := 80
+	if s.IsNode() {
+		port = NodePort
+	}
 	canon := s.Canonical()
 	rid := "site-" + s.ID
 	l := []string{
 		`traefik.enable: "true"`,
 		`traefik.docker.network: nostek-edge`,
-		fmt.Sprintf(`traefik.http.services.%s.loadbalancer.server.port: "80"`, rid),
+		fmt.Sprintf(`traefik.http.services.%s.loadbalancer.server.port: "%d"`, rid, port),
 		fmt.Sprintf(`traefik.http.middlewares.%s-canon.redirectregex.regex: "^https?://[^/]+(.*)"`, rid),
 		fmt.Sprintf(`traefik.http.middlewares.%s-canon.redirectregex.replacement: "https://%s$${1}"`, rid, canon),
 		fmt.Sprintf(`traefik.http.middlewares.%s-canon.redirectregex.permanent: "true"`, rid),
@@ -158,6 +195,13 @@ func (s Site) Compose() (string, error) {
 		if s.Server != "nginx" {
 			return "", fmt.Errorf("a static site runs on nginx")
 		}
+	case spec.AppNode:
+		if _, ok := catalog.Node(s.Version); !ok {
+			return "", fmt.Errorf("unknown Node.js %s", s.Version)
+		}
+		if s.Release < 1 {
+			return "", fmt.Errorf("site %s has no release yet", s.ID)
+		}
 	default:
 		return "", fmt.Errorf("unknown app %s", s.App)
 	}
@@ -213,6 +257,8 @@ secrets:
 		s.phpServices(&b, p)
 	case spec.AppLaravel:
 		s.laravelServices(&b, p)
+	case spec.AppNode:
+		s.nodeServices(&b)
 	case spec.AppStatic:
 		fmt.Fprintf(&b, `  web:
     <<: *site
@@ -602,3 +648,44 @@ server {
     }
 }
 `
+
+// nodeServices renders the app container of a Node.js website: the official Node.js image runs the live release
+// as www-data, with PORT set, reachable only through the edge; it may reach the internet (APIs, mail).
+func (s Site) nodeServices(b *strings.Builder) {
+	n, _ := catalog.Node(s.Version)
+	fmt.Fprintf(b, `  app:
+    <<: *site
+    image: %s
+    user: "%d:%d"
+    working_dir: /app
+    command: ["sh", "-c", %s]
+    mem_limit: 768m
+    environment:
+      NODE_ENV: production
+      PORT: "%d"
+      HOST: 0.0.0.0
+      HOSTNAME: 0.0.0.0
+      HOME: /tmp
+      NPM_CONFIG_UPDATE_NOTIFIER: "false"
+    env_file:
+      - path: ./deploy/app.env
+        required: false
+    volumes:
+      - ./wp/releases/%d:/app
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:%d/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 4s
+      retries: 3
+      start_period: 120s
+    labels:
+%s
+    networks: [nostek-edge, out]
+`, n.Image, wwwData, wwwData, yamlQuote("exec "+s.StartCmd()), NodePort, s.Release, NodePort, indent(s.labels(), 6))
+}
+
+// yamlQuote writes a string as a YAML double-quoted scalar; `$` is doubled so compose does not expand it.
+func yamlQuote(v string) string {
+	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, `$`, `$$`)
+	return `"` + r.Replace(v) + `"`
+}

@@ -95,7 +95,75 @@ const (
 	AppPHP       = "php"     // plain PHP, optional MariaDB
 	AppStatic    = "static"  // HTML / built React, Vue, Svelte, Astro, served by Nginx
 	AppLaravel   = "laravel" // Laravel on Nginx + PHP-FPM with MariaDB, a queue worker and the scheduler
+	AppNode      = "node"    // Node.js / Next.js app built from a Git repository (APP-02)
 )
+
+// Limits of the Node.js deploy settings.
+const (
+	MaxRepo    = 300
+	MaxBranch  = 100
+	MaxCommand = 300
+)
+
+var (
+	// Only public https Git addresses: no user name or password in the address, no query, no fragment.
+	repoRe   = regexp.MustCompile(`^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)+/?$`)
+	branchRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]*$`)
+	dirRe    = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*$`)
+)
+
+// Where a Node.js app's source comes from.
+const (
+	SourceGit   = "git"   // a public Git repository and branch
+	SourceFiles = "files" // the source/ folder of the website, filled with the File Manager
+)
+
+// AppDir checks the folder of the app inside the repository or the source folder ("" = the top).
+func AppDir(d string) error {
+	if d == "" {
+		return nil
+	}
+	if len(d) > 200 || !dirRe.MatchString(d) {
+		return errors.New("app folder must be a relative path such as apps/web, without .. or a leading /")
+	}
+	for _, part := range strings.Split(d, "/") {
+		if part == "." || part == ".." || strings.HasPrefix(part, "..") {
+			return errors.New("app folder must be a relative path such as apps/web, without .. or a leading /")
+		}
+	}
+	return nil
+}
+
+// Repo checks a public Git repository address (https only).
+func Repo(r string) error {
+	if r == "" || len(r) > MaxRepo || !repoRe.MatchString(r) || strings.Contains(r, "..") {
+		return errors.New("repository must be a public https address such as https://github.com/owner/app.git, without a user name or password")
+	}
+	return nil
+}
+
+// Branch checks a Git branch name.
+func Branch(b string) error {
+	if b == "" || len(b) > MaxBranch || !branchRe.MatchString(b) || strings.Contains(b, "..") ||
+		strings.HasSuffix(b, "/") || strings.HasSuffix(b, ".lock") || strings.Contains(b, "//") {
+		return errors.New("branch name is not valid")
+	}
+	return nil
+}
+
+// Command checks a build or start command: one line of printable text. It runs inside the website's own
+// container (the owner's own code runs there anyway), never on the server itself.
+func Command(c string) error {
+	if strings.TrimSpace(c) == "" || len(c) > MaxCommand {
+		return fmt.Errorf("command must be 1-%d characters", MaxCommand)
+	}
+	for _, r := range c {
+		if r < 0x20 || r == 0x7f {
+			return errors.New("command must be one line without control characters")
+		}
+	}
+	return nil
+}
 
 // Create is the body of a create-site request.
 type Create struct {
@@ -108,8 +176,21 @@ type Create struct {
 	AdminEmail string   `json:"admin_email"`
 	Title      string   `json:"title"`
 	Database   bool     `json:"database,omitempty"` // php: give the app its own MariaDB
-	Version    string   `json:"version,omitempty"`  // laravel: major version ("" = newest)
+	Version    string   `json:"version,omitempty"`  // laravel: major version ("" = newest); node: Node.js version
+	Source     string   `json:"source,omitempty"`   // node: git (default) | files
+	Dir        string   `json:"dir,omitempty"`      // node: app folder inside the repository or source folder
+	Repo       string   `json:"repo,omitempty"`     // node: public https Git repository
+	Branch     string   `json:"branch,omitempty"`   // node: branch to deploy
+	Build      string   `json:"build,omitempty"`    // node: build command ("" = default)
+	Start      string   `json:"start,omitempty"`    // node: start command ("" = default)
 }
+
+// Default commands of a Node.js app. Install uses the lock file when there is one.
+const (
+	NodeInstall = "if [ -f package-lock.json ]; then npm ci; else npm install; fi"
+	NodeBuild   = "npm run build --if-present"
+	NodeStart   = "npm start"
+)
 
 // AppOf returns the app of a request, WordPress when none is given.
 func (c Create) AppOf() string {
@@ -184,11 +265,47 @@ func (c Create) Check(reserved map[string]bool) error {
 		if c.Server != "nginx" || c.PHP != "" {
 			return errors.New("a static site runs on nginx without PHP")
 		}
+	case AppNode:
+		if c.PHP != "" || c.Server != "" {
+			return errors.New("a Node.js app runs without a web server choice or PHP")
+		}
+		if _, ok := catalog.Node(c.Version); !ok {
+			return fmt.Errorf("Node.js %q is not offered", c.Version)
+		}
+		switch c.Source {
+		case "", SourceGit:
+			if err := Repo(c.Repo); err != nil {
+				return err
+			}
+			if err := Branch(c.Branch); err != nil {
+				return err
+			}
+		case SourceFiles:
+			if c.Repo != "" || c.Branch != "" {
+				return errors.New("a website built from its own files takes no repository or branch")
+			}
+		default:
+			return errors.New("source must be git or files")
+		}
+		if err := AppDir(c.Dir); err != nil {
+			return err
+		}
+		for _, cmd := range []string{c.Build, c.Start} {
+			if cmd == "" {
+				continue
+			}
+			if err := Command(cmd); err != nil {
+				return err
+			}
+		}
 	default:
-		return errors.New("app must be wordpress, php, laravel or static")
+		return errors.New("app must be wordpress, php, laravel, static or node")
 	}
-	if c.Version != "" && app != AppLaravel {
-		return errors.New("only Laravel takes a version")
+	if c.Version != "" && app != AppLaravel && app != AppNode {
+		return errors.New("only Laravel and Node.js take a version")
+	}
+	if app != AppNode && (c.Repo != "" || c.Branch != "" || c.Build != "" || c.Start != "" || c.Source != "" || c.Dir != "") {
+		return errors.New("only a Node.js app takes a repository and commands")
 	}
 	if c.Database && app != AppPHP {
 		return errors.New("only a PHP app chooses its database (WordPress and Laravel always have one, a static site none)")

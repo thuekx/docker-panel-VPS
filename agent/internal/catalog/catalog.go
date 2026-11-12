@@ -126,3 +126,37 @@ func LaravelImage(p PHPVersion) string {
 	sum := sha256.Sum256([]byte(LaravelDockerfile(p)))
 	return "nostek-local/laravel:php" + p.Version + "-" + hex.EncodeToString(sum[:])[:12]
 }
+
+// NodeVersion is one offered Node.js line (APP-02). The image is the official full Debian image (it carries git,
+// which the build needs to fetch the source), pinned by digest; the same image builds and runs the app.
+type NodeVersion struct {
+	Version string
+	Image   string
+	// SecurityUntil is the last day of upstream security fixes (YYYY-MM-DD).
+	SecurityUntil string
+}
+
+// NodeDefault is the Node.js version preselected in the panel (the active LTS line).
+const NodeDefault = "24"
+
+var node = []NodeVersion{
+	{Version: "26", SecurityUntil: "2029-04-30",
+		Image: "node:26.13.1-trixie@sha256:e18c3ccdf7d71619990b0e85639f506e2028a95410999cab24cc373cbd10e0ac"},
+	{Version: "24", SecurityUntil: "2028-04-30",
+		Image: "node:24.22.3-trixie@sha256:6e5d4c38403930b420404f190be8563396dca2bd156a6cb4722707b0efcf6fc1"},
+	{Version: "22", SecurityUntil: "2027-04-30",
+		Image: "node:22.23.5-trixie@sha256:c103d7b5aa3bf627c8b98db941d52556f04e0b5d9352b3d7b6391245d26620f8"},
+}
+
+// Node returns the entry for a Node.js major version.
+func Node(v string) (NodeVersion, bool) {
+	for _, n := range node {
+		if n.Version == v {
+			return n, true
+		}
+	}
+	return NodeVersion{}, false
+}
+
+// NodeAll returns the offered Node.js versions, newest first.
+func NodeAll() []NodeVersion { return append([]NodeVersion(nil), node...) }

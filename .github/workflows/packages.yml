@@ -126,6 +126,8 @@ jobs:
       - name: lock
         run: cd packages/site-01 && sha256sum -c site-01.lock
       - name: harness (real Docker; builds the agent, creates Apache and Nginx WordPress sites)
-        run: sudo bash packages/site-01/tests/harness.sh
+        env:
+          NODE_GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: sudo env "HARNESS_NODE_GIT_BRANCH=$NODE_GIT_BRANCH" bash packages/site-01/tests/harness.sh
       - name: mutants
         run: sudo env "PATH=$PATH" bash packages/site-01/tests/mutants.sh

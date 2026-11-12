@@ -146,3 +146,62 @@ func TestCreateApps(t *testing.T) {
 		t.Error("default app is not WordPress")
 	}
 }
+
+func TestNodeCreate(t *testing.T) {
+	ok := Create{App: "node", Domain: "voltix.id", Primary: "domain", Version: "24", Repo: "https://github.com/owner/shop.git", Branch: "main"}
+	if err := ok.Check(nil); err != nil {
+		t.Fatal(err)
+	}
+	for name, mut := range map[string]func(c *Create){
+		"server":      func(c *Create) { c.Server = "nginx" },
+		"php":         func(c *Create) { c.PHP = "8.4" },
+		"version":     func(c *Create) { c.Version = "20" },
+		"no version":  func(c *Create) { c.Version = "" },
+		"http":        func(c *Create) { c.Repo = "http://github.com/owner/shop.git" },
+		"userinfo":    func(c *Create) { c.Repo = "https://user:pw@github.com/owner/shop.git" },
+		"query":       func(c *Create) { c.Repo = "https://github.com/owner/shop.git?x=1" },
+		"ssh":         func(c *Create) { c.Repo = "git@github.com:owner/shop.git" },
+		"dotdot":      func(c *Create) { c.Repo = "https://github.com/owner/../shop" },
+		"file":        func(c *Create) { c.Repo = "file:///etc" },
+		"no branch":   func(c *Create) { c.Branch = "" },
+		"dash branch": func(c *Create) { c.Branch = "-x" },
+		"bad branch":  func(c *Create) { c.Branch = "a..b" },
+		"space":       func(c *Create) { c.Branch = "a b" },
+		"newline cmd": func(c *Create) { c.Build = "npm run build\nrm -rf /" },
+		"long cmd":    func(c *Create) { c.Start = strings.Repeat("x", MaxCommand+1) },
+		"db":          func(c *Create) { c.Database = true },
+		"source":      func(c *Create) { c.Source = "svn" },
+		"files+repo":  func(c *Create) { c.Source = "files" },
+		"dir up":      func(c *Create) { c.Dir = "../etc" },
+		"dir abs":     func(c *Create) { c.Dir = "/etc" },
+		"dir inner":   func(c *Create) { c.Dir = "apps/../../x" },
+		"dir dots":    func(c *Create) { c.Dir = "apps/.." },
+	} {
+		c := ok
+		mut(&c)
+		if c.Check(nil) == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	c := ok
+	c.Build, c.Start, c.Branch = "npm run build:prod", "node dist/server.js --port $PORT", "release/v2"
+	if err := c.Check(nil); err != nil {
+		t.Fatal(err)
+	}
+	c.Dir = "apps/web"
+	if err := c.Check(nil); err != nil {
+		t.Fatal(err)
+	}
+	files := Create{App: "node", Domain: "voltix.id", Primary: "domain", Version: "22", Source: "files", Dir: "web"}
+	if err := files.Check(nil); err != nil {
+		t.Fatal(err)
+	}
+	php := Create{App: "php", Domain: "voltix.id", Primary: "domain", Server: "nginx", PHP: "8.4", Repo: "https://github.com/a/b"}
+	if php.Check(nil) == nil {
+		t.Error("php app took a repository")
+	}
+	php.Repo, php.Source = "", "files"
+	if php.Check(nil) == nil {
+		t.Error("php app took a source")
+	}
+}

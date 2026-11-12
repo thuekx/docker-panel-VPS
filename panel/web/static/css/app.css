@@ -374,9 +374,23 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .app-card>span{display:flex;flex-direction:column;gap:2px}
 .app-card .muted{font-size:13px}
 .site-new .for-php{display:flex;flex-direction:column;gap:14px}
-.site-new:has(input[name=app][value=static]:checked) .for-php{display:none}
+.site-new:has(input[name=app][value=static]:checked) .for-php,.site-new:has(input[name=app][value=node]:checked) .for-php{display:none}
+.site-new .for-node{display:flex;flex-direction:column;gap:14px}
+.site-new:not(:has(input[name=app][value=node]:checked)) .for-node{display:none}
+.site-new .for-git{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.site-new:has(input[name=source][value=files]:checked) .for-git{display:none}
+.site-new:not(:has(input[name=source][value=files]:checked)) .for-files{display:none}
+.site-new .for-node .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .site-new:has(input[name=app][value=laravel]:checked) .for-server{display:none}
 .site-new:not(:has(input[name=app][value=laravel]:checked)) .for-laravel{display:none}
 .site-new:not(:has(input[name=app][value=php]:checked)) .for-phpapp{display:none}
 .site-new:not(:has(input[name=app][value=wordpress]:checked)) .for-wp{display:none}
 .site-new:has(input[name=app][value=wordpress]:checked) .for-other{display:none}
+
+/* APP-02: deploy */
+.deploy-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.deploy-src{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:14px;margin:4px 0 14px}
+.deploy-src dt{color:var(--muted)}
+.deploy-src dd{margin:0;overflow-wrap:anywhere}
+.deploy-table td .row{flex-wrap:nowrap}
+.build-log{max-height:520px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--track);border-radius:10px;padding:12px;margin:0}

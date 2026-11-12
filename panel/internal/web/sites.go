@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -121,6 +122,15 @@ func formCreate(r *http.Request) (agent.Create, string) {
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "nginx", "", ""
 	case "laravel": // always Nginx + PHP-FPM with its own MariaDB
 		c.App, c.Server, c.AdminEmail, c.Version = app, "nginx", "", strings.TrimSpace(f.Get("version"))
+	case "node": // APP-02: built from Git, no web server or PHP choice
+		c.App, c.Server, c.PHP, c.AdminEmail = app, "", "", ""
+		c.Version = strings.TrimSpace(f.Get("node"))
+		c.Repo, c.Branch = strings.TrimSpace(f.Get("repo")), strings.TrimSpace(f.Get("branch"))
+		c.Build, c.Start = strings.TrimSpace(f.Get("build")), strings.TrimSpace(f.Get("start"))
+		c.Dir = strings.Trim(strings.TrimSpace(f.Get("dir")), "/")
+		if low("source") == "files" {
+			c.Source, c.Repo, c.Branch = "files", "", ""
+		}
 	default: // php, or anything else for the agent to refuse
 		c.App, c.AdminEmail, c.Database = app, "", f.Get("database") == "1"
 	}
@@ -176,8 +186,12 @@ var jobSteps = []string{"files", "pull images", "start containers", "install Wor
 // laravelSteps is the order of a Laravel create; the agent reports "build PHP image" right after "files".
 var laravelSteps = []string{"files", "build PHP image", "pull images", "install Laravel", "start containers"}
 
-// jobKindSteps is the order of the steps of the other jobs (BAK-01).
+// nodeSteps is the order of a Node.js create (APP-02); the agent reports "fetch and build" after the image pull.
+var nodeSteps = []string{"files", "pull images", "fetch and build", "start new release"}
+
+// jobKindSteps is the order of the steps of the other jobs (BAK-01, APP-02 deploy).
 var jobKindSteps = map[string][]string{
+	"deploy":  {"fetch and build", "start new release"},
 	"backup":  {"copy database", "copy files"},
 	"restore": {"safety database", "safety files", "restore database", "restore files", "switch files"},
 }
@@ -197,6 +211,9 @@ func jobProgress(j agent.Job) ([]stepRow, int) {
 		for _, st := range j.Steps {
 			if st == "build PHP image" {
 				keys = append([]string{}, laravelSteps...)
+			}
+			if st == "fetch and build" {
+				keys = append([]string{}, nodeSteps...)
 			}
 		}
 	}
@@ -333,6 +350,33 @@ type siteData struct {
 	Created string
 	Stack   stackView
 	Artisan *artisanResult // the artisan command just run (Laravel)
+	Deploys []deployRow    // APP-02: deploy history of a Node.js website
+	NoHist  string         // why the history could not be read
+}
+
+// deployRow is one deploy as the Overview shows it.
+type deployRow struct {
+	agent.Deploy
+	When  string
+	Short string // first 7 characters of the commit
+	Took  string // build + start time
+	Kept  bool   // the release folder is still there (live or ok)
+}
+
+func (s *Server) deployRows(ds []agent.Deploy) []deployRow {
+	rows := make([]deployRow, 0, len(ds))
+	for _, d := range ds {
+		r := deployRow{Deploy: d, When: time.Unix(d.Started, 0).In(s.loc()).Format("02 Jan 2006 15:04"),
+			Kept: d.Result == "live" || d.Result == "ok"}
+		if len(d.Commit) >= 7 {
+			r.Short = d.Commit[:7]
+		}
+		if d.Ended > d.Started {
+			r.Took = (time.Duration(d.Ended-d.Started) * time.Second).String()
+		}
+		rows = append(rows, r)
+	}
+	return rows
 }
 
 // artisanResult is the output of one artisan command shown on the Overview.
@@ -365,6 +409,13 @@ func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanRe
 		d.Stack = s.stackOf(st)
 	} else {
 		d.Stack = stackView{Err: err.Error()}
+	}
+	if site.IsNode() {
+		if h, err := s.ag.Deploys(ctx, id); err == nil {
+			d.Deploys = s.deployRows(h)
+		} else {
+			d.NoHist = err.Error()
+		}
 	}
 	if svc := r.URL.Query().Get("logs"); siteService(site, svc) {
 		d.Service = svc
@@ -419,6 +470,29 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		}
 		s.showSite(w, r, res)
 		return
+	case "deploy":
+		if !site.IsNode() {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		job, err := s.ag.StartDeploy(ctx, id)
+		if err != nil {
+			s.audit1(userOf(r), r, "site.deploy", id+" failed: "+err.Error())
+			http.Redirect(w, r, back+"?err="+url.QueryEscape(err.Error())+"#deploy", http.StatusSeeOther)
+			return
+		}
+		s.owners.set(job, userOf(r).ID)
+		s.audit1(userOf(r), r, "site.deploy", id+" "+site.Domain)
+		http.Redirect(w, r, "/sites/job/"+job, http.StatusSeeOther)
+		return
+	case "rollback":
+		n, cerr := strconv.Atoi(r.PostForm.Get("release"))
+		if !site.IsNode() || cerr != nil || n < 1 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		err = s.ag.Rollback(ctx, id, n)
+		act = "rollback"
 	case "delete":
 		if strings.TrimSpace(strings.ToLower(r.PostForm.Get("confirm"))) != site.Domain {
 			http.Redirect(w, r, back+"?err="+url.QueryEscape(s.tr.T(s.lang(r), "sites.delete.mismatch")), http.StatusSeeOther)
@@ -462,7 +536,9 @@ func (s *Server) siteRestore(w http.ResponseWriter, r *http.Request) {
 func siteService(site agent.Site, svc string) bool {
 	switch svc {
 	case "web":
-		return true
+		return !site.IsNode()
+	case "app":
+		return site.IsNode()
 	case "php":
 		return site.Server == "nginx" && site.AppName() != "static"
 	case "db":
@@ -471,4 +547,33 @@ func siteService(site agent.Site, svc string) bool {
 		return site.IsLaravel()
 	}
 	return false
+}
+
+// buildLog shows the build log of one release of a Node.js website (APP-02).
+func (s *Server) buildLog(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	n, err := strconv.Atoi(r.PathValue("n"))
+	if !siteRe.MatchString(id) || err != nil || n < 1 {
+		s.notFound(w, r)
+		return
+	}
+	ctx, cancel := s.agentCtx(r, 20*time.Second)
+	defer cancel()
+	site, err := s.ag.Site(ctx, id)
+	if err != nil || !site.IsNode() {
+		s.notFound(w, r)
+		return
+	}
+	l, err := s.ag.BuildLog(ctx, id, n)
+	if err != nil {
+		s.notFound(w, r)
+		return
+	}
+	s.render(w, r, "buildlog", page{Title: site.Domain, Active: "sites", Data: buildLogData{Site: site, Release: n, Log: l}})
+}
+
+type buildLogData struct {
+	Site    agent.Site
+	Release int
+	Log     string
 }

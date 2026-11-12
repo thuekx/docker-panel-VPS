@@ -325,6 +325,12 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		Database: c.Database,
 		Version:  laravelVersion(c),
 	}
+	if c.AppOf() == spec.AppNode {
+		s.Version, s.Repo, s.Branch, s.Build, s.Start, s.Dir = c.Version, c.Repo, c.Branch, c.Build, c.Start, c.Dir
+		if c.Source == spec.SourceFiles {
+			s.Source = spec.SourceFiles
+		}
+	}
 	if c.AppOf() != spec.AppWordPress {
 		s.App = c.AppOf()
 	}
@@ -394,6 +400,10 @@ func (m *Manager) create(j *Job, s Site) {
 		j.Fail(fmt.Sprintf("%s: %v %s", step, err, tail(out)))
 		s.Phase = "failed"
 		_ = writeSite(dir, s)
+	}
+	if s.IsNode() {
+		m.createNode(ctx, j, s, fail)
+		return
 	}
 	j.Step("files")
 	dirs := []string{dir, filepath.Join(dir, "wp")}
@@ -713,6 +723,9 @@ type Stack struct {
 
 // services lists the services a site may have; anything else in the project is ignored.
 func services(s Site) []string {
+	if s.IsNode() {
+		return []string{"app"}
+	}
 	l := []string{"web"}
 	if s.Server == "nginx" && s.AppName() != spec.AppStatic {
 		l = append(l, "php")

@@ -7,8 +7,9 @@
 <article class="card tone c-acc" data-anim="card">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "sites.status"}}</span>{{template "sitestatus" (dict3 $l $s.Status $s.Phase)}}</div>
   <div class="table-wrap"><table><tbody>
-    <tr><th>{{t $l "sites.app"}}</th><td><span class="tag-srv c-teal">{{t $l (printf "sites.app.%s" $s.AppName)}}{{if $s.Version}} {{$s.Version}}{{end}}</span>{{if $s.HasDB}} <span class="tag-srv c-blue">MariaDB</span>{{end}}</td></tr>
-    <tr><th>{{t $l "sites.server"}}</th><td><span class="tag-srv {{if eq $s.Server "nginx"}}c-green{{else}}c-orange{{end}}">{{if eq $s.AppName "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $s.Server)}}{{end}}</span></td></tr>
+    <tr><th>{{t $l "sites.app"}}</th><td><span class="tag-srv c-teal">{{t $l (printf "sites.app.%s" $s.AppName)}}{{if and $s.Version (not $s.IsNode)}} {{$s.Version}}{{end}}</span>{{if $s.HasDB}} <span class="tag-srv c-blue">MariaDB</span>{{end}}</td></tr>
+    {{if $s.IsNode}}<tr><th>{{t $l "deploy.runtime"}}</th><td><span class="tag-srv c-green">Node.js {{$s.Version}}</span></td></tr>
+    {{else}}<tr><th>{{t $l "sites.server"}}</th><td><span class="tag-srv {{if eq $s.Server "nginx"}}c-green{{else}}c-orange{{end}}">{{if eq $s.AppName "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $s.Server)}}{{end}}</span></td></tr>{{end}}
     {{if $s.PHP}}<tr><th>PHP</th><td><span class="tag-srv c-violet">PHP {{$s.PHP}}</span></td></tr>{{end}}
     {{if $s.IsWP}}<tr><th>{{t $l "sites.wpurl"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a> · <a href="{{$s.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></td></tr>
     <tr><th>{{t $l "sites.job.user"}}</th><td><code>{{$s.AdminUser}}</code></td></tr>{{else}}
@@ -26,7 +27,7 @@
     <button class="secondary" name="action" value="stop" type="submit">{{t $l "sites.act.stop"}}</button>
   </form>
   <h2>{{t $l "sites.logs"}}</h2>
-  <p class="row"><a class="ghost btn" href="/sites/{{$s.ID}}?logs=web">{{t $l "sites.logs.web"}}</a>{{if and (eq $s.Server "nginx") $s.PHP}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=php">PHP</a>{{end}}{{if $s.HasDB}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=db">{{t $l "sites.logs.db"}}</a>{{end}}{{if $s.IsLaravel}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=queue">{{t $l "stack.svc.queue"}}</a><a class="ghost btn" href="/sites/{{$s.ID}}?logs=scheduler">{{t $l "stack.svc.scheduler"}}</a>{{end}}</p>
+  <p class="row">{{if $s.IsNode}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=app">{{t $l "stack.svc.app"}}</a>{{else}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=web">{{t $l "sites.logs.web"}}</a>{{end}}{{if and (eq $s.Server "nginx") $s.PHP}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=php">PHP</a>{{end}}{{if $s.HasDB}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=db">{{t $l "sites.logs.db"}}</a>{{end}}{{if $s.IsLaravel}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=queue">{{t $l "stack.svc.queue"}}</a><a class="ghost btn" href="/sites/{{$s.ID}}?logs=scheduler">{{t $l "stack.svc.scheduler"}}</a>{{end}}</p>
   <h2>{{t $l "sites.delete"}}</h2>
   <p class="muted">{{t $l "sites.delete.help" $s.Domain}}</p>
   <form method="post" action="/sites/{{$s.ID}}" class="form">
@@ -36,6 +37,31 @@
   </form>
 </article>
 </section>
+{{if $s.IsNode}}
+<section class="card wide tone c-green" data-anim="card" id="deploy">
+  <div class="deploy-head"><h2>{{t $l "deploy.title"}}</h2>
+  <form method="post" action="/sites/{{$s.ID}}" class="form row"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="primary" name="action" value="deploy" type="submit"{{if ne $s.Phase "ready"}} disabled{{end}}>{{t $l "deploy.go"}}</button></form></div>
+  <dl class="deploy-src">
+    {{if $s.FromFiles}}<dt>{{t $l "node.source"}}</dt><dd>{{t $l "node.source.files"}} · <a href="/files/{{$s.ID}}?path=source">{{t $l "files.title"}}</a></dd>
+    {{else}}<dt>{{t $l "node.repo"}}</dt><dd><code>{{$s.Repo}}</code></dd>
+    <dt>{{t $l "node.branch"}}</dt><dd><code>{{$s.Branch}}</code></dd>{{end}}
+    {{if $s.Dir}}<dt>{{t $l "node.dir"}}</dt><dd><code>{{$s.Dir}}</code></dd>{{end}}
+    <dt>{{t $l "node.build"}}</dt><dd><code>{{if $s.Build}}{{$s.Build}}{{else}}npm run build --if-present{{end}}</code></dd>
+    <dt>{{t $l "node.start"}}</dt><dd><code>{{if $s.Start}}{{$s.Start}}{{else}}npm start{{end}}</code></dd>
+    <dt>{{t $l "deploy.live"}}</dt><dd>{{if $s.Release}}{{t $l "deploy.release" $s.Release}}{{else}}—{{end}}</dd>
+  </dl>
+  <p class="muted">{{t $l "deploy.help"}}</p>
+  {{if .Data.NoHist}}<p class="banner warn">{{.Data.NoHist}}</p>{{else if .Data.Deploys}}
+  <div class="table-wrap"><table class="deploy-table">
+    <thead><tr><th>{{t $l "deploy.col.release"}}</th><th>{{t $l "deploy.col.when"}}</th><th>{{t $l "deploy.col.commit"}}</th><th>{{t $l "deploy.col.result"}}</th><th></th></tr></thead>
+    <tbody>{{range .Data.Deploys}}
+    <tr><td class="nowrap">#{{.Release}}</td><td class="nowrap">{{.When}}{{if .Took}}<div class="muted">{{.Took}}</div>{{end}}</td>
+      <td>{{if .Short}}<code>{{.Short}}</code> {{.Message}}{{else}}—{{end}}{{if .Error}}<div class="muted">{{.Error}}</div>{{end}}</td>
+      <td class="nowrap"><span class="pill {{if eq .Result "live"}}s-ok{{else if eq .Result "failed"}}s-bad{{else if eq .Result "running"}}s-warn{{else}}s-unknown{{end}}">{{t $l (printf "deploy.res.%s" .Result)}}</span>{{if .Rollback}} <span class="muted">{{t $l "deploy.rolledback"}}</span>{{end}}</td>
+      <td><div class="row"><a class="ghost btn" href="/sites/{{$s.ID}}/deploys/{{.Release}}/log">{{t $l "deploy.log"}}</a>{{if and .Kept (ne .Result "live")}}<form method="post" action="/sites/{{$s.ID}}#deploy" class="form row"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="release" value="{{.Release}}"><button class="secondary" name="action" value="rollback" type="submit">{{t $l "deploy.rollback"}}</button></form>{{end}}</div></td></tr>{{end}}
+    </tbody></table></div>{{end}}
+</section>
+{{end}}
 {{if $s.IsLaravel}}
 <section class="card wide tone c-orange" data-anim="card" id="laravel">
   <h2>{{t $l "lar.title"}}</h2>

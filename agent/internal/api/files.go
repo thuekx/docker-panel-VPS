@@ -52,8 +52,10 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, action, id string,
 		code = 409
 	case errors.Is(err, sites.ErrTooBig):
 		code = 413
-	case errors.Is(err, sites.ErrBadInput):
+	case errors.Is(err, sites.ErrBadInput), errors.Is(err, sites.ErrNotNode):
 		code = 400
+	case errors.Is(err, sites.ErrNoLog):
+		code = 404
 	}
 	if action != "" {
 		s.note(r, action, id, "refused", err.Error())

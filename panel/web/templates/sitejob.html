@@ -12,7 +12,7 @@
     </li>{{end}}
   </ol>
   {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "sites.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if $j.Error}}<p class="err" role="alert">{{$j.Error}}</p><p class="muted">{{t $l "sites.job.failhelp"}}</p>{{end}}
+  {{if $j.Error}}<p class="err" role="alert">{{$j.Error}}</p><p class="muted">{{if .Data.Site.IsNode}}{{t $l "deploy.failhelp"}}{{else}}{{t $l "sites.job.failhelp"}}{{end}}</p>{{if .Data.Site.IsNode}}<p class="row"><a class="primary btn" href="/sites/{{.Data.Site.ID}}#deploy">{{t $l "deploy.title"}}</a></p>{{end}}{{end}}
   {{if eq $j.State "done"}}
   <div class="job-done" data-anim="card">
     <p>{{t $l "sites.job.url"}} <a href="{{.Data.Site.URL}}" target="_blank" rel="noopener noreferrer">{{.Data.Site.URL}}</a>{{if .Data.Site.IsWP}} · <a href="{{.Data.Site.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a>{{end}}</p>
@@ -25,6 +25,7 @@
       <form method="post" action="/sites/job/{{$j.ID}}/secret" class="form"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="primary" type="submit">{{t $l "sites.job.showpw"}}</button></form>
       <p class="muted">{{t $l "sites.job.pwhelp"}}</p>
     {{else}}<p class="muted">{{t $l "sites.job.pwgone"}}</p>{{end}}
+    {{else if .Data.Site.IsNode}}<p class="muted">{{t $l "sites.job.nodenext"}}</p><p class="row"><a class="primary btn" href="/sites/{{.Data.Site.ID}}#deploy">{{t $l "deploy.title"}}</a></p>
     {{else}}<p class="muted">{{if .Data.Site.IsLaravel}}{{t $l "sites.job.laravelnext"}}{{else}}{{t $l "sites.job.appnext"}}{{end}}</p><p class="row"><a class="primary btn" href="/files/{{.Data.Site.ID}}">{{t $l "files.title"}}</a><a class="ghost btn" href="/sites/{{.Data.Site.ID}}">{{t $l "sites.tab.overview"}}</a></p>{{end}}
   </div>
   {{end}}
