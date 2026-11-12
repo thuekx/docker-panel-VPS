@@ -18,6 +18,7 @@ Nostek Panel
 │   ├── SITE-02 file manager + DB admin ................... ○
 │   ├── WP-01 WordPress Tools (like WP Toolkit) ........... ○
 │   ├── BAK-01 backup / restore ........................... ○
+│   ├── APP-01 one-click apps (React, Laravel, Next.js, Go…) ○ proposed
 │   ├── NATIVE-01 optional native site engine ............ ○ later
 │   ├── MIG-01 WordPress migration ........................ ○
 │   └── OPS-01 logs, usage, cron, alerts .................. ○
