@@ -1,0 +1,10 @@
+{
+  "name": "nostek-node-app-check",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Test app of the SITE-01 harness (APP-02): deployed from Git by the agent. No dependencies.",
+  "scripts": {
+    "build": "node -e \"require('fs').writeFileSync('built.txt', 'built by npm run build')\"",
+    "start": "node server.js"
+  }
+}

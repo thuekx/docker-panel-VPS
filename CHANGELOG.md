@@ -3,6 +3,23 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.10.0] — 2026-11-12
+
+### Added
+- **Node.js websites** (APP-02, first part). "Add website" offers Node.js: Express, NestJS, Nuxt, SvelteKit, Next.js
+  and other Node.js apps, on the official Node.js image (22, 24 default, or 26), pinned by digest.
+  - Source: a public **Git repository** and branch, or the website's own **files** (upload them with the File
+    Manager; a small starter app is put there first). An **app folder** can be named for a monorepo (`apps/web`).
+  - The panel runs `npm ci` (or `npm install`), your build command and your start command; the app listens on the
+    port in `PORT` (3000). Build and start commands have defaults and can be changed.
+  - **Deploy** on the Overview: every deploy builds a new release next to the live one in a separate, limited
+    container (2 CPUs, 1.5 GB, 15 minutes, no privileges). The website switches only when the new release answers;
+    a failed build or a release that does not start leaves the previous one live.
+  - Deploy history with commit, result and the **build log** of every release, and **rollback** to one of the last
+    3 good releases.
+- Next: Go and Python apps, private repositories (deploy keys), environment values in the panel, a database for
+  Node.js apps, and an auto-deploy webhook (APP-02 parts b and c).
+
 ## [1.9.1] — 2026-11-12
 
 ### Added

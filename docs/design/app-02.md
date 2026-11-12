@@ -1,6 +1,6 @@
 # APP-02 — Node.js / Next.js, Go and Python websites, deployed from Git
 
-Status: [DESIGN] 2026-11-12, after APP-01 (Laravel live as v1.9.0). Owner order: every stack first (APP-01, APP-02),
+Status: APP-02a BUILT 2026-11-12 (v1.10.0, Node.js from Git or own files); 02b/02c [DESIGN]. Designed 2026-11-12, after APP-01 (Laravel live as v1.9.0). Owner order: every stack first (APP-01, APP-02),
 then IMG-01 (update image button), then APP-03 (ready-app catalogue).
 
 ## What the owner gets
@@ -40,3 +40,20 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
 1. **APP-02a**: Node.js + Next.js from Git (public) or .zip; Deploy tab with history and rollback; env editor.
 2. **APP-02b**: Go and Python; private repos with deploy keys; PostgreSQL option.
 3. **APP-02c**: auto-deploy webhook per branch.
+
+## APP-02a as built (v1.10.0)
+
+- App `node`; Node.js 22, 24 (default), 26 = official `node:<version>-trixie` images (they carry git), pinned by digest.
+  The same image builds and runs the app. Port fixed at 3000 (`PORT`), so the edge needs no per-site port.
+- Source `git` (public https address, no user info, branch) or `files` (`wp/source/`, starter app with no
+  dependencies); optional app folder (`dir`) for monorepos. Private repositories, env editor, database: APP-02b.
+- Layout: `wp/releases/<n>/` (visible in the File Manager and in backups), `deploy/history.json` and
+  `deploy/logs/<n>.log` (0600, outside the website folder). Last 3 good releases kept; history 30 entries.
+- Build: `docker run --rm` as www-data, `--cap-drop ALL`, `no-new-privileges`, 2 CPUs, 1.5 GB, 1024 pids,
+  15 minutes; repository and branch passed as environment values, never inside the script; `.git` removed from the
+  release. Install: `npm ci` when there is a lock file, else `npm install`; then the build command.
+- Switch: compose points `app` at the new release and `up --wait` (180 s, healthcheck = an HTTP answer below 500 on
+  port 3000). On failure the previous release is put back and the deploy is marked failed. No downtime during the
+  build; a few seconds while the container is recreated (blue-green is a later improvement).
+- Harness: from files (starter, redeploy, failed build keeps the live release, rollback), and from Git with this
+  repository's `packages/site-01/tests/node-app` on the branch under test (the repo check sets the branch).
