@@ -21,6 +21,18 @@
   <details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
 </section>
 {{end}}
+{{with $d.Restore}}<section class="card wide tone c-rose" data-anim="card" id="restore">
+  <h2>{{t $l "bak.restore.title" .When}}</h2>
+  <p class="banner warn">{{t $l "bak.restore.warn" .When}}</p>
+  <form method="post" action="/backup/{{$s.ID}}" class="form bak-restore"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="restore"><input type="hidden" name="name" value="{{.Name}}">
+    <fieldset class="opts"><legend>{{t $l "bak.restore.what"}}</legend>
+      <label class="check"><input type="radio" name="what" value="all" checked> {{t $l "bak.what.all"}}</label>
+      <label class="check"><input type="radio" name="what" value="files"> {{t $l "bak.what.files"}}</label>
+      <label class="check"><input type="radio" name="what" value="database"> {{t $l "bak.what.database"}}</label></fieldset>
+    <label>{{t $l "bak.restore.confirm" $s.Domain}}<input name="confirm" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
+    <div class="row"><button class="danger" type="submit" data-busy="{{t $l "bak.restore.busy"}}">{{t $l "bak.restore.go"}}</button><a class="ghost btn" href="/backup/{{$s.ID}}">{{t $l "bak.cancel"}}</a></div>
+  </form>
+</section>{{end}}
 <section class="grid pair">
 <article class="card tone c-teal" data-anim="card">
   <h2><span class="h-ico" aria-hidden="true">{{template "ico-archive"}}</span>{{t $l "bak.title"}}</h2>
@@ -51,16 +63,7 @@
     <td class="num">{{.Human}}</td>
     <td class="bak-acts">
       <a class="ghost btn" href="/backup/{{$s.ID}}/file/{{.Name}}">{{t $l "bak.download"}}</a>
-      <details class="bak-restore"><summary class="btn secondary">{{t $l "bak.restore"}}</summary>
-        <form method="post" action="/backup/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="restore"><input type="hidden" name="name" value="{{.Name}}">
-          <p class="banner warn">{{t $l "bak.restore.warn" .When}}</p>
-          <fieldset class="opts"><legend>{{t $l "bak.restore.what"}}</legend>
-            <label class="check"><input type="radio" name="what" value="all" checked> {{t $l "bak.what.all"}}</label>
-            <label class="check"><input type="radio" name="what" value="files"> {{t $l "bak.what.files"}}</label>
-            <label class="check"><input type="radio" name="what" value="database"> {{t $l "bak.what.database"}}</label></fieldset>
-          <label>{{t $l "bak.restore.confirm" $s.Domain}}<input name="confirm" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
-          <button class="danger" type="submit" data-busy="{{t $l "bak.restore.busy"}}">{{t $l "bak.restore.go"}}</button>
-        </form></details>
+      <a class="secondary btn" href="/backup/{{$s.ID}}?restore={{.Name}}#restore">{{t $l "bak.restore"}}</a>
       <form method="post" action="/backup/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="delete"><input type="hidden" name="name" value="{{.Name}}"><button class="ghost danger-text" type="submit" data-confirm="{{t $l "bak.delete.ask" .When}}">{{t $l "bak.delete"}}</button></form>
     </td></tr>{{end}}
   </tbody></table></div>{{end}}

@@ -59,7 +59,7 @@ func TestBackupPage(t *testing.T) {
 	f.bakJob = agent.Job{ID: "jbac0000000000002", Kind: "restore", Site: "voltix-id", State: "running", Steps: []string{"safety database", "safety files", "restore database"}}
 	for _, lang := range []string{"en", "id"} {
 		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
-		for _, q := range []string{"", "?job=jbac0000000000002", "?done=schedule", "?done=delete"} {
+		for _, q := range []string{"", "?restore=" + bakName, "?job=jbac0000000000002", "?done=schedule", "?done=delete"} {
 			code, body, _ := e.get(e.c, "/backup/voltix-id"+q)
 			if code != 200 || missingKey.MatchString(body) {
 				t.Errorf("%s (%s): %d or missing key %v", q, lang, code, missingKey.FindString(body))
@@ -68,13 +68,20 @@ func TestBackupPage(t *testing.T) {
 	}
 	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
 	_, body, _ := e.get(e.c, "/backup/voltix-id")
-	for _, want := range []string{"Make a backup now", "safety copy", "daily", `href="/backup/voltix-id/file/` + bakName + `"`, "Type voltix.id to confirm", "the last 7 days", `aria-current="page"><span aria-hidden="true"><svg`, "03:30 WIB"} {
+	for _, want := range []string{"Make a backup now", "safety copy", "daily", `href="/backup/voltix-id/file/` + bakName + `"`, `href="/backup/voltix-id?restore=` + bakName + `#restore"`, "the last 7 days", `aria-current="page"><span aria-hidden="true"><svg`, "03:30 WIB"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
 		}
 	}
-	if strings.Contains(body, `id="job"`) {
-		t.Error("job card without a job")
+	if strings.Contains(body, `id="job"`) || strings.Contains(body, `id="restore"`) {
+		t.Error("job card or restore form without a reason")
+	}
+	_, body, _ = e.get(e.c, "/backup/voltix-id?restore="+bakName)
+	if !strings.Contains(body, `id="restore"`) || !strings.Contains(body, "Type voltix.id to confirm") || !strings.Contains(body, `value="`+bakName+`"`) {
+		t.Error("restore form not shown")
+	}
+	if _, body, _ = e.get(e.c, "/backup/voltix-id?restore=site.json"); strings.Contains(body, `id="restore"`) {
+		t.Error("restore form for a name not in the list")
 	}
 	// a running restore is followed with its own steps; "done <name>" is the result, not a step
 	_, body, _ = e.get(e.c, "/backup/voltix-id?job=jbac0000000000002")

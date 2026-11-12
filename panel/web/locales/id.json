@@ -465,5 +465,7 @@
   "bak.step.now.safety files": "Membuat salinan pengaman file…",
   "bak.step.now.restore database": "Mengembalikan database…",
   "bak.step.now.restore files": "Membuka file dari arsip…",
-  "bak.step.now.switch files": "Memindahkan website ke file hasil pemulihan…"
+  "bak.step.now.switch files": "Memindahkan website ke file hasil pemulihan…",
+  "bak.restore.title": "Pulihkan backup %s",
+  "bak.cancel": "Batal"
 }

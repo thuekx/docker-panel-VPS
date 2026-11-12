@@ -32,6 +32,7 @@ type backupData struct {
 	Percent int
 	Result  string // the backup a finished job made
 	Keeps   []int
+	Restore *backupRow // the backup whose restore form is open
 }
 
 func (s *Server) backupPage(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +53,11 @@ func (s *Server) backupPage(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, x := range b.Backups {
 		d.Rows = append(d.Rows, backupRow{x, size(x.Size), time.Unix(x.Created, 0).In(s.loc()).Format("02 Jan 2006 15:04")})
+	}
+	for i := range d.Rows {
+		if d.Rows[i].Name == r.URL.Query().Get("restore") {
+			d.Restore = &d.Rows[i]
+		}
 	}
 	// follow the job named in the address, or else the one running now
 	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
