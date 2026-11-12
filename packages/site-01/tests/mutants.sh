@@ -42,6 +42,13 @@ GO_MUTANTS=(
 	}
 	defer m.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, d)|	ctx, cancel := context.WithTimeout(ctx, d)'                                                                           # two changes run at once
+  'internal/sites/backup.go|		if part == ".." {|		if false && part == ".." {'                                                         # BAK-01: archive path leaves the website
+  'internal/sites/backup.go|		safe, err := m.backup(ctx, j, s, "before-restore")|		safe, err := "", error(nil)'                       # BAK-01: restore without a safety copy
+  'internal/sites/backup.go|strings.NewReader(resetSQL)|strings.NewReader("")'                                                       # BAK-01: tables made after the backup stay behind
+  'internal/sites/backup.go|	if man.Site != id {|	if false {'                                                                        # BAK-01: another website's backup restored here
+  'internal/sites/backup.go|	if !backupRe.MatchString(name) {|	if name == "" {'                                                          # BAK-01: any file name served or restored
+  'internal/sites/backup.go|		if x.Kind != kind {|		if false {'                                                                     # BAK-01: daily keep prunes manual backups
+  'internal/sites/backup.go|"mariadb-dump", "--single-transaction", |"mariadb-dump", '                                                    # BAK-01: inconsistent database copy
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

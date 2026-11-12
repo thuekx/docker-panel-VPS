@@ -1,0 +1,72 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "bak.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (dict3 $l $s.ID "backup")}}
+{{with $d.Job}}{{$j := .}}
+{{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
+<section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
+  <div class="stat-head"><span><b class="ink">{{t $l (printf "bak.job.%s" $j.Kind)}}</b></span>
+  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l (printf "bak.job.%s" $j.Kind)}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <ol class="stepper">{{range $d.Steps}}
+    <li class="st-{{.State}}" data-step="{{.Key}}">
+      <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
+      <span class="txt"><span class="now">{{t $l (printf "bak.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "bak.step.%s" .Key)}}</span></span>
+    </li>{{end}}
+  </ol>
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "bak.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p class="banner ok">{{if eq $j.Kind "restore"}}{{t $l "bak.job.restored" $d.Result}}{{else}}{{t $l "bak.job.made" $d.Result}}{{end}}</p>{{end}}
+  {{if $j.Error}}<p class="banner warn">{{t $l (printf "bak.job.fail.%s" $j.Kind)}}</p>
+  <details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
+</section>
+{{end}}
+{{with $d.Restore}}<section class="card wide tone c-rose" data-anim="card" id="restore">
+  <h2>{{t $l "bak.restore.title" .When}}</h2>
+  <p class="banner warn">{{t $l "bak.restore.warn" .When}}</p>
+  <form method="post" action="/backup/{{$s.ID}}" class="form bak-restore"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="restore"><input type="hidden" name="name" value="{{.Name}}">
+    <fieldset class="opts"><legend>{{t $l "bak.restore.what"}}</legend>
+      <label class="check"><input type="radio" name="what" value="all" checked> {{t $l "bak.what.all"}}</label>
+      <label class="check"><input type="radio" name="what" value="files"> {{t $l "bak.what.files"}}</label>
+      <label class="check"><input type="radio" name="what" value="database"> {{t $l "bak.what.database"}}</label></fieldset>
+    <label>{{t $l "bak.restore.confirm" $s.Domain}}<input name="confirm" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
+    <div class="row"><button class="danger" type="submit" data-busy="{{t $l "bak.restore.busy"}}">{{t $l "bak.restore.go"}}</button><a class="ghost btn" href="/backup/{{$s.ID}}">{{t $l "bak.cancel"}}</a></div>
+  </form>
+</section>{{end}}
+<section class="grid pair">
+<article class="card tone c-teal" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-archive"}}</span>{{t $l "bak.title"}}</h2>
+  <p class="muted">{{t $l "bak.help"}}</p>
+  <form method="post" action="/backup/{{$s.ID}}" class="form row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="backup">
+    <button class="primary" type="submit" data-busy="{{t $l "bak.now.busy"}}"{{if or $d.Err (and $d.Job (eq $d.Job.State "running"))}} disabled{{end}}>{{t $l "bak.now"}}</button>
+    {{if $d.Free}}<span class="muted">{{t $l "bak.free" $d.Free}}</span>{{end}}</form>
+  <p class="muted">{{t $l "bak.offsite"}}</p>
+</article>
+<article class="card tone c-blue" data-anim="card">
+  <h2>{{t $l "bak.schedule"}}</h2>
+  <form method="post" action="/backup/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="schedule">
+    <label class="check"><input type="checkbox" name="daily" value="1"{{if $d.B.Daily}} checked{{end}}> {{t $l "bak.daily"}}</label>
+    <label>{{t $l "bak.keep"}}<select name="keep">{{range $d.Keeps}}<option value="{{.}}"{{if eq . $d.B.Keep}} selected{{end}}>{{t $l "bak.keep.n" .}}</option>{{end}}</select></label>
+    <p class="muted">{{t $l "bak.schedule.help"}}</p>
+    <button class="secondary" type="submit"{{if $d.Err}} disabled{{end}}>{{t $l "bak.schedule.save"}}</button>
+  </form>
+</article>
+</section>
+<section class="card wide tone c-violet" data-anim="card" id="list">
+  <h2>{{t $l "bak.list"}}</h2>
+  {{if $d.Err}}<p class="banner warn">{{t $l "bak.err"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>
+  {{else if not $d.Rows}}<p class="muted">{{t $l "bak.none"}}</p>
+  {{else}}<div class="table-wrap"><table class="bak-table"><thead><tr><th>{{t $l "bak.when"}}</th><th>{{t $l "bak.kind"}}</th><th class="num">{{t $l "bak.size"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Rows}}<tr>
+    <td><b>{{.When}}</b></td>
+    <td><span class="pill {{if eq .Kind "before-restore"}}s-warn{{else if eq .Kind "daily"}}s-run{{else}}s-ok{{end}}">{{t $l (printf "bak.kind.%s" .Kind)}}</span></td>
+    <td class="num">{{.Human}}</td>
+    <td class="bak-acts">
+      <a class="ghost btn" href="/backup/{{$s.ID}}/file/{{.Name}}">{{t $l "bak.download"}}</a>
+      <a class="secondary btn" href="/backup/{{$s.ID}}?restore={{.Name}}#restore">{{t $l "bak.restore"}}</a>
+      <form method="post" action="/backup/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="delete"><input type="hidden" name="name" value="{{.Name}}"><button class="ghost danger-text" type="submit" data-confirm="{{t $l "bak.delete.ask" .When}}">{{t $l "bak.delete"}}</button></form>
+    </td></tr>{{end}}
+  </tbody></table></div>{{end}}
+</section>
+<p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
+{{end}}

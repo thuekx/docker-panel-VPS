@@ -348,3 +348,16 @@ button .ico{color:inherit}
 .banner details,.wp-notes details{margin-top:8px}.banner details summary,.wp-notes details summary{cursor:pointer;font-size:13px}
 .banner p{margin:0}.banner pre.logs,.wp-notes pre.logs{max-height:240px;white-space:pre-wrap;word-break:break-word;font-size:12px}
 .wp-notes ul.plain li{list-style:disc;margin-left:18px}
+/* BAK-01 backup page */
+.bak-acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.bak-acts form{margin:0}
+.bak-table td{vertical-align:middle}
+.bak-table td:first-child{white-space:nowrap}
+.bak-restore{max-width:620px}
+.bak-restore fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px}
+.ghost.danger-text{color:var(--err-ink)}
+details.tech{margin-top:8px}
+details.tech>summary{cursor:pointer;color:var(--muted);font-size:13px}
+details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
+@media (max-width:860px){.bak-table thead{display:none}.bak-table tr{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.bak-table td{display:block;padding:0;border:0}.bak-table td:nth-child(3){display:none}.bak-table td.bak-acts{grid-column:1/-1;justify-content:flex-start}}

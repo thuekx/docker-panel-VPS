@@ -192,6 +192,38 @@ MAXT=240 api POST /v1/sites/b-example-test/wp/cli '{"line":"wp option get blogna
 MAXT=240 api POST /v1/sites/b-example-test/wp/cli '{"line":"option get blogname; id > /tmp/pwn $(id)"}'; ok "console has no shell" '[ "$CODE" = 200 ] && ! grep -q "uid=" <<<"$BODY"'
 api POST /v1/sites/b-example-test/wp/cli '{"line":"shell"}'; ok "interactive console commands refused" '[ "$CODE" = 400 ]'
 
+# --- BAK-01 website backup and restore (real mariadb-dump, real file swap)
+BKD="$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/backups"
+bakname() { python3 -c 'import json,sys; b=json.load(sys.stdin)["backups"]; k=[x["name"] for x in b if x["kind"]==sys.argv[1]]; print(k[0] if k else "")' "$1" <<<"$BODY"; }
+api POST /v1/sites/b-example-test/backups; JBK="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "backup made" '[ "$CODE" = 202 ] && [ "$(wait_job "$JBK")" = done ]'
+api GET /v1/sites/b-example-test/backups; BKN="$(bakname manual)"
+tar -tzf "$BKD/$BKN" > "$T/bk.list" 2>/dev/null; tar -xzOf "$BKD/$BKN" database.sql > "$T/bk.sql" 2>/dev/null
+ok "backup archive: manifest first, database dump, website files, private" '[ -n "$BKN" ] && [ "$(stat -c "%a %u" "$BKD/$BKN")" = "600 0" ] && [ "$(head -n1 "$T/bk.list")" = manifest.json ] && grep -q "CREATE TABLE \`wp_options\`" "$T/bk.sql" && grep -qx "wp/wp-config.php" "$T/bk.list" && [ -z "$(ls "$BKD" | grep -v "\.tar\.gz$")" ]'
+ok "database password not in the archive listing or the audit log" '! tar -xzOf "$BKD/$BKN" manifest.json site.json | grep -qF "$DBPW" && ! grep -qF "$DBPW" "$SITE01_TEST_ROOT/var/log/nostek-agent/"*'
+RAWOUT="$T/site.tar.gz" raw GET "/v1/sites/b-example-test/backups/$BKN"; ok "download is the same archive" '[ "$CODE" = 200 ] && cmp -s "$T/site.tar.gz" "$BKD/$BKN"'
+OWN="$(stat -c "%u:%g %a" "$WPB/wp-config.php")"
+api POST /v1/sites/b-example-test/db/query '{"sql":"UPDATE wp_options SET option_value = '"'"'Rusak'"'"' WHERE option_name = '"'"'blogname'"'"'; CREATE TABLE np_after (id int)"}'
+printf 'x' > "$WPB/rusak.php"; printf '<?php // changed' > "$WPB/index.php"
+api POST /v1/sites/b-example-test/db/query '{"sql":"SHOW TABLES LIKE '"'"'np_after'"'"'"}'; ok "website changed after the backup" '[ "$CODE" = 200 ] && grep -q "\"np_after\"\]" <<<"$BODY"'
+api POST "/v1/sites/b-example-test/backups/$BKN/restore" '{"what":"all"}'; JR="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "restore everything" '[ "$CODE" = 202 ] && [ "$(wait_job "$JR")" = done ]'
+ok "website, database and files back as in the backup" '[ "$(web b-example-test b-example-test.$ZONE /)" = 200 ] && grep -q "<title>Situs B" <<<"$(site_body b-example-test "b-example-test.$ZONE")" && [ ! -e "$WPB/rusak.php" ] && ! grep -q changed "$WPB/index.php" && [ "$(stat -c "%u:%g %a" "$WPB/wp-config.php")" = "$OWN" ]'
+api POST /v1/sites/b-example-test/db/query '{"sql":"SHOW TABLES LIKE '"'"'np_after'"'"'"}'; ok "tables made after the backup are gone" '[ "$CODE" = 200 ] && grep -q "\"rows\":\[\]" <<<"$BODY"'
+api GET /v1/sites/b-example-test/backups; SAFE="$(bakname before-restore)"
+tar -tzf "$BKD/$SAFE" > "$T/safe.list" 2>/dev/null
+ok "safety copy of the state before restore kept" '[ -n "$SAFE" ] && grep -qx "wp/rusak.php" "$T/safe.list" && ! ls "$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test" | grep -q "^wp\."'
+( cd "$T" && mkdir -p evil/wp && printf '{"format":"nostek-site-backup/1","site":"b-example-test","complete":true}' > evil/manifest.json && printf -- '-- x\n' > evil/database.sql && printf 'x' > evil/wp/a.php \
+  && python3 -c 'import tarfile;t=tarfile.open("evil.tar.gz","w:gz");[t.add("evil/"+n,arcname=n) for n in ("manifest.json","database.sql","wp/a.php")];i=tarfile.TarInfo("wp/../../../escape.php");i.size=1;import io;t.addfile(i,io.BytesIO(b"x"));t.close()' )
+cp "$T/evil.tar.gz" "$BKD/manual-20200101-000000.tar.gz"
+api POST /v1/sites/b-example-test/backups/manual-20200101-000000.tar.gz/restore '{"what":"files"}'; JE="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+SE="$(wait_job "$JE" 2>/dev/null)"; api GET "/v1/jobs/$JE"
+ok "hostile archive refused, website untouched" '[ "$SE" = failed ] && grep -q "outside the website" <<<"$BODY" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/escape.php" ] && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/sites/escape.php" ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
+api POST /v1/sites/b-example-test/backups/schedule '{"daily":true,"keep":3}'
+ok "daily backup switched on" '[ "$CODE" = 200 ] && grep -q "\"backup_daily\": *true" "$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/site.json"'
+api POST /v1/sites/b-example-test/backups/manual-20200101-000000.tar.gz/delete; ok "delete a backup" '[ "$CODE" = 200 ] && [ ! -e "$BKD/manual-20200101-000000.tar.gz" ]'
+api GET "/v1/sites/b-example-test/backups/..%2Fsite.json"; ok "backup names outside the list refused" '[ "$CODE" = 400 ]'
+
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again (update) passes, websites untouched" '[ $RC = 0 ] && has "already built" && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$CIDS" ]'
