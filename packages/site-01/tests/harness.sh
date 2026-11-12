@@ -127,6 +127,43 @@ PHP_START="$(docker inspect -f "{{.State.StartedAt}}" np-site-b-example-test-php
 api POST /v1/sites/b-example-test/services/php/restart; ok "restart one container (php) only" '[ "$CODE" = 200 ] && [ "$(docker inspect -f "{{.State.StartedAt}}" np-site-b-example-test-php-1)" != "$PHP_START" ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
 api POST /v1/sites/a-example-test/services/php/restart; ok "apache site has no php container to restart" '[ "$CODE" = 400 ]'
 
+# --- SITE-02 file manager and database (real files, real MariaDB)
+raw() { # METHOD PATH FILE|- -> body in $BODY (or saved to $RAWOUT), HTTP code in $CODE
+  local out
+  out="$(curl -s --noproxy '*' --max-time 120 --unix-socket "$(SOCK)" -X "$1" -H 'Content-Type: application/octet-stream' ${3:+--data-binary "@$3"} ${RAWOUT:+-o "$RAWOUT"} -w '\n%{http_code}' "http://agent$2")"
+  CODE="${out##*$'\n'}"; BODY="${out%$'\n'*}"
+}
+site_get() { docker run --rm --network nostek-edge "$CURL_IMG" -s --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-web-1$3"; }
+WPB="$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/wp"
+printf 'hello from the file manager\n' > "$T/hello.txt"
+raw PUT '/v1/sites/b-example-test/files/content?path=/hello.txt' "$T/hello.txt"
+ok "upload a file: www-data owns it and the website serves it" '[ "$CODE" = 200 ] && [ "$(stat -c "%u:%g %a" "$WPB/hello.txt")" = "33:33 644" ] && [ "$(site_get b-example-test b-example-test.$ZONE /hello.txt)" = "hello from the file manager" ]'
+api GET '/v1/sites/b-example-test/files?path=/'; ok "folder list shows WordPress" '[ "$CODE" = 200 ] && grep -q "\"name\":\"wp-config.php\"" <<<"$BODY" && grep -q "\"name\":\"wp-content\",\"type\":\"dir\"" <<<"$BODY"'
+ln -s ../secrets/db_password "$WPB/steal" && ln -s /etc/shadow "$WPB/host"
+DBPW="$(cat "$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/secrets/db_password")"
+api GET '/v1/sites/b-example-test/files/content?path=/steal'; C1="$CODE"; B1="$BODY"; api GET '/v1/sites/b-example-test/files/content?path=/host'
+ok "links to the secret or the host are not followed" '[ "$C1" = 400 ] && [ "$CODE" = 400 ] && ! grep -qF "$DBPW" <<<"$B1$BODY"'
+rm -f "$WPB/steal" "$WPB/host"
+( cd "$T" && mkdir -p zipsrc/kit && printf 'unzipped ok\n' > zipsrc/kit/note.txt && cd zipsrc && python3 -c 'import zipfile;z=zipfile.ZipFile("../kit.zip","w");z.write("kit/note.txt");z.close()' )
+raw PUT '/v1/sites/b-example-test/files/content?path=/kit.zip' "$T/kit.zip"; api POST /v1/sites/b-example-test/files/unzip '{"path":"/kit.zip"}'
+ok "extract a zip in place" '[ "$CODE" = 200 ] && [ "$(site_get b-example-test b-example-test.$ZONE /kit/note.txt)" = "unzipped ok" ] && [ "$(stat -c %u "$WPB/kit/note.txt")" = 33 ]'
+api POST /v1/sites/b-example-test/files/delete '{"path":"/kit"}'; FT="$(grep -o '"entry":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "delete moves to the file trash" '[ "$CODE" = 200 ] && [ ! -e "$WPB/kit" ] && [ "$(web b-example-test b-example-test.$ZONE /kit/note.txt)" = 404 ]'
+api POST "/v1/sites/b-example-test/files/trash/$FT/restore"; ok "restore from the file trash" '[ "$CODE" = 200 ] && [ "$(site_get b-example-test b-example-test.$ZONE /kit/note.txt)" = "unzipped ok" ]'
+dbcheck() { python3 -c 'import json,sys; d=json.load(sys.stdin); n=[t["name"] for t in d["tables"]]; assert "wp_options" in n and "wp_posts" in n, n; assert "MariaDB" in d["version"] and d["size"]>0, d' <<<"$BODY"; }
+api GET /v1/sites/b-example-test/db; ok "database overview lists the WordPress tables" '[ "$CODE" = 200 ] && dbcheck'
+api POST /v1/sites/b-example-test/db/query '{"sql":"SELECT option_value FROM wp_options WHERE option_name = '"'"'blogname'"'"'"}'
+ok "SQL console reads the site title" '[ "$CODE" = 200 ] && grep -q "\"Situs B\"" <<<"$BODY"'
+api POST /v1/sites/b-example-test/db/query '{"sql":"SELEC 1"}'; ok "SQL error is shown, not hidden" '[ "$CODE" = 400 ] && grep -q "ERROR 1064" <<<"$BODY"'
+RAWOUT="$T/export.sql.gz" raw GET /v1/sites/b-example-test/db/export
+ok "export is a gzip dump with the tables" '[ "$CODE" = 200 ] && gzip -dc "$T/export.sql.gz" | grep -q "CREATE TABLE \`wp_options\`"'
+printf "UPDATE wp_options SET option_value = 'Diimpor' WHERE option_name = 'blogname';\n" | gzip > "$T/imp.sql.gz"
+raw PUT /v1/sites/b-example-test/db/import "$T/imp.sql.gz"; BK="$(grep -o '"backup":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "import changes the site and keeps a copy first" '[ "$CODE" = 200 ] && [ -n "$BK" ] && site_body b-example-test "b-example-test.$ZONE" | grep -q "<title>Diimpor"'
+RAWOUT="$T/back.sql.gz" raw GET "/v1/sites/b-example-test/db/backups/$BK"; raw PUT /v1/sites/b-example-test/db/import "$T/back.sql.gz"
+ok "importing the kept copy undoes the import" '[ "$CODE" = 200 ] && site_body b-example-test "b-example-test.$ZONE" | grep -q "<title>Situs B"'
+ok "database password never in the audit log or an answer" '! grep -qF "$DBPW" "$SITE01_TEST_ROOT/var/log/nostek-agent/"* && ! gzip -dc "$T/export.sql.gz" | grep -qF "$DBPW"'
+
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again (update) passes, websites untouched" '[ $RC = 0 ] && has "already built" && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$CIDS" ]'

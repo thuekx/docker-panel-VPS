@@ -21,6 +21,10 @@ type fakeAgent struct {
 	deleted   []string
 	actions   []string
 	stackDown bool
+	puts      []string // "path overwrite body" of every file write
+	ops       []string // file operations
+	sqls      []string
+	imported  string
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +35,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		URL: "https://voltix-id.preview.nostek.dev", Phase: "ready", Status: "running",
 		Hosts: []agent.Host{{Name: "voltix.id", Role: "primary"}, {Name: "voltix-id.preview.nostek.dev", Role: "preview", Routed: true}}}
 	write := func(code int, v any) { w.WriteHeader(code); json.NewEncoder(w).Encode(v) }
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/files") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/db") {
+		f.filesDB(w, r, write)
+		return
+	}
 	switch {
 	case r.URL.Path == "/v1/catalog":
 		write(200, agent.Catalog{PHP: []agent.PHP{{Version: "8.1", EOL: true}, {Version: "8.4", Default: true, SecurityUntil: "2028-12-31"}}})

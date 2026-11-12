@@ -2,6 +2,7 @@
 {{$l := .Lang}}{{$s := .Data.Site}}
 {{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "sites.done.%s" .Flash)}}</p>{{end}}
 {{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
+{{template "sitetabs" (dict3 $l $s.ID "site")}}
 <section class="grid pair">
 <article class="card tone c-acc" data-anim="card">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "sites.status"}}</span>{{template "sitestatus" (dict3 $l $s.Status $s.Phase)}}</div>

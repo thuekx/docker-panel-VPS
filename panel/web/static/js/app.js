@@ -179,5 +179,62 @@
     setTimeout(poll, 3000);
   }
 
-  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); });
+  // asks before a destructive button (the action still works without JavaScript: deletes go to a 7-day trash)
+  function confirms() {
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest && e.target.closest("[data-confirm]");
+      if (b && !window.confirm(b.getAttribute("data-confirm"))) e.preventDefault();
+    });
+  }
+
+  // upload forms show real progress; the server's redirect decides the next page
+  function uploads() {
+    all("form[data-upload]").forEach(function (f) {
+      f.addEventListener("submit", function (e) {
+        if (!window.FormData || !window.XMLHttpRequest) return;
+        e.preventDefault();
+        var bar = f.querySelector("[data-upload-bar]"), fill = bar && bar.querySelector("i");
+        var btn = f.querySelector("button[type=submit]");
+        if (bar) bar.hidden = false;
+        if (btn) btn.disabled = true;
+        var x = new XMLHttpRequest();
+        x.open("POST", f.action);
+        x.upload.onprogress = function (ev) {
+          if (fill && ev.lengthComputable) fill.style.width = Math.round(ev.loaded * 100 / ev.total) + "%";
+        };
+        x.onload = function () { window.location.assign(x.responseURL || window.location.href); };
+        x.onerror = function () { if (btn) btn.disabled = false; if (bar) bar.classList.add("failed"); };
+        x.send(new FormData(f));
+      });
+    });
+  }
+
+  // the file editor: Tab inserts a tab, Ctrl/Cmd+S saves, leaving with unsaved changes asks first
+  function editor() {
+    var f = document.querySelector("form[data-editor]");
+    if (!f) return;
+    var ta = f.querySelector("textarea"), flag = f.querySelector("[data-dirty]"), dirty = false;
+    ta.addEventListener("input", function () { dirty = true; if (flag) flag.hidden = false; });
+    ta.addEventListener("keydown", function (e) {
+      if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        var a = ta.selectionStart, b = ta.selectionEnd;
+        ta.value = ta.value.slice(0, a) + "\t" + ta.value.slice(b);
+        ta.selectionStart = ta.selectionEnd = a + 1;
+        dirty = true; if (flag) flag.hidden = false;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); dirty = false; f.requestSubmit ? f.requestSubmit() : f.submit(); }
+    });
+    f.addEventListener("submit", function () { dirty = false; });
+    window.addEventListener("beforeunload", function (e) { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+  }
+
+  // one open ⋯ menu at a time
+  function menus() {
+    document.addEventListener("click", function (e) {
+      all("details.menu[open]").forEach(function (d) { if (!d.contains(e.target)) d.open = false; });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); });
 })();

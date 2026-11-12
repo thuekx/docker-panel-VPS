@@ -1,0 +1,61 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "db.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (dict3 $l $s.ID "db")}}
+<section class="grid pair">
+<article class="card tone c-violet" data-anim="card">
+  <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-disk"}}</span>{{t $l "db.title"}}</span>{{if $d.Err}}<span class="pill s-unknown">{{t $l "sites.st.unknown"}}</span>{{else}}<span class="pill s-ok">{{t $l "db.online"}}</span>{{end}}</div>
+  {{if $d.Err}}<p class="banner warn">{{t $l "db.err"}} <code>{{$d.Err}}</code></p>{{else}}
+  <div class="table-wrap"><table><tbody>
+    <tr><th>{{t $l "db.name"}}</th><td><code>{{$d.DB.Name}}</code></td></tr>
+    <tr><th>{{t $l "db.user"}}</th><td><code>{{$d.DB.User}}</code> <span class="muted">{{t $l "db.user.help"}}</span></td></tr>
+    <tr><th>{{t $l "db.host"}}</th><td><code>{{$d.DB.Host}}</code> <span class="muted">{{t $l "db.host.help"}}</span></td></tr>
+    <tr><th>{{t $l "db.version"}}</th><td>{{$d.DB.Version}}</td></tr>
+    <tr><th>{{t $l "db.size"}}</th><td><b>{{$d.Size}}</b> · {{t $l "db.tables.count" (len $d.Tables)}}</td></tr>
+  </tbody></table></div>{{end}}
+</article>
+<article class="card tone c-blue" data-anim="card">
+  <h2>{{t $l "db.export"}}</h2>
+  <p class="muted">{{t $l "db.export.help"}}</p>
+  <form method="post" action="/db/{{$s.ID}}" class="form row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="export"><button class="primary" type="submit">{{t $l "db.export.go"}}</button></form>
+  <h2>{{t $l "db.import"}}</h2>
+  <p class="muted">{{t $l "db.import.help"}}</p>
+  <form method="post" action="/db/{{$s.ID}}/import" enctype="multipart/form-data" class="form" data-upload>
+    <input type="hidden" name="csrf" value="{{$csrf}}">
+    <label class="check"><input type="checkbox" name="confirm" value="1" required> {{t $l "db.import.confirm"}}</label>
+    <label class="drop">{{t $l "db.import.pick"}}<input type="file" name="file" accept=".sql,.gz,application/sql,application/gzip" required></label>
+    <div class="progress" hidden data-upload-bar><i></i></div>
+    <button class="danger" type="submit">{{t $l "db.import.go"}}</button>
+  </form>
+  {{if $d.Backups}}<h2>{{t $l "db.backups"}}</h2><p class="muted">{{t $l "db.backups.help"}}</p>
+  <ul class="plain">{{range $d.Backups}}<li><a href="/db/{{$s.ID}}/backups/{{.Name}}">{{.When}}</a> <span class="muted">{{.Human}}</span></li>{{end}}</ul>{{end}}
+</article>
+</section>
+<section class="card wide tone c-amber" data-anim="card" id="sql">
+  <h2>{{t $l "db.sql"}}</h2>
+  <p class="banner warn">{{t $l "db.sql.warn"}}</p>
+  <form method="post" action="/db/{{$s.ID}}#sql" class="form">
+    <input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="query">
+    <textarea name="sql" class="code" rows="6" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="SELECT option_name, option_value FROM wp_options WHERE autoload = 'yes' LIMIT 20;" required>{{$d.SQL}}</textarea>
+    <div class="row"><button class="primary" type="submit">{{t $l "db.sql.go"}}</button><span class="muted">{{t $l "db.sql.help"}}</span></div>
+  </form>
+  {{if $d.QueryErr}}<p class="err" role="alert" data-anim="shake">{{$d.QueryErr}}</p>{{end}}
+  {{with $d.Answer}}<p class="muted">{{t $l "db.sql.time" .Millis}}</p>
+    {{if not .Results}}<p class="banner ok">{{t $l "db.sql.ok"}}</p>{{end}}
+    {{range .Results}}<div class="sql-res" data-anim="card"><div class="muted"><code>{{.Statement}}</code> · {{t $l "db.sql.rows" (len .Rows)}}{{if .Limited}} · {{t $l "db.sql.limited"}}{{end}}</div>
+    {{if .Rows}}<div class="table-wrap"><table class="sql-table"><thead><tr>{{range .Columns}}<th>{{.}}</th>{{end}}</tr></thead><tbody>
+    {{range .Rows}}<tr>{{range .}}<td>{{if .}}{{.}}{{else}}<i class="null">NULL</i>{{end}}</td>{{end}}</tr>{{end}}
+    </tbody></table></div>{{end}}</div>{{end}}
+  {{end}}
+</section>
+{{if $d.Tables}}<section class="card wide tone c-green" data-anim="card">
+  <h2>{{t $l "db.tables"}}</h2>
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "db.table"}}</th><th class="num">{{t $l "db.rows"}}</th><th class="num">{{t $l "db.data"}}</th><th class="num">{{t $l "db.index"}}</th><th>{{t $l "db.engine"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Tables}}<tr><td><code>{{.Name}}</code></td><td class="num">{{.Rows}}</td><td class="num">{{.Data}}</td><td class="num">{{.Index}}</td><td class="muted">{{.Engine}} · {{.Collation}}</td>
+    <td><a class="ghost btn" href="/db/{{$s.ID}}?sql=SELECT+*+FROM+%60{{.Name}}%60+LIMIT+50%3B#sql">{{t $l "db.browse"}}</a></td></tr>{{end}}
+  </tbody></table></div>
+  <p class="muted">{{t $l "db.rows.help"}}</p>
+</section>{{end}}
+<p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
+{{end}}

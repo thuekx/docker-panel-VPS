@@ -84,7 +84,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -149,6 +149,16 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /sites/{id}", s.need(true, s.siteAction))
 	mux.HandleFunc("POST /trash/{entry}/restore", s.need(true, s.siteRestore))
 	mux.HandleFunc("GET /sites/job/{job}/status", s.need(true, s.siteJobStatus))
+	mux.HandleFunc("GET /files/{id}", s.need(true, s.filesPage))
+	mux.HandleFunc("POST /files/{id}", s.need(true, s.filesAction))
+	mux.HandleFunc("GET /files/{id}/edit", s.need(true, s.filesEdit))
+	mux.HandleFunc("GET /files/{id}/download", s.need(true, s.filesDownload(false)))
+	mux.HandleFunc("GET /files/{id}/zip", s.need(true, s.filesDownload(true)))
+	mux.HandleFunc("POST /files/{id}/upload", s.needMultipart(s.filesUpload))
+	mux.HandleFunc("GET /db/{id}", s.need(true, s.dbPage))
+	mux.HandleFunc("POST /db/{id}", s.need(true, s.dbAction))
+	mux.HandleFunc("GET /db/{id}/backups/{name}", s.need(true, s.dbBackup))
+	mux.HandleFunc("POST /db/{id}/import", s.needMultipart(s.dbImport))
 	mux.HandleFunc("GET /profile", s.need(true, s.profile))
 	mux.HandleFunc("POST /profile/appearance", s.need(true, s.profileAppearance))
 	mux.HandleFunc("POST /profile/password", s.need(true, s.profilePassword))
@@ -190,13 +200,29 @@ func sessOf(r *http.Request) *store.Session {
 
 // need wraps a handler that requires a session; full=true also requires finished 2FA.
 func (s *Server) need(full bool, h http.HandlerFunc) http.HandlerFunc {
+	return s.needWith(full, true, h)
+}
+
+// needMultipart is need(true) for streamed multipart uploads: the handler checks the CSRF token itself, from the
+// form's first part, so the body is never parsed into memory or onto disk first.
+func (s *Server) needMultipart(h http.HandlerFunc) http.HandlerFunc {
+	return s.needWith(true, false, func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+			http.Error(w, "bad request", http.StatusForbidden)
+			return
+		}
+		h(w, r)
+	})
+}
+
+func (s *Server) needWith(full, csrf bool, h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sess, u := s.currentSession(r)
 		if sess == nil {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		if r.Method == http.MethodPost && !s.csrfOK(r, sess.CSRF) {
+		if csrf && r.Method == http.MethodPost && !s.csrfOK(r, sess.CSRF) {
 			http.Error(w, "bad request", http.StatusForbidden)
 			return
 		}

@@ -39,6 +39,8 @@ services:
       - --entryPoints.websecure.address=:8443
       - --entryPoints.websecure.http.tls=true
       - --entryPoints.websecure.http3=false
+      # large uploads (panel file manager and database import, WordPress media) need more than the 60 s default
+      - --entryPoints.websecure.transport.respondingTimeouts.readTimeout=30m
       - --providers.docker=true
       - --providers.docker.endpoint=tcp://docker-api:2375
       - --providers.docker.exposedByDefault=false
