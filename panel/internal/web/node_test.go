@@ -193,3 +193,40 @@ func TestGoPythonPages(t *testing.T) {
 		t.Error("python site overview")
 	}
 }
+
+func TestTrashRemove(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	f.trash = []agent.Trashed{{Site: agent.Site{ID: "lab-nostek-dev", Domain: "lab.nostek.dev"}, Entry: "lab-nostek-dev.1700000000", Deleted: 1700000000, Purge: 1700604800}}
+	_, page, _ := e.get(e.c, "/sites")
+	if !strings.Contains(page, `action="/trash/lab-nostek-dev.1700000000/remove"`) || !strings.Contains(page, "Delete permanently") {
+		t.Fatal("no delete permanently button in the trash")
+	}
+	if _, _, h := e.postWith(e.c, "/trash/lab-nostek-dev.1700000000/remove", url.Values{"confirm": {"lab.nostek.de"}}, page); len(f.removed) != 0 || h.Get("Location") != "/sites?done=remove_confirm#trash" {
+		t.Fatalf("removed without the right domain: %v %q", f.removed, h.Get("Location"))
+	}
+	if code, _, _ := e.postWith(e.c, "/trash/other-site.1700000000/remove", url.Values{"confirm": {"lab.nostek.dev"}}, page); code != 404 || len(f.removed) != 0 {
+		t.Fatalf("unknown entry: %d %v", code, f.removed)
+	}
+	if code, _, _ := e.postWith(e.c, "/trash/x/remove", url.Values{"confirm": {"lab.nostek.dev"}}, page); code != 404 {
+		t.Fatalf("bad entry: %d", code)
+	}
+	if _, _, h := e.postWith(e.c, "/trash/lab-nostek-dev.1700000000/remove", url.Values{"confirm": {" Lab.Nostek.dev "}}, page); len(f.removed) != 1 || f.removed[0] != "lab-nostek-dev.1700000000" || h.Get("Location") != "/sites?done=removed" {
+		t.Fatalf("remove: %v %q", f.removed, h.Get("Location"))
+	}
+	if e.postWith(e.c, "/trash/lab-nostek-dev.1700000000/remove", url.Values{"confirm": {"lab.nostek.dev"}}, ""); len(f.removed) != 1 {
+		t.Fatalf("remove without CSRF token: %v", f.removed)
+	}
+	for _, lang := range []string{"en", "id"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		for _, done := range []string{"removed", "remove_failed", "remove_confirm", "restore_failed"} {
+			if code, page, _ := e.get(e.c, "/sites?done="+done); code != 200 || missingKey.MatchString(page) || !strings.Contains(page, map[bool]string{true: `class="banner ok"`, false: `class="banner warn"`}[done == "removed"]) {
+				t.Errorf("%s %s: %d %v", lang, done, code, missingKey.FindString(page))
+			}
+		}
+	}
+	if _, page, _ := e.get(e.c, "/sites"); !strings.Contains(page, "Hapus permanen") {
+		t.Error("id trash page")
+	}
+}

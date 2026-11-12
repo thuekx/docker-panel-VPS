@@ -355,6 +355,14 @@ ok "delete moves the site to the trash" '[ "$CODE" = 200 ] && [ -d "$SITE01_TEST
 api POST /v1/sites '{"domain":"b.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"o@example.test","title":"B2"}'
 ok "trashed domain stays reserved" '[ "$CODE" = 422 ]'
 api POST "/v1/trash/$ENTRY/restore"; ok "restore brings the site back with its data" '[ "$CODE" = 200 ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
+api POST /v1/sites/b-example-test/delete; EB="$(grep -o '"trash":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+api POST /v1/sites/plan '{"domain":"b.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"o@example.test","title":"B3"}'
+ok "a domain held by the trash says so" '[ "$CODE" = 422 ] && grep -q "delete it permanently" <<<"$BODY"'
+api POST "/v1/trash/$EB/remove"; ok "delete permanently removes files and database at once" '[ "$CODE" = 200 ] && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/trash/$EB" ]'
+api POST /v1/sites/plan '{"domain":"b.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"o@example.test","title":"B3"}'
+ok "the domain can be used again" '[ "$CODE" = 200 ]'
+api POST "/v1/trash/$EB/remove"; ok "removing it twice is not found" '[ "$CODE" = 404 ]'
+KEPT=$((KEPT-1))
 
 # --- revert keeps websites running
 run REVERT "${A[@]}"; ok "revert stops the agent, websites keep running" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -e "$SITE01_TEST_ROOT/usr/local/sbin/nostek-agent" ] && [ "$(web a-example-test a-example-test.$ZONE /)" = 200 ] && has "sites_kept=$KEPT"'

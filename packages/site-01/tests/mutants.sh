@@ -63,6 +63,7 @@ GO_MUTANTS=(
   'internal/sites/deploy.go|[]string{"set -e"}|[]string{"true"}'   # APP-02: a failing build step goes unnoticed
   'internal/sites/env.go|strings.ContainsAny(v, "\n\r\x00") {|false {'   # APP-02b: a value with a newline adds a second variable
   'internal/sites/env.go|		if reservedEnv[k] {|		if false && reservedEnv[k] {'   # APP-02b: PORT or PATH can be overridden
+  'internal/sites/manager.go|	return os.RemoveAll(p)|	return nil'   # delete permanently leaves the website on disk
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

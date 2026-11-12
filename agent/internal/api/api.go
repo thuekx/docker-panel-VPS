@@ -110,6 +110,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/backups/{name}/restore", s.backupRestore)
 	mux.HandleFunc("GET /v1/trash", s.trash)
 	mux.HandleFunc("POST /v1/trash/{entry}/restore", s.restore)
+	mux.HandleFunc("POST /v1/trash/{entry}/remove", s.removeTrash)
 	mux.HandleFunc("GET /v1/jobs/{id}", s.job)
 	mux.HandleFunc("POST /v1/jobs/{id}/secret", s.secret)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -332,6 +333,12 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 	entry := r.PathValue("entry")
 	id, err := s.M.Restore(r.Context(), entry)
 	s.result(w, r, "restore", entry, err, map[string]any{"site": id})
+}
+
+func (s *Server) removeTrash(w http.ResponseWriter, r *http.Request) {
+	entry := r.PathValue("entry")
+	err := s.M.RemoveTrash(entry)
+	s.result(w, r, "remove-trash", entry, err, map[string]any{"ok": true})
 }
 
 func (s *Server) trash(w http.ResponseWriter, r *http.Request) {

@@ -552,6 +552,43 @@ func (s *Server) siteRestore(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/sites/"+id+"?done=restore", http.StatusSeeOther)
 }
 
+// trashRemove deletes a website from the trash for good once its domain is typed, so the domain can be used again.
+func (s *Server) trashRemove(w http.ResponseWriter, r *http.Request) {
+	entry := r.PathValue("entry")
+	if !entryRe.MatchString(entry) {
+		s.notFound(w, r)
+		return
+	}
+	ctx, cancel := s.agentCtx(r, 2*time.Minute)
+	defer cancel()
+	tr, err := s.ag.Trash(ctx)
+	if err != nil {
+		http.Redirect(w, r, "/sites?done=remove_failed", http.StatusSeeOther)
+		return
+	}
+	domain := ""
+	for _, t := range tr {
+		if t.Entry == entry {
+			domain = t.Domain
+		}
+	}
+	if domain == "" {
+		s.notFound(w, r)
+		return
+	}
+	if !strings.EqualFold(strings.TrimSpace(r.PostFormValue("confirm")), domain) {
+		http.Redirect(w, r, "/sites?done=remove_confirm#trash", http.StatusSeeOther)
+		return
+	}
+	if err := s.ag.RemoveTrash(ctx, entry); err != nil {
+		s.audit1(userOf(r), r, "site.remove", entry+" "+domain+" failed: "+err.Error())
+		http.Redirect(w, r, "/sites?done=remove_failed", http.StatusSeeOther)
+		return
+	}
+	s.audit1(userOf(r), r, "site.remove", entry+" "+domain)
+	http.Redirect(w, r, "/sites?done=removed", http.StatusSeeOther)
+}
+
 // siteService is true for a container the website has: web always, php behind Nginx, db with a database, and the
 // queue worker and scheduler of a Laravel website.
 func siteService(site agent.Site, svc string) bool {

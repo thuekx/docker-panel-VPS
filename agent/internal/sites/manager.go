@@ -316,6 +316,15 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		return Site{}, err
 	}
 	if err := c.Check(res); err != nil {
+		if tr, _ := m.Trash(); strings.HasSuffix(err.Error(), "already in use on this server") {
+			for _, t := range tr {
+				for _, h := range t.Hosts {
+					if strings.HasPrefix(err.Error(), h.Name+" ") {
+						return Site{}, fmt.Errorf("%w (by a deleted website in the trash: delete it permanently there to use the domain again)", err)
+					}
+				}
+			}
+		}
 		return Site{}, err
 	}
 	id := m.newID(c.Domain)
@@ -671,6 +680,26 @@ func (m *Manager) Restore(ctx context.Context, entry string) (string, error) {
 		return id, fmt.Errorf("restored, but start failed: %s", tail(out))
 	}
 	return id, nil
+}
+
+// RemoveTrash deletes one trash entry for good (files and database), so its domain can be used again.
+func (m *Manager) RemoveTrash(entry string) error {
+	mm := trashRe.FindStringSubmatch(entry)
+	if mm == nil || spec.ID(mm[1]) != nil {
+		return ErrNotFound
+	}
+	if !m.mu.TryLock() {
+		return ErrBusy
+	}
+	defer m.mu.Unlock()
+	p := filepath.Join(m.trashDir(), entry)
+	if filepath.Dir(p) != m.trashDir() {
+		return ErrNotFound
+	}
+	if _, err := os.Stat(filepath.Join(p, "site.json")); err != nil {
+		return ErrNotFound
+	}
+	return os.RemoveAll(p)
 }
 
 // Purge removes trash entries older than TrashDays and returns their names.

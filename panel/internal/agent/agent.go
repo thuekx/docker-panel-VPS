@@ -420,6 +420,11 @@ func (c *Client) Restore(ctx context.Context, entry string) (string, error) {
 	return v.Site, c.call(ctx, "POST", "/v1/trash/"+url.PathEscape(entry)+"/restore", nil, &v)
 }
 
+// RemoveTrash deletes a trash entry for good, so its domain is free again.
+func (c *Client) RemoveTrash(ctx context.Context, entry string) error {
+	return c.call(ctx, "POST", "/v1/trash/"+url.PathEscape(entry)+"/remove", nil, nil)
+}
+
 // Logs returns the last lines of one service.
 func (c *Client) Logs(ctx context.Context, id, service string, lines int) (string, error) {
 	var v struct {

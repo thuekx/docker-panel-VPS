@@ -17,6 +17,12 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   (for example `DATABASE_URL` or API keys). The panel only ever shows the names, never the values; they are kept in a
   file only root can read, outside the website folder, and the app restarts with them on save. `PORT`, `HOST`,
   `HOSTNAME`, `HOME` and `PATH` stay set by the panel.
+- **Delete permanently** in the website trash: type the domain and the website's files and database are removed at
+  once, so the domain can be used again right away (before, it stayed reserved for 7 days). Adding a website whose
+  domain is still held by the trash now says so.
+
+### Fixed
+- The Websites page showed "restore failed" in green; failures now show as a warning.
 
 ## [1.10.0] — 2026-11-12
 

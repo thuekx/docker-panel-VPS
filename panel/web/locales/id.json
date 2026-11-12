@@ -584,5 +584,11 @@
   "node.build.ph": "bawaan runtime yang dipilih",
   "node.start.ph": "bawaan runtime yang dipilih",
   "go.help": "Panel menjalankan go mod download, lalu perintah build (bawaan: go build ke ./server), lalu perintah start (bawaan ./server). Aplikasi harus mendengarkan port dari PORT (3000).",
-  "python.help": "Panel membuat virtual environment .venv dan memasang requirements.txt, lalu menjalankan perintah build (opsional, misalnya collectstatic) dan perintah start, misalnya .venv/bin/gunicorn -b 0.0.0.0:$PORT app:app atau .venv/bin/uvicorn main:app --host 0.0.0.0 --port $PORT. Aplikasi harus mendengarkan PORT (3000)."
+  "python.help": "Panel membuat virtual environment .venv dan memasang requirements.txt, lalu menjalankan perintah build (opsional, misalnya collectstatic) dan perintah start, misalnya .venv/bin/gunicorn -b 0.0.0.0:$PORT app:app atau .venv/bin/uvicorn main:app --host 0.0.0.0 --port $PORT. Aplikasi harus mendengarkan PORT (3000).",
+  "sites.remove": "Hapus permanen",
+  "sites.remove.confirm": "Ketik %s untuk menghapus permanen",
+  "sites.trash.remove.help": "Hapus permanen langsung menghapus file dan database, dan domainnya bisa dipakai lagi. Tidak bisa dibatalkan.",
+  "sites.done.removed": "Website dihapus permanen. Domainnya bisa dipakai lagi.",
+  "sites.done.remove_failed": "Website tidak bisa dihapus. Lihat log aktivitas.",
+  "sites.done.remove_confirm": "Ketik domain website persis sama untuk menghapus permanen."
 }

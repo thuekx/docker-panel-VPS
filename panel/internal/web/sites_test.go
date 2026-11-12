@@ -32,6 +32,8 @@ type fakeAgent struct {
 	bakJob    agent.Job
 	app       string // APP-01: app of the fake site (empty = WordPress)
 	appDB     bool
+	trash     []agent.Trashed
+	removed   []string
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +80,14 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/v1/sites" && r.Method == "GET":
 		write(200, map[string]any{"sites": []agent.Site{site}})
 	case r.URL.Path == "/v1/trash":
-		write(200, map[string]any{"trash": []agent.Trashed{}})
+		t := f.trash
+		if t == nil {
+			t = []agent.Trashed{}
+		}
+		write(200, map[string]any{"trash": t})
+	case strings.HasPrefix(r.URL.Path, "/v1/trash/") && strings.HasSuffix(r.URL.Path, "/remove"):
+		f.removed = append(f.removed, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/trash/"), "/remove"))
+		write(200, map[string]any{"ok": true})
 	case r.URL.Path == "/v1/sites/plan", r.URL.Path == "/v1/sites" && r.Method == "POST":
 		var c agent.Create
 		b, _ := io.ReadAll(r.Body)
