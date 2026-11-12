@@ -60,6 +60,7 @@ GO_MUTANTS=(
   'internal/sites/deploy.go|"--security-opt", "no-new-privileges:true", "--cap-drop", "ALL",|"--security-opt", "no-new-privileges:true",'   # APP-02: build container keeps capabilities
   'internal/spec/spec.go|len(r) > MaxRepo || !repoRe.MatchString(r)|len(r) > MaxRepo'   # APP-02: any repository address (user:password, file://, ssh)
   'internal/sites/deploy.go|	finish("live", "")|	finish("ok", "")'   # APP-02: new release not marked live
+  'internal/sites/deploy.go|[]string{"set -e"}|[]string{"true"}'   # APP-02: a failing build step goes unnoticed
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

@@ -89,6 +89,9 @@ func TestNodeSiteCreate(t *testing.T) {
 			t.Errorf("build lacks %q: %s", want, j)
 		}
 	}
+	if !strings.HasPrefix(build[len(build)-1], "set -e\n") {
+		t.Error("the build script does not stop at the first failing step")
+	}
 	if strings.Contains(build[len(build)-1], "github.com") {
 		t.Error("the repository address is in the build script")
 	}

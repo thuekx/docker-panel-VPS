@@ -280,7 +280,7 @@ func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
 	if s.FromFiles() {
 		fetch = []string{`echo "== copy the source folder"`, `src=/src`}
 	}
-	script := strings.Join(append(fetch,
+	script := strings.Join(append(append([]string{"set -e"}, fetch...),
 		`[ -d "$src/$NOSTEK_DIR" ] || { echo "app folder '$NOSTEK_DIR' not found"; exit 1; }`,
 		`cp -R "$src/$NOSTEK_DIR/." /app/`,
 		`[ -f package.json ] || { echo "package.json not found in the app folder"; exit 1; }`,
