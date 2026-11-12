@@ -103,6 +103,14 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/v1/sites/voltix-id/delete":
 		f.deleted = append(f.deleted, "voltix-id")
 		write(200, map[string]any{"trash": "voltix-id.1700000000", "days": 7})
+	case r.URL.Path == "/v1/sites/voltix-id/laravel/artisan":
+		b, _ := io.ReadAll(r.Body)
+		f.actions = append(f.actions, "artisan "+string(b))
+		if f.app != "laravel" {
+			write(400, map[string]string{"error": "this website does not run Laravel"})
+			return
+		}
+		write(200, map[string]string{"output": "INFO  Nothing to migrate. <b>x</b>"})
 	case strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/") && r.Method == "POST":
 		f.actions = append(f.actions, strings.TrimPrefix(r.URL.Path, "/v1/sites/voltix-id/"))
 		write(200, map[string]bool{"ok": true})

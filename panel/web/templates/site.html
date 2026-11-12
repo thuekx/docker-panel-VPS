@@ -26,7 +26,7 @@
     <button class="secondary" name="action" value="stop" type="submit">{{t $l "sites.act.stop"}}</button>
   </form>
   <h2>{{t $l "sites.logs"}}</h2>
-  <p class="row"><a class="ghost btn" href="/sites/{{$s.ID}}?logs=web">{{t $l "sites.logs.web"}}</a>{{if and (eq $s.Server "nginx") $s.PHP}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=php">PHP</a>{{end}}{{if $s.HasDB}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=db">{{t $l "sites.logs.db"}}</a>{{end}}</p>
+  <p class="row"><a class="ghost btn" href="/sites/{{$s.ID}}?logs=web">{{t $l "sites.logs.web"}}</a>{{if and (eq $s.Server "nginx") $s.PHP}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=php">PHP</a>{{end}}{{if $s.HasDB}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=db">{{t $l "sites.logs.db"}}</a>{{end}}{{if $s.IsLaravel}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=queue">{{t $l "stack.svc.queue"}}</a><a class="ghost btn" href="/sites/{{$s.ID}}?logs=scheduler">{{t $l "stack.svc.scheduler"}}</a>{{end}}</p>
   <h2>{{t $l "sites.delete"}}</h2>
   <p class="muted">{{t $l "sites.delete.help" $s.Domain}}</p>
   <form method="post" action="/sites/{{$s.ID}}" class="form">
@@ -36,6 +36,19 @@
   </form>
 </article>
 </section>
+{{if $s.IsLaravel}}
+<section class="card wide tone c-orange" data-anim="card" id="laravel">
+  <h2>{{t $l "lar.title"}}</h2>
+  <p class="muted">{{t $l "lar.help"}}</p>
+  <form method="post" action="/sites/{{$s.ID}}#laravel" class="form row">
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="artisan">
+    {{range list4 "migrate" "optimize" "optimize-clear" "queue-restart"}}<button class="secondary" name="op" value="{{.}}" type="submit">{{t $l (printf "lar.op.%s" .)}}</button>{{end}}
+  </form>
+  <p class="muted">{{t $l "lar.env"}}</p>
+  {{with .Data.Artisan}}{{if .Err}}<p class="err" role="alert">{{.Err}}</p>{{else}}<p class="banner ok">{{t $l "lar.done"}}</p>{{end}}
+  <p class="muted">{{t $l "lar.out" (printf "php artisan %s" .Op)}}</p><pre class="logs">{{.Output}}</pre>{{end}}
+</section>
+{{end}}
 {{$st := .Data.Stack}}
 <section class="card wide tone c-blue stack" data-anim="card" id="stack" data-stack="/stack/{{$s.ID}}">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-box"}}</span>{{t $l "stack.title"}} <code class="proj">{{if $st.Project}}{{$st.Project}}{{else}}np-site-{{$s.ID}}{{end}}</code></span>
@@ -44,7 +57,7 @@
   {{if $st.Err}}<p class="banner warn">{{t $l "stack.err"}} <code>{{$st.Err}}</code></p>{{else}}
   <div class="ctr-grid">{{range $st.Containers}}
     <article class="ctr ctr-{{.Service}}" data-ctr="{{.Service}}" data-state="{{.State}}/{{.Health}}" data-anim="item">
-      <div class="ctr-head"><span class="ctr-ico" aria-hidden="true">{{if eq .Service "db"}}{{template "ico-disk"}}{{else if eq .Service "php"}}{{template "ico-chip"}}{{else}}{{template "ico-globe"}}{{end}}</span>
+      <div class="ctr-head"><span class="ctr-ico" aria-hidden="true">{{if eq .Service "db"}}{{template "ico-disk"}}{{else if or (eq .Service "php") (eq .Service "queue") (eq .Service "scheduler")}}{{template "ico-chip"}}{{else}}{{template "ico-globe"}}{{end}}</span>
         <div class="ctr-name"><b>{{t $l (printf "stack.svc.%s" .Service)}}</b><code>{{.Name}}</code></div>
         <span class="pill s-{{.Tone}}" data-f="state">{{t $l (printf "stack.state.%s" .State)}}{{if .Health}} · {{t $l (printf "stack.health.%s" .Health)}}{{end}}</span></div>
       <div class="ctr-img"><span class="muted">{{t $l "stack.image"}}</span> <code>{{.Image}}</code></div>

@@ -25,7 +25,7 @@
       <form method="post" action="/sites/job/{{$j.ID}}/secret" class="form"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="primary" type="submit">{{t $l "sites.job.showpw"}}</button></form>
       <p class="muted">{{t $l "sites.job.pwhelp"}}</p>
     {{else}}<p class="muted">{{t $l "sites.job.pwgone"}}</p>{{end}}
-    {{else}}<p class="muted">{{t $l "sites.job.appnext"}}</p><p class="row"><a class="primary btn" href="/files/{{.Data.Site.ID}}">{{t $l "files.title"}}</a><a class="ghost btn" href="/sites/{{.Data.Site.ID}}">{{t $l "sites.tab.overview"}}</a></p>{{end}}
+    {{else}}<p class="muted">{{if .Data.Site.IsLaravel}}{{t $l "sites.job.laravelnext"}}{{else}}{{t $l "sites.job.appnext"}}{{end}}</p><p class="row"><a class="primary btn" href="/files/{{.Data.Site.ID}}">{{t $l "files.title"}}</a><a class="ghost btn" href="/sites/{{.Data.Site.ID}}">{{t $l "sites.tab.overview"}}</a></p>{{end}}
   </div>
   {{end}}
   <p><a href="/sites">{{t $l "sites.back.list"}}</a></p>

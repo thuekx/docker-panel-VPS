@@ -126,7 +126,7 @@ type Site struct {
 	Status     string `json:"status"`
 	Up         int    `json:"containers_up"`
 	Total      int    `json:"containers_total"`
-	App        string `json:"app"`      // APP-01: wordpress (empty) | php | static
+	App        string `json:"app"`      // APP-01: wordpress (empty) | php | laravel | static
 	Database   bool   `json:"database"` // php: own MariaDB
 }
 
@@ -142,7 +142,10 @@ func (s Site) AppName() string {
 func (s Site) IsWP() bool { return s.AppName() == "wordpress" }
 
 // HasDB is true when the site has its own database.
-func (s Site) HasDB() bool { return s.IsWP() || (s.App == "php" && s.Database) }
+func (s Site) HasDB() bool { return s.IsWP() || s.IsLaravel() || (s.App == "php" && s.Database) }
+
+// IsLaravel is true for a Laravel site.
+func (s Site) IsLaravel() bool { return s.App == "laravel" }
 
 // Container is one container of a site's stack with its live usage (STACK-01).
 type Container struct {
@@ -285,6 +288,15 @@ func (c *Client) Stack(ctx context.Context, id string) (Stack, error) {
 // RestartService restarts one container of a site (web, php or db).
 func (c *Client) RestartService(ctx context.Context, id, svc string) error {
 	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/services/"+url.PathEscape(svc)+"/restart", nil, nil)
+}
+
+// Artisan runs one listed artisan command on a Laravel site and returns its output (APP-01 Laravel).
+func (c *Client) Artisan(ctx context.Context, id, op string) (string, error) {
+	var v struct {
+		Output string `json:"output"`
+	}
+	err := c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/laravel/artisan", map[string]string{"op": op}, &v)
+	return v.Output, err
 }
 
 // Delete moves a site to the trash.
