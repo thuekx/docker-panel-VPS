@@ -52,7 +52,7 @@ phase() { grep '^phase=' "$SITE01_TEST_ROOT/var/lib/nostek/site-01/state" 2>/dev
 SOCK() { echo "$SITE01_TEST_ROOT/run/nostek-agent/agent.sock"; }
 api() { # METHOD PATH [BODY] -> body; HTTP code in $CODE
   local out
-  out="$(curl -s --noproxy '*' --max-time 30 --unix-socket "$(SOCK)" -X "$1" -H 'Content-Type: application/json' ${3:+--data "$3"} -w '\n%{http_code}' "http://agent$2")"
+  out="$(curl -s --noproxy '*' --max-time "${MAXT:-30}" --unix-socket "$(SOCK)" -X "$1" -H 'Content-Type: application/json' ${3:+--data "$3"} -w '\n%{http_code}' "http://agent$2")"
   CODE="${out##*$'\n'}"; BODY="${out%$'\n'*}"
 }
 wait_job() { # job id -> state
@@ -164,6 +164,33 @@ ok "import changes the site and keeps a copy first" '[ "$CODE" = 200 ] && [ -n "
 RAWOUT="$T/back.sql.gz" raw GET "/v1/sites/b-example-test/db/backups/$BK"; raw PUT /v1/sites/b-example-test/db/import "$T/back.sql.gz"
 ok "importing the kept copy undoes the import" '[ "$CODE" = 200 ] && grep -q "<title>Situs B" <<<"$(site_body b-example-test "b-example-test.$ZONE")"'
 ok "database password never in the audit log or an answer" '! grep -qF "$DBPW" "$SITE01_TEST_ROOT/var/log/nostek-agent/"* && ! grep -qF "$DBPW" "$T/export.sql"'
+
+# --- WP-01 WordPress Tools (real WP-CLI in the cli container; no internet needed for these)
+site_head() { docker run --rm --network nostek-edge "$CURL_IMG" -s -o /dev/null -D - --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-web-1$3"; }
+wpcheck() { python3 -c 'import json,sys; w=json.load(sys.stdin); assert w["version"] and w["title"]=="Situs B", w; assert w["admins"] and w["file_edit_off"] and w["ssl_admin"], w; n=[p["name"] for p in w["plugins"]]; assert "akismet" in n and "nostek-panel" in n, n; assert any(t["status"]=="active" for t in w["themes"]), w["themes"]' <<<"$BODY"; }
+MAXT=240 api GET /v1/sites/b-example-test/wp; ok "WordPress overview: version, admins, plugins, themes" '[ "$CODE" = 200 ] && wpcheck'
+ok "cli container now has outbound internet, compose kept in sync" 'grep -q "networks: \[back, out\]" "$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/compose.yml" && [ "$(stat -c %u "$WPB/wp-content/mu-plugins/nostek-panel.php")" = 33 ]'
+MAXT=120 api POST /v1/sites/b-example-test/wp/login; LINK="$(grep -o '"url":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"; LPATH="/${LINK#https://*/}"
+H1="$(site_head b-example-test b-example-test.$ZONE "$LPATH")"; H2="$(site_head b-example-test b-example-test.$ZONE "$LPATH")"
+ok "one-click login link signs in once, then is spent" 'grep -q "^HTTP/1.1 302" <<<"$H1" && grep -qi "^location: https://b-example-test.$ZONE/wp-admin/" <<<"$H1" && grep -qi "set-cookie: wordpress_logged_in" <<<"$H1" && grep -q "^HTTP/1.1 403" <<<"$H2"'
+ok "login link not in the audit log" '! grep -rqF "${LINK##*=}" "$SITE01_TEST_ROOT/var/log/nostek-agent"'
+MAXT=120 api POST /v1/sites/b-example-test/wp/settings '{"key":"maintenance","on":true}'
+ok "maintenance mode shows visitors a 503 page" '[ "$CODE" = 200 ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 503 ]'
+MAXT=120 api POST /v1/sites/b-example-test/wp/settings '{"key":"maintenance","on":false}'; ok "maintenance off serves the site again" '[ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
+MAXT=120 api POST /v1/sites/b-example-test/wp/settings '{"key":"debug","on":true}'; C1="$CODE"
+MAXT=120 api POST /v1/sites/b-example-test/wp/settings '{"key":"system_cron","on":true}'
+ok "debug and system cron switch wp-config.php" '[ "$C1" = 200 ] && [ "$CODE" = 200 ] && grep -q "define( '"'"'WP_DEBUG'"'"', true )" "$WPB/wp-config.php" && grep -q "/dev/stderr" "$WPB/wp-config.php" && grep -q "DISABLE_WP_CRON'"'"', true" "$WPB/wp-config.php" && grep -q "\"system_cron\":true" "$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/site.json" && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
+ok "system cron runs wp-cron.php in the php container" 'docker compose -p np-site-b-example-test -f "$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/compose.yml" exec -T -u 33:33 php php /var/www/html/wp-cron.php'
+MAXT=120 api POST /v1/sites/b-example-test/wp/settings '{"key":"indexing","on":false}'
+api POST /v1/sites/b-example-test/db/query '{"sql":"SELECT option_value FROM wp_options WHERE option_name = '"'"'blog_public'"'"'"}'; ok "search indexing off" 'grep -q "\"0\"" <<<"$BODY"'
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"activate","names":["akismet"]}'; C1="$CODE"
+MAXT=240 api GET /v1/sites/b-example-test/wp; ok "activate a plugin" '[ "$C1" = 200 ] && python3 -c "import json,sys; w=json.load(sys.stdin); assert [p for p in w[\"plugins\"] if p[\"name\"]==\"akismet\"][0][\"status\"]==\"active\"" <<<"$BODY"'
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"delete","names":["hello"]}'
+ok "delete a plugin" '[ "$CODE" = 200 ] && [ ! -e "$WPB/wp-content/plugins/hello.php" ]'
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"activate","names":["nosuchplugin"]}'; ok "unknown plugin is a clear error" '[ "$CODE" = 400 ] && grep -qi "nosuchplugin" <<<"$BODY"'
+MAXT=240 api POST /v1/sites/b-example-test/wp/cli '{"line":"wp option get blogname"}'; ok "WP-CLI console runs a command" '[ "$CODE" = 200 ] && grep -q "\"output\":\"Situs B\"" <<<"$BODY" && grep -q "\"code\":0" <<<"$BODY"'
+MAXT=240 api POST /v1/sites/b-example-test/wp/cli '{"line":"option get blogname; id > /tmp/pwn $(id)"}'; ok "console has no shell" '[ "$CODE" = 200 ] && ! grep -q "uid=" <<<"$BODY"'
+api POST /v1/sites/b-example-test/wp/cli '{"line":"shell"}'; ok "interactive console commands refused" '[ "$CODE" = 400 ]'
 
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
