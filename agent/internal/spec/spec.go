@@ -266,7 +266,7 @@ func (c Create) Check(reserved map[string]bool) error {
 			return errors.New("a static site runs on nginx without PHP")
 		}
 	case AppNode:
-		if c.Server != "" || c.PHP != "" {
+		if c.PHP != "" || c.Server != "" {
 			return errors.New("a Node.js app runs without a web server choice or PHP")
 		}
 		if _, ok := catalog.Node(c.Version); !ok {
