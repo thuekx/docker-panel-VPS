@@ -3,7 +3,9 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
-## [1.9.0] — not yet released
+## [1.9.0] — 2026-11-12
+
+Running at the owner's server since 20:34 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Laravel websites** (APP-01, second wave). "Add website" offers Laravel: a fresh Laravel project, ready to use,
