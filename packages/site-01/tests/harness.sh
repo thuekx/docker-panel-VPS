@@ -157,13 +157,13 @@ api POST /v1/sites/b-example-test/db/query '{"sql":"SELECT option_value FROM wp_
 ok "SQL console reads the site title" '[ "$CODE" = 200 ] && grep -q "\"Situs B\"" <<<"$BODY"'
 api POST /v1/sites/b-example-test/db/query '{"sql":"SELEC 1"}'; ok "SQL error is shown, not hidden" '[ "$CODE" = 400 ] && grep -q "ERROR 1064" <<<"$BODY"'
 RAWOUT="$T/export.sql.gz" raw GET /v1/sites/b-example-test/db/export
-ok "export is a gzip dump with the tables" '[ "$CODE" = 200 ] && gzip -dc "$T/export.sql.gz" | grep -q "CREATE TABLE \`wp_options\`"'
+ok "export is a gzip dump with the tables" '[ "$CODE" = 200 ] && gzip -dc "$T/export.sql.gz" > "$T/export.sql" && grep -q "CREATE TABLE \`wp_options\`" "$T/export.sql"'
 printf "UPDATE wp_options SET option_value = 'Diimpor' WHERE option_name = 'blogname';\n" | gzip > "$T/imp.sql.gz"
 raw PUT /v1/sites/b-example-test/db/import "$T/imp.sql.gz"; BK="$(grep -o '"backup":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
-ok "import changes the site and keeps a copy first" '[ "$CODE" = 200 ] && [ -n "$BK" ] && site_body b-example-test "b-example-test.$ZONE" | grep -q "<title>Diimpor"'
+ok "import changes the site and keeps a copy first" '[ "$CODE" = 200 ] && [ -n "$BK" ] && grep -q "<title>Diimpor" <<<"$(site_body b-example-test "b-example-test.$ZONE")"'
 RAWOUT="$T/back.sql.gz" raw GET "/v1/sites/b-example-test/db/backups/$BK"; raw PUT /v1/sites/b-example-test/db/import "$T/back.sql.gz"
-ok "importing the kept copy undoes the import" '[ "$CODE" = 200 ] && site_body b-example-test "b-example-test.$ZONE" | grep -q "<title>Situs B"'
-ok "database password never in the audit log or an answer" '! grep -qF "$DBPW" "$SITE01_TEST_ROOT/var/log/nostek-agent/"* && ! gzip -dc "$T/export.sql.gz" | grep -qF "$DBPW"'
+ok "importing the kept copy undoes the import" '[ "$CODE" = 200 ] && grep -q "<title>Situs B" <<<"$(site_body b-example-test "b-example-test.$ZONE")"'
+ok "database password never in the audit log or an answer" '! grep -qF "$DBPW" "$SITE01_TEST_ROOT/var/log/nostek-agent/"* && ! grep -qF "$DBPW" "$T/export.sql"'
 
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
