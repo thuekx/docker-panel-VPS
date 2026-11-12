@@ -146,6 +146,11 @@ func TestFilesNeverLeaveTheSiteFolder(t *testing.T) {
 		t.Fatal("/../site.json reached the real site.json")
 	}
 	_, _ = m.DeleteFile(id, "/site.json")
+	for _, p := range []string{"/pw", "/host", "/up/site.json"} {
+		if _, _, err := m.OpenFile(id, p); !errors.Is(err, ErrBadInput) {
+			t.Errorf("%s: %v, want a bad-input answer (400), not a server error", p, err)
+		}
+	}
 	if err := m.Chmod(id, "/host", "777"); err == nil {
 		t.Error("chmod through a link to the host")
 	}

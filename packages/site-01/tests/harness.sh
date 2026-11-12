@@ -28,7 +28,7 @@ cleanup() {
   sed -i "/$MARK\$/d" /etc/hosts
   rm -rf "$TMP_ALL"
 }
-trap 'cleanup' EXIT
+trap '[ "${HARNESS_KEEP:-0}" = 1 ] || cleanup' EXIT   # HARNESS_KEEP=1 leaves a failed run in place to look at
 new_env() {
   cleanup; TMP_ALL="$(mktemp -d)"
   T="$(mktemp -d "$TMP_ALL/t.XXXX")"

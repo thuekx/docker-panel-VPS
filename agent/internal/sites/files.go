@@ -148,8 +148,14 @@ func entryOf(name string, fi fs.FileInfo, target string) Entry {
 }
 
 func notExist(err error) error {
-	if errors.Is(err, fs.ErrNotExist) {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, fs.ErrNotExist):
 		return fmt.Errorf("%w: no such file or folder", ErrBadInput)
+	case strings.Contains(err.Error(), "path escapes from parent"):
+		// os.Root refused a ".." or a link that points outside the website folder
+		return fmt.Errorf("%w: that path leads outside the website folder", ErrBadInput)
 	}
 	return err
 }
@@ -260,7 +266,7 @@ func (m *Manager) WriteFile(id, p string, body io.Reader, overwrite bool) (Entry
 	tmp := path.Join(path.Dir(rel), ".np-upload-"+randHex(6))
 	f, err := r.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
-		return Entry{}, err
+		return Entry{}, notExist(err)
 	}
 	n, err := io.Copy(f, io.LimitReader(body, MaxUpload+1))
 	if cerr := f.Close(); err == nil {
@@ -277,7 +283,7 @@ func (m *Manager) WriteFile(id, p string, body io.Reader, overwrite bool) (Entry
 	}
 	if err != nil {
 		_ = r.Remove(tmp)
-		return Entry{}, err
+		return Entry{}, notExist(err)
 	}
 	fi, err := r.Lstat(rel)
 	if err != nil {
@@ -371,7 +377,7 @@ func (m *Manager) Chmod(id, p, mode string) error {
 	if !fi.IsDir() && !fi.Mode().IsRegular() {
 		return fmt.Errorf("%w: only files and folders", ErrBadInput)
 	}
-	return r.Chmod(rel, os.FileMode(v))
+	return notExist(r.Chmod(rel, os.FileMode(v)))
 }
 
 // FileTrash is one deleted file or folder, restorable for TrashDays.
@@ -659,13 +665,13 @@ func (m *Manager) Unzip(id, p string) (int, error) {
 			return n, fmt.Errorf("%w: the zip has a symbolic link %q", ErrBadInput, zf.Name)
 		case zf.FileInfo().IsDir():
 			if err := r.MkdirAll(target, 0o755); err != nil {
-				return n, err
+				return n, notExist(err)
 			}
 			_ = r.Chown(target, m.uid(), m.uid())
 			continue
 		}
 		if err := r.MkdirAll(path.Dir(target), 0o755); err != nil {
-			return n, err
+			return n, notExist(err)
 		}
 		if fi, err := r.Lstat(target); err == nil && !fi.Mode().IsRegular() {
 			return n, fmt.Errorf("%w: %s exists and is not a file", ErrBadInput, shown(target))
@@ -681,7 +687,7 @@ func (m *Manager) Unzip(id, p string) (int, error) {
 		out, err := r.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 		if err != nil {
 			in.Close()
-			return n, err
+			return n, notExist(err)
 		}
 		w, err := io.Copy(out, io.LimitReader(in, budget+1))
 		in.Close()
