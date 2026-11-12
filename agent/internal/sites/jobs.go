@@ -107,3 +107,15 @@ func (t *Jobs) gc() {
 		}
 	}
 }
+
+// List returns a copy of every job.
+func (t *Jobs) List() []JobView {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.gc()
+	out := make([]JobView, 0, len(t.jobs))
+	for _, j := range t.jobs {
+		out = append(out, j.View())
+	}
+	return out
+}

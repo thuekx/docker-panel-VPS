@@ -30,6 +30,9 @@ type Site struct {
 	Created    int64  `json:"created"`
 	Phase      string `json:"phase"`                 // creating | ready | failed
 	SystemCron bool   `json:"system_cron,omitempty"` // WP-01: the agent runs wp-cron.php every 5 minutes
+	// BAK-01: daily backup at 02:00 WIB and how many daily backups are kept (0 = KeepDefault)
+	BackupDaily bool `json:"backup_daily,omitempty"`
+	BackupKeep  int  `json:"backup_keep,omitempty"`
 }
 
 // Project is the compose project name of a site.
