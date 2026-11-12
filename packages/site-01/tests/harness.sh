@@ -269,12 +269,14 @@ if [ "${HARNESS_LARAVEL:-1}" = 1 ]; then
   api GET /v1/sites/e-example-test/db; ok "migrations ran into its own database" '[ "$CODE" = 200 ] && grep -q "\"name\":\"app\"" <<<"$BODY" && grep -q "\"name\":\"migrations\"" <<<"$BODY"'
   MAXT=330 api POST /v1/sites/e-example-test/laravel/artisan '{"op":"migrate"}'; ok "artisan migrate from the panel" '[ "$CODE" = 200 ] && grep -qi "nothing to migrate" <<<"$BODY"'
   api POST /v1/sites/e-example-test/laravel/artisan '{"op":"db:wipe"}'; ok "artisan commands outside the list refused" '[ "$CODE" = 400 ]'
-  for _ in $(seq 1 30); do   # give both workers time to print their start line
-    docker logs np-site-e-example-test-queue-1 > "$T/q.log" 2>&1; docker logs np-site-e-example-test-scheduler-1 > "$T/s.log" 2>&1
-    grep -qi "processing jobs" "$T/q.log" && grep -qi "schedul" "$T/s.log" && break; sleep 2
+  # the queue worker must really run a job: queue a closure that writes a file, then wait for the file
+  docker exec np-site-e-example-test-php-1 php artisan tinker --execute "dispatch(function () { file_put_contents(storage_path('app/np-queue-ok'), 'ok'); });" > "$T/tinker.log" 2>&1
+  for _ in $(seq 1 30); do
+    [ -f "$SE/wp/storage/app/np-queue-ok" ] && grep -qi "schedul" <(docker logs np-site-e-example-test-scheduler-1 2>&1) && break; sleep 2
   done
-  OUT="queue: $(tail -n 5 "$T/q.log") | scheduler: $(tail -n 5 "$T/s.log") | restarts: $(docker inspect -f '{{.Name}} {{.RestartCount}}' np-site-e-example-test-queue-1 np-site-e-example-test-scheduler-1 | tr '\n' ' ')"
-  ok "queue worker and scheduler started" 'grep -qi "processing jobs" "$T/q.log" && grep -qi "schedul" "$T/s.log" && [ "$(docker inspect -f "{{.RestartCount}}" np-site-e-example-test-queue-1 np-site-e-example-test-scheduler-1 | sort -u)" = 0 ]'
+  docker logs np-site-e-example-test-queue-1 > "$T/q.log" 2>&1; docker logs np-site-e-example-test-scheduler-1 > "$T/s.log" 2>&1
+  OUT="tinker: $(tail -n 5 "$T/tinker.log") | queue: $(tail -n 5 "$T/q.log") | scheduler: $(tail -n 5 "$T/s.log")"; BODY=""
+  ok "queue worker runs a queued job, scheduler runs" '[ "$(cat "$SE/wp/storage/app/np-queue-ok" 2>/dev/null)" = ok ] && grep -qi "schedul" "$T/s.log" && [ "$(docker inspect -f "{{.RestartCount}}" np-site-e-example-test-queue-1 np-site-e-example-test-scheduler-1 | sort -u)" = 0 ]'
 fi
 api POST /v1/sites/d-example-test/laravel/artisan '{"op":"migrate"}'; ok "no artisan on a plain PHP site" '[ "$CODE" = 400 ]'
 
