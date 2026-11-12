@@ -57,3 +57,17 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
   build; a few seconds while the container is recreated (blue-green is a later improvement).
 - Harness: from files (starter, redeploy, failed build keeps the live release, rollback), and from Git with this
   repository's `packages/site-01/tests/node-app` on the branch under test (the repo check sets the branch).
+
+## APP-02b as built (v1.11.0, first part)
+
+- Apps `go` and `python` share the Node.js path (`IsRuntime`): same releases, history, build container, switch and
+  rollback. Catalogue `Runtime{Version, Image, SecurityUntil, Default}` per app: `golang:<v>-trixie` (1.26, 1.27
+  default), `python:<v>-trixie` (3.13, 3.14 default, 3.15), pinned by digest; the same image builds and runs.
+- Install / build / start defaults per app (`spec.InstallCmd`, `DefaultBuild`, `DefaultStart`). Go: `go mod download`,
+  `CGO_ENABLED=0 go build -trimpath -o server .`, `./server`; cache in `/tmp` of the build container. Python: venv
+  `.venv` inside the release + `pip install -r requirements.txt`; build `true`; start `.venv/bin/python app.py`.
+- Healthcheck for Go and Python: `curl` (present in both images) for an HTTP answer below 500 on port 3000.
+- Environment values: `deploy/app.env` (0600, raw `KEY=VALUE`, read by compose with `format: raw`, so no quote or `$`
+  handling), passed to the build too. Names only over the API and in the audit log; at most 100 keys, one line of
+  at most 4096 characters each; reserved: PORT, HOST, HOSTNAME, HOME, PATH. Saving recreates the app container.
+- Still to do in APP-02b: private repositories (deploy keys) and a database for apps.

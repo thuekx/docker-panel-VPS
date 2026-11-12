@@ -3,6 +3,21 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.11.0] — 2026-11-12
+
+### Added
+- **Go and Python websites** (APP-02, second part). "Add website" now offers Go (1.26, 1.27 default) and Python
+  (3.13, 3.14 default, 3.15) next to Node.js, on their official images pinned by digest. They use the same Deploy,
+  history, build log and rollback as Node.js apps.
+  - Go: `go mod download`, then `go build` to `./server` (or your build command), started with `./server`.
+  - Python: its own virtual environment `.venv` with the packages of `requirements.txt`, an optional build command
+    (for example `collectstatic`), and your start command (for example gunicorn or uvicorn on `$PORT`).
+  - A website built from its own files starts with a small starter app of its runtime.
+- **Environment values** for Node.js, Go and Python apps: a card on the Overview to add, change and delete values
+  (for example `DATABASE_URL` or API keys). The panel only ever shows the names, never the values; they are kept in a
+  file only root can read, outside the website folder, and the app restarts with them on save. `PORT`, `HOST`,
+  `HOSTNAME`, `HOME` and `PATH` stay set by the panel.
+
 ## [1.10.0] — 2026-11-12
 
 ### Added

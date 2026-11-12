@@ -320,6 +320,21 @@ MAXT=240 api POST /v1/sites/f-example-test/env '{"set":{"NP_CHECK":"a=b $HOME \"
 ok "environment value reaches the app as written (no quote or \$ handling), file 0600 outside the website folder" '[ "$CODE" = 200 ] && [ "$(docker exec np-site-f-example-test-app-1 printenv NP_CHECK)" = "a=b \$HOME \"q\" #x" ] && [ "$(stat -c %a "$SF/deploy/app.env")" = 600 ] && ! grep -rq NP_CHECK "$SF/wp" "$SF/compose.yml"'
 api GET /v1/sites/f-example-test/env; ok "env list names only" '[ "$CODE" = 200 ] && grep -q "NP_CHECK" <<<"$BODY" && ! grep -q "HOME" <<<"$BODY"'
 api POST /v1/sites/f-example-test/env '{"set":{"PORT":"80"},"delete":[]}'; ok "PORT cannot be overridden" '[ "$CODE" = 400 ]'
+# --- APP-02b Go and Python: same build and deploy path on their official images, starters without dependencies
+printf '%s h-example-test.%s %s\n%s i-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" "$IP" "$ZONE" "$MARK" >> /etc/hosts
+api POST /v1/sites '{"app":"go","domain":"h.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"Situs H","version":"1.26","source":"files"}'; JH="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "Go site built with go build from its own files, answers on port 3000 as www-data" '[ "$CODE" = 202 ] && [ "$(wait_job "$JH" 300)" = done ] && app_get h-example-test h-example-test.$ZONE / | grep -q "This Go app is ready (<code>go1.26" && [ "$(docker exec np-site-h-example-test-app-1 id -u)" = 33 ] && [ "$(docker inspect -f "{{.State.Health.Status}}" np-site-h-example-test-app-1)" = healthy ]'
+SH="$SITE01_TEST_ROOT/srv/nostek/sites/h-example-test"
+printf 'package main\n\nfunc main() { undefinedCall() }\n' > "$SH/wp/source/broken.go"
+api POST /v1/sites/h-example-test/deploys; JH2="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "a Go compile error keeps release 1 live and is in the build log" '[ "$(wait_job "$JH2" 300 2>/dev/null)" = failed ] && app_get h-example-test h-example-test.$ZONE / | grep -q "This Go app is ready" && grep -q "./wp/releases/1:/app" "$SH/compose.yml" && { api GET /v1/sites/h-example-test/deploys/2/log; grep -q "undefinedCall" <<<"$BODY"; }'
+api POST /v1/sites '{"app":"python","domain":"i.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"Situs I","version":"3.14","source":"files"}'; JI="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "Python site in its own virtual environment from its own files, answers on port 3000 as www-data" '[ "$CODE" = 202 ] && [ "$(wait_job "$JI" 300)" = done ] && app_get i-example-test i-example-test.$ZONE / | grep -q "This Python app is ready (<code>Python 3.14" && [ "$(docker exec np-site-i-example-test-app-1 id -u)" = 33 ] && [ -x "$SITE01_TEST_ROOT/srv/nostek/sites/i-example-test/wp/releases/1/.venv/bin/python" ]'
+MAXT=240 api POST /v1/sites/i-example-test/env '{"set":{"NP_PY":"ok"},"delete":[]}'
+ok "environment value reaches the Python app" '[ "$CODE" = 200 ] && [ "$(docker exec np-site-i-example-test-app-1 printenv NP_PY)" = ok ]'
+api POST /v1/sites '{"app":"python","domain":"j.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"","version":"2.7","source":"files"}'
+ok "an unsupported Python version is refused" '[ "$CODE" = 422 ]'
+KEPT=$((KEPT+2))
 api POST /v1/sites/a-example-test/deploys; ok "no deploy on a WordPress site" '[ "$CODE" = 400 ]'
 api POST /v1/sites '{"app":"node","domain":"g.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"","version":"24","repo":"https://user:pw@github.com/a/b.git","branch":"main"}'
 ok "a repository address with a password is refused" '[ "$CODE" = 422 ]'

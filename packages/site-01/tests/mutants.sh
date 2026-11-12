@@ -61,6 +61,8 @@ GO_MUTANTS=(
   'internal/spec/spec.go|len(r) > MaxRepo || !repoRe.MatchString(r)|len(r) > MaxRepo'   # APP-02: any repository address (user:password, file://, ssh)
   'internal/sites/deploy.go|	finish("live", "")|	finish("ok", "")'   # APP-02: new release not marked live
   'internal/sites/deploy.go|[]string{"set -e"}|[]string{"true"}'   # APP-02: a failing build step goes unnoticed
+  'internal/sites/env.go|strings.ContainsAny(v, "\n\r\x00") {|false {'   # APP-02b: a value with a newline adds a second variable
+  'internal/sites/env.go|		if reservedEnv[k] {|		if false && reservedEnv[k] {'   # APP-02b: PORT or PATH can be overridden
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"
