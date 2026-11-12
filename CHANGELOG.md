@@ -3,7 +3,10 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
-## [1.7.0] — not yet released
+## [1.7.0] — 2026-11-12
+
+Running at the owner's server since 18:31 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS,
+certificate valid). The same update brought 1.6.1.
 
 ### Added
 - **Backup** tab per website (BAK-01):
@@ -16,7 +19,10 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 - Backups live in the website's own folder under `/srv`, so the nightly off-site backup (03:30 WIB) carries them too.
 - nostek-agent: `/v1/sites/{id}/backups…` routes; restore refuses archives of another website and any path that
   leaves the website folder.
+
 ## [1.6.1] — 2026-11-12
+
+Released with 1.7.0 in one update (18:31 WIB).
 
 ### Fixed
 - WordPress Tools: the plugin list could fail to load ("Some details are missing: plugins: WP-CLI failed …")
