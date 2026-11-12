@@ -102,7 +102,7 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 			},
 			"f1":    func(f float64) string { return strconv.FormatFloat(f, 'f', 1, 64) },
 			"list3": func(a, b, c string) []string { return []string{a, b, c} },
-			"add3": func(a, b, c int) int { return a + b + c },
+			"add3":  func(a, b, c int) int { return a + b + c },
 			"len1": func(s string) int {
 				if s == "" {
 					return 0
