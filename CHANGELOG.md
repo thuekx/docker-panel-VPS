@@ -22,6 +22,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ### Changed
 - The edge proxy allows 30 minutes to read a request (was 60 seconds), so large uploads finish.
+- Creating a website pulls only images the server does not have yet. Every image is pinned by digest, so a copy
+  already on the server is the exact same image; this avoids Docker Hub rate limits (HTTP 429) on busy days.
 
 ## [1.4.0] — 2026-11-12
 

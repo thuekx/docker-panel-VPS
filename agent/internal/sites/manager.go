@@ -420,7 +420,7 @@ func (m *Manager) create(j *Job, s Site) {
 		return
 	}
 	j.Step("pull images")
-	if out, err := m.compose(ctx, s.ID, nil, "--profile", "tools", "pull", "--quiet"); err != nil {
+	if out, err := m.compose(ctx, s.ID, nil, "--profile", "tools", "pull", "--quiet", "--policy", "missing"); err != nil {
 		fail("pull images", err, out)
 		return
 	}
