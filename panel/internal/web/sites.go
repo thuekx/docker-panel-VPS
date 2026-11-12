@@ -162,6 +162,12 @@ type jobData struct {
 // jobSteps is the order in which the agent reports the steps of a create job.
 var jobSteps = []string{"files", "pull images", "start containers", "install WordPress"}
 
+// jobKindSteps is the order of the steps of the other jobs (BAK-01).
+var jobKindSteps = map[string][]string{
+	"backup":  {"copy database", "copy files"},
+	"restore": {"safety database", "safety files", "restore database", "restore files", "switch files"},
+}
+
 // stepRow is one line of the progress list: done, active, failed or todo.
 type stepRow struct {
 	Key   string `json:"key"`
@@ -171,7 +177,20 @@ type stepRow struct {
 // jobProgress turns the agent's job (each step is reported when it starts) into the full list of
 // steps with a state each, and the share of finished steps in percent.
 func jobProgress(j agent.Job) ([]stepRow, int) {
-	keys := append([]string{}, jobSteps...)
+	keys := append([]string{}, jobKindSteps[j.Kind]...)
+	if j.Kind == "" || j.Kind == "create" {
+		keys = append([]string{}, jobSteps...)
+	}
+	if j.State == "done" && j.Kind != "" && j.Kind != "create" {
+		keys = nil // a finished restore of the database only never switched files: show what ran
+	}
+	steps := make([]string, 0, len(j.Steps))
+	for _, st := range j.Steps {
+		if !strings.HasPrefix(st, "done ") { // "done <name>" names the result, it is not a step
+			steps = append(steps, st)
+		}
+	}
+	j.Steps = steps
 	for _, st := range j.Steps { // a step this panel does not know yet still shows up
 		known := false
 		for _, k := range keys {
@@ -206,6 +225,12 @@ func jobProgress(j agent.Job) ([]stepRow, int) {
 			done++
 		}
 		rows = append(rows, stepRow{k, state})
+	}
+	if len(rows) == 0 {
+		if j.State == "done" {
+			return rows, 100
+		}
+		return rows, 0
 	}
 	return rows, done * 100 / len(rows)
 }

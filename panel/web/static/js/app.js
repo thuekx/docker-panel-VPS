@@ -95,6 +95,7 @@
     }
     function finish() {
       clearInterval(clockTimer);
+      if (card.hasAttribute("data-job-reload")) { location.reload(); return; } // the page lists what the job made
       fetch(location.href, { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.text(); }).then(function (html) {
         var next = new DOMParser().parseFromString(html, "text/html").getElementById("job");
         if (!next) { location.reload(); return; }

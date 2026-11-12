@@ -274,8 +274,12 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 		return "", fmt.Errorf("%w: a backup was made this second; try again", ErrBadInput)
 	}
 
+	step := "copy" // the panel shows these step names; a restore's own safety copy has its own
+	if kind == "before-restore" {
+		step = "safety"
+	}
 	// 1. the database, into a private temporary file (its size must be known for the archive header)
-	j.Step("database")
+	j.Step(step + " database")
 	sqlPath := filepath.Join(dir, ".db-"+randHex(6)+".sql")
 	sqlf, err := os.OpenFile(sqlPath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
@@ -304,7 +308,7 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 	}
 
 	// 2. the archive
-	j.Step("files")
+	j.Step(step + " files")
 	part := final + ".part"
 	out, err := os.OpenFile(part, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
@@ -482,7 +486,6 @@ func (m *Manager) StartRestore(id, name, what string) (string, error) {
 		defer m.mu.Unlock()
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
 		defer cancel()
-		j.Step("safety backup")
 		safe, err := m.backup(ctx, j, s, "before-restore")
 		if err != nil {
 			j.Fail("the safety backup before restore failed, nothing was changed: " + err.Error())

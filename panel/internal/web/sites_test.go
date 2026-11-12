@@ -27,6 +27,9 @@ type fakeAgent struct {
 	imported  string
 	wpCalls   []string // "path body" of every WordPress call
 	wpDown    bool
+	bakCalls  []string // "method path body" of every backup call
+	bakDown   bool
+	bakJob    agent.Job
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +42,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	write := func(code int, v any) { w.WriteHeader(code); json.NewEncoder(w).Encode(v) }
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/files") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/db") {
 		f.filesDB(w, r, write)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/backups") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jbac") {
+		f.backups(w, r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/wp") {
