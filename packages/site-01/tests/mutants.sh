@@ -49,6 +49,10 @@ GO_MUTANTS=(
   'internal/sites/backup.go|	if !backupRe.MatchString(name) {|	if name == "" {'                                                          # BAK-01: any file name served or restored
   'internal/sites/backup.go|		if x.Kind != kind {|		if false {'                                                                     # BAK-01: daily keep prunes manual backups
   'internal/sites/backup.go|"mariadb-dump", "--single-transaction", |"mariadb-dump", '                                                    # BAK-01: inconsistent database copy
+  'internal/sites/wp.go|	if err == nil && !s.IsWP() {|	if false {'                                                                # APP-01: WordPress tools run on another app
+  'internal/sites/db.go|	if !s.HasDB() {|	if false {'                                                                             # APP-01: database tools on a site without database
+  'internal/spec/spec.go|		if c.Server != "nginx" || c.PHP != "" {|		if c.Server != "nginx" {'                                       # APP-01: PHP on a static site
+  'internal/sites/render.go|"DB_PASSWORD_FILE: /run/secrets/db_password"}|"DB_PASSWORD: x"}'                                       # APP-01: database password as an environment value
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"
