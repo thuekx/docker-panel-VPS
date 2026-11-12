@@ -60,7 +60,7 @@ func (m *Manager) History(id string) ([]Deploy, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !s.IsNode() {
+	if !s.IsRuntime() {
 		return nil, ErrNotNode
 	}
 	return m.readHistory(id)
@@ -106,7 +106,7 @@ func (m *Manager) BuildLog(id string, n int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if !s.IsNode() {
+	if !s.IsRuntime() {
 		return "", ErrNotNode
 	}
 	if n < 1 {
@@ -129,7 +129,7 @@ func (m *Manager) StartDeploy(id string) (string, error) {
 		m.mu.Unlock()
 		return "", err
 	}
-	if !s.IsNode() {
+	if !s.IsRuntime() {
 		m.mu.Unlock()
 		return "", ErrNotNode
 	}
@@ -161,7 +161,7 @@ func (m *Manager) Rollback(ctx context.Context, id string, n int) error {
 	if err != nil {
 		return err
 	}
-	if !s.IsNode() {
+	if !s.IsRuntime() {
 		return ErrNotNode
 	}
 	if n == s.Release {
@@ -220,11 +220,18 @@ func (m *Manager) switchRelease(ctx context.Context, s *Site, n int) ([]byte, er
 	return m.compose(ctx, s.ID, nil, "up", "-d", "--wait", "--wait-timeout", strconv.Itoa(StartTimeout), "app")
 }
 
+// appFileCheck stops a build early when the app folder lacks the file its runtime needs.
+var appFileCheck = map[string]string{
+	spec.AppNode:   `[ -f package.json ] || { echo "package.json not found in the app folder"; exit 1; }`,
+	spec.AppGo:     `[ -f go.mod ] || ls *.go >/dev/null 2>&1 || { echo "go.mod or .go files not found in the app folder"; exit 1; }`,
+	spec.AppPython: `[ -f requirements.txt ] || [ -f pyproject.toml ] || ls *.py >/dev/null 2>&1 || { echo "requirements.txt or .py files not found in the app folder"; exit 1; }`,
+}
+
 var commitRe = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 // deploy builds a new release and makes it live. The steps go to the job; the build output to the log file.
 func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
-	n, _ := catalog.Node(s.Version)
+	n, _ := catalog.RuntimeOf(s.AppName(), s.Version)
 	h, err := m.readHistory(s.ID)
 	if err != nil {
 		return err
@@ -283,8 +290,8 @@ func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
 	script := strings.Join(append(append([]string{"set -e"}, fetch...),
 		`[ -d "$src/$NOSTEK_DIR" ] || { echo "app folder '$NOSTEK_DIR' not found"; exit 1; }`,
 		`cp -R "$src/$NOSTEK_DIR/." /app/`,
-		`[ -f package.json ] || { echo "package.json not found in the app folder"; exit 1; }`,
-		`echo "== install"`, spec.NodeInstall,
+		appFileCheck[s.AppName()],
+		`echo "== install"`, spec.InstallCmd[s.AppName()],
 		`echo "== build"`, s.BuildCmd(),
 		`echo "== build done"`,
 	), "\n")
@@ -295,6 +302,8 @@ func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
 		"--label", "nostek.build=" + s.ID,
 		"-e", "HOME=/tmp", "-e", "CI=1",
 		"-e", "NPM_CONFIG_UPDATE_NOTIFIER=false", "-e", "NEXT_TELEMETRY_DISABLED=1",
+		"-e", "GOCACHE=/tmp/go-cache", "-e", "GOPATH=/tmp/go", "-e", "GOFLAGS=-buildvcs=false",
+		"-e", "PIP_DISABLE_PIP_VERSION_CHECK=1",
 		"-e", "NOSTEK_DIR=" + s.Dir,
 	}
 	if s.FromFiles() {
@@ -407,7 +416,7 @@ func (m *Manager) createNode(ctx context.Context, j *Job, s Site, fail func(stri
 		return
 	}
 	if s.FromFiles() {
-		if err := m.writeNodeStarter(s); err != nil {
+		if err := m.writeAppStarter(s); err != nil {
 			fail("files", err, nil)
 			return
 		}
@@ -416,7 +425,7 @@ func (m *Manager) createNode(ctx context.Context, j *Job, s Site, fail func(stri
 		fail("files", err, nil)
 		return
 	}
-	n, _ := catalog.Node(s.Version)
+	n, _ := catalog.RuntimeOf(s.AppName(), s.Version)
 	j.Step("pull images")
 	if out, err := m.run.Docker(ctx, dir, nil, "pull", "--quiet", n.Image); err != nil {
 		fail("pull images", err, out)

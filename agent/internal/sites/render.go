@@ -49,7 +49,7 @@ type Site struct {
 }
 
 // IsNode is true for a Node.js app.
-func (s Site) IsNode() bool { return s.AppName() == spec.AppNode }
+func (s Site) IsRuntime() bool { return spec.IsRuntimeApp(s.AppName()) }
 
 // FromFiles is true when a Node.js app is built from the website's source/ folder instead of Git.
 func (s Site) FromFiles() bool { return s.Source == spec.SourceFiles }
@@ -60,7 +60,7 @@ const NodePort = 3000
 // BuildCmd and StartCmd return the commands of a Node.js app, defaults when none was set.
 func (s Site) BuildCmd() string {
 	if s.Build == "" {
-		return spec.NodeBuild
+		return spec.DefaultBuild[s.AppName()]
 	}
 	return s.Build
 }
@@ -68,7 +68,7 @@ func (s Site) BuildCmd() string {
 // StartCmd returns the start command of a Node.js app.
 func (s Site) StartCmd() string {
 	if s.Start == "" {
-		return spec.NodeStart
+		return spec.DefaultStart[s.AppName()]
 	}
 	return s.Start
 }
@@ -121,7 +121,7 @@ var routerSafe = regexp.MustCompile(`[^a-z0-9-]`)
 // One router per host, so each name gets its own certificate and one failing name never blocks the others.
 func (s Site) labels() []string {
 	port := 80
-	if s.IsNode() {
+	if s.IsRuntime() {
 		port = NodePort
 	}
 	canon := s.Canonical()
@@ -195,9 +195,9 @@ func (s Site) Compose() (string, error) {
 		if s.Server != "nginx" {
 			return "", fmt.Errorf("a static site runs on nginx")
 		}
-	case spec.AppNode:
-		if _, ok := catalog.Node(s.Version); !ok {
-			return "", fmt.Errorf("unknown Node.js %s", s.Version)
+	case spec.AppNode, spec.AppGo, spec.AppPython:
+		if _, ok := catalog.RuntimeOf(s.AppName(), s.Version); !ok {
+			return "", fmt.Errorf("unknown %s %s", s.AppName(), s.Version)
 		}
 		if s.Release < 1 {
 			return "", fmt.Errorf("site %s has no release yet", s.ID)
@@ -257,7 +257,7 @@ secrets:
 		s.phpServices(&b, p)
 	case spec.AppLaravel:
 		s.laravelServices(&b, p)
-	case spec.AppNode:
+	case spec.AppNode, spec.AppGo, spec.AppPython:
 		s.nodeServices(&b)
 	case spec.AppStatic:
 		fmt.Fprintf(&b, `  web:
@@ -652,7 +652,13 @@ server {
 // nodeServices renders the app container of a Node.js website: the official Node.js image runs the live release
 // as www-data, with PORT set, reachable only through the edge; it may reach the internet (APIs, mail).
 func (s Site) nodeServices(b *strings.Builder) {
-	n, _ := catalog.Node(s.Version)
+	rt, _ := catalog.RuntimeOf(s.AppName(), s.Version)
+	env := "      NODE_ENV: production\n      NPM_CONFIG_UPDATE_NOTIFIER: \"false\"\n"
+	health := fmt.Sprintf(`["CMD", "node", "-e", "require('http').get('http://127.0.0.1:%d/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]`, NodePort)
+	if s.AppName() != spec.AppNode {
+		env = "      PYTHONUNBUFFERED: \"1\"\n      GIN_MODE: release\n"
+		health = fmt.Sprintf(`["CMD-SHELL", "c=$$(curl -s -o /dev/null -w '%%{http_code}' --max-time 3 http://127.0.0.1:%d/); [ $${c:-0} -gt 0 ] && [ $${c:-0} -lt 500 ]"]`, NodePort)
+	}
 	fmt.Fprintf(b, `  app:
     <<: *site
     image: %s
@@ -661,12 +667,10 @@ func (s Site) nodeServices(b *strings.Builder) {
     command: ["sh", "-c", %s]
     mem_limit: 768m
     environment:
-      NODE_ENV: production
-      PORT: "%d"
+%s      PORT: "%d"
       HOST: 0.0.0.0
       HOSTNAME: 0.0.0.0
       HOME: /tmp
-      NPM_CONFIG_UPDATE_NOTIFIER: "false"
     env_file:
       - path: ./deploy/app.env
         required: false
@@ -674,7 +678,7 @@ func (s Site) nodeServices(b *strings.Builder) {
     volumes:
       - ./wp/releases/%d:/app
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:%d/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      test: %s
       interval: 5s
       timeout: 4s
       retries: 3
@@ -682,7 +686,7 @@ func (s Site) nodeServices(b *strings.Builder) {
     labels:
 %s
     networks: [nostek-edge, out]
-`, n.Image, wwwData, wwwData, yamlQuote("exec "+s.StartCmd()), NodePort, s.Release, NodePort, indent(s.labels(), 6))
+`, rt.Image, wwwData, wwwData, yamlQuote("exec "+s.StartCmd()), env, NodePort, s.Release, health, indent(s.labels(), 6))
 }
 
 // yamlQuote writes a string as a YAML double-quoted scalar; `$` is doubled so compose does not expand it.

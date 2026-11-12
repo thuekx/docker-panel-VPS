@@ -325,7 +325,7 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		Database: c.Database,
 		Version:  laravelVersion(c),
 	}
-	if c.AppOf() == spec.AppNode {
+	if spec.IsRuntimeApp(c.AppOf()) {
 		s.Version, s.Repo, s.Branch, s.Build, s.Start, s.Dir = c.Version, c.Repo, c.Branch, c.Build, c.Start, c.Dir
 		if c.Source == spec.SourceFiles {
 			s.Source = spec.SourceFiles
@@ -401,7 +401,7 @@ func (m *Manager) create(j *Job, s Site) {
 		s.Phase = "failed"
 		_ = writeSite(dir, s)
 	}
-	if s.IsNode() {
+	if s.IsRuntime() {
 		m.createNode(ctx, j, s, fail)
 		return
 	}
@@ -723,7 +723,7 @@ type Stack struct {
 
 // services lists the services a site may have; anything else in the project is ignored.
 func services(s Site) []string {
-	if s.IsNode() {
+	if s.IsRuntime() {
 		return []string{"app"}
 	}
 	l := []string{"web"}

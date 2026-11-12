@@ -64,7 +64,7 @@ func (m *Manager) EnvNames(id string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !s.IsNode() {
+	if !s.IsRuntime() {
 		return nil, ErrNotNode
 	}
 	env, err := readEnv(m.envPath(id))
@@ -106,7 +106,7 @@ func (m *Manager) SetEnv(ctx context.Context, id string, c EnvChange) error {
 	if err != nil {
 		return err
 	}
-	if !s.IsNode() {
+	if !s.IsRuntime() {
 		return ErrNotNode
 	}
 	env, err := readEnv(m.envPath(id))

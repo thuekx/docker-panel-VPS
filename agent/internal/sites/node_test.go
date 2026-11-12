@@ -57,7 +57,7 @@ func TestNodeSiteCreate(t *testing.T) {
 		t.Fatalf("job %+v", v)
 	}
 	got, _ := m.Get(s.ID)
-	if !got.IsNode() || got.HasDB() || got.Release != 1 || got.Phase != "ready" || got.Repo != "https://github.com/owner/shop.git" {
+	if !got.IsRuntime() || got.HasDB() || got.Release != 1 || got.Phase != "ready" || got.Repo != "https://github.com/owner/shop.git" {
 		t.Fatalf("site %+v", got)
 	}
 	cf, _ := os.ReadFile(filepath.Join(m.dir(s.ID), "compose.yml"))

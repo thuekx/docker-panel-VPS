@@ -193,7 +193,15 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 	for _, n := range catalog.NodeAll() {
 		nv = append(nv, nodeView{n.Version, n.SecurityUntil, n.Version == catalog.NodeDefault})
 	}
-	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv, "node": nv})
+	rt := func(app string) []nodeView {
+		var v []nodeView
+		for _, r := range catalog.Runtimes(app) {
+			v = append(v, nodeView{r.Version, r.SecurityUntil, r.Default})
+		}
+		return v
+	}
+	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv, "node": nv,
+		"go": rt("go"), "python": rt("python")})
 }
 
 type siteView struct {
