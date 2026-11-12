@@ -344,3 +344,4 @@ button .ico{color:inherit}
 .mk.ok{color:var(--c-green);background:color-mix(in srgb,var(--c-green) 16%,transparent)}
 .mk.warn{color:var(--c-amber);background:color-mix(in srgb,var(--c-amber) 16%,transparent)}
 .card .checks{margin-bottom:14px}
+@media (max-width:860px){.side-foot .who{display:none}.side-foot{flex:none}}
