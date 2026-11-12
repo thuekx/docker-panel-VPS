@@ -557,5 +557,14 @@
   "node.source.files": "Files in the panel (File Manager)",
   "node.source.files.help": "The panel puts a small starter app in the source folder. Upload your app there with the File Manager (a .zip can be extracted), then press Deploy.",
   "node.dir": "App folder (optional)",
-  "node.dir.help": "Only when the app is in a subfolder, for example apps/web in a monorepo."
+  "node.dir.help": "Only when the app is in a subfolder, for example apps/web in a monorepo.",
+  "env.title": "Environment values",
+  "env.help": "Settings and secrets of your app (database address, API keys). The app gets them when it starts and the build gets them too. Values are never shown again after saving; saving restarts the app. Values the build uses (for example NEXT_PUBLIC_…) apply at the next deploy.",
+  "env.none": "No values yet.",
+  "env.name": "Name",
+  "env.value": "Value",
+  "env.save": "Save and restart app",
+  "env.delete": "Delete",
+  "sites.done.env-set": "Value saved, the app restarted with it.",
+  "sites.done.env-delete": "Value deleted, the app restarted without it."
 }

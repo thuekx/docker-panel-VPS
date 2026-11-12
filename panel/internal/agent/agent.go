@@ -247,6 +247,25 @@ func (c *Client) BuildLog(ctx context.Context, id string, n int) (string, error)
 	return v.Log, c.call(ctx, "GET", fmt.Sprintf("/v1/sites/%s/deploys/%d/log", url.PathEscape(id), n), nil, &v)
 }
 
+// EnvNames lists the names of a Node.js app's environment values (the agent never returns values).
+func (c *Client) EnvNames(ctx context.Context, id string) ([]string, error) {
+	var v struct {
+		Names []string `json:"names"`
+	}
+	return v.Names, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/env", nil, &v)
+}
+
+// SetEnv sets and deletes environment values and restarts the app.
+func (c *Client) SetEnv(ctx context.Context, id string, set map[string]string, del []string) error {
+	if set == nil {
+		set = map[string]string{}
+	}
+	if del == nil {
+		del = []string{}
+	}
+	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/env", map[string]any{"set": set, "delete": del}, nil)
+}
+
 // Rollback puts a kept release live again.
 func (c *Client) Rollback(ctx context.Context, id string, n int) error {
 	return c.call(ctx, "POST", fmt.Sprintf("/v1/sites/%s/deploys/%d/rollback", url.PathEscape(id), n), nil, nil)

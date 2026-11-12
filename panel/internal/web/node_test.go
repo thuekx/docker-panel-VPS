@@ -123,7 +123,24 @@ func TestNodePages(t *testing.T) {
 			t.Errorf("rollback %q answered %d", rel, code)
 		}
 	}
+	if !strings.Contains(page, "<code>DATABASE_URL</code>") || !strings.Contains(page, `value="env-set"`) {
+		t.Error("overview lacks environment values")
+	}
+	e.postWith(e.c, "/sites/voltix-id", url.Values{"action": {"env-set"}, "name": {"SECRET_X"}, "value": {"s3cr3t-value"}}, page)
+	if a := f.actions[len(f.actions)-1]; a != `env {"delete":[],"set":{"SECRET_X":"s3cr3t-value"}}` {
+		t.Errorf("env set %s", a)
+	}
+	e.postWith(e.c, "/sites/voltix-id", url.Values{"action": {"env-delete"}, "name": {"API_KEY"}}, page)
+	if a := f.actions[len(f.actions)-1]; a != `env {"delete":["API_KEY"],"set":{}}` {
+		t.Errorf("env delete %s", a)
+	}
+	if _, audit, _ := e.get(e.c, "/audit"); strings.Contains(audit, "s3cr3t-value") || !strings.Contains(audit, "SECRET_X") {
+		t.Error("audit holds the value or lacks the name")
+	}
 	f.app = "php"
+	if code, _, _ := e.postWith(e.c, "/sites/voltix-id", url.Values{"action": {"env-set"}, "name": {"A"}, "value": {"b"}}, page); code != 400 {
+		t.Errorf("env on a PHP site answered %d", code)
+	}
 	if code, _, _ := e.postWith(e.c, "/sites/voltix-id", url.Values{"action": {"deploy"}}, page); code != 400 {
 		t.Errorf("deploy on a PHP site answered %d", code)
 	}

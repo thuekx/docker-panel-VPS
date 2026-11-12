@@ -61,6 +61,19 @@
       <td><div class="row"><a class="ghost btn" href="/sites/{{$s.ID}}/deploys/{{.Release}}/log">{{t $l "deploy.log"}}</a>{{if and .Kept (ne .Result "live")}}<form method="post" action="/sites/{{$s.ID}}#deploy" class="form row"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="release" value="{{.Release}}"><button class="secondary" name="action" value="rollback" type="submit">{{t $l "deploy.rollback"}}</button></form>{{end}}</div></td></tr>{{end}}
     </tbody></table></div>{{end}}
 </section>
+<section class="card wide tone c-violet" data-anim="card" id="env">
+  <h2>{{t $l "env.title"}}</h2>
+  <p class="muted">{{t $l "env.help"}}</p>
+  {{if .Data.Env}}<div class="table-wrap"><table><tbody>{{range .Data.Env}}
+    <tr><td><code>{{.}}</code></td><td class="muted">••••••</td><td><form method="post" action="/sites/{{$s.ID}}#env" class="form row"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="name" value="{{.}}"><button class="ghost" name="action" value="env-delete" type="submit">{{t $l "env.delete"}}</button></form></td></tr>{{end}}
+  </tbody></table></div>{{else}}<p class="muted">{{t $l "env.none"}}</p>{{end}}
+  <form method="post" action="/sites/{{$s.ID}}#env" class="form env-form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="env-set">
+    <label>{{t $l "env.name"}}<input name="name" required pattern="[A-Za-z_][A-Za-z0-9_]{0,63}" placeholder="DATABASE_URL" autocapitalize="characters" spellcheck="false" autocomplete="off"></label>
+    <label>{{t $l "env.value"}}<input name="value" type="password" autocomplete="new-password" spellcheck="false"></label>
+    <button class="secondary" type="submit">{{t $l "env.save"}}</button>
+  </form>
+</section>
 {{end}}
 {{if $s.IsLaravel}}
 <section class="card wide tone c-orange" data-anim="card" id="laravel">

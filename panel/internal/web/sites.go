@@ -352,6 +352,7 @@ type siteData struct {
 	Artisan *artisanResult // the artisan command just run (Laravel)
 	Deploys []deployRow    // APP-02: deploy history of a Node.js website
 	NoHist  string         // why the history could not be read
+	Env     []string       // names of the app's environment values
 }
 
 // deployRow is one deploy as the Overview shows it.
@@ -416,6 +417,7 @@ func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanRe
 		} else {
 			d.NoHist = err.Error()
 		}
+		d.Env, _ = s.ag.EnvNames(ctx, id)
 	}
 	if svc := r.URL.Query().Get("logs"); siteService(site, svc) {
 		d.Service = svc
@@ -493,6 +495,25 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		}
 		err = s.ag.Rollback(ctx, id, n)
 		act = "rollback"
+	case "env-set", "env-delete":
+		if !site.IsNode() {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		name := strings.TrimSpace(r.PostForm.Get("name"))
+		if act == "env-set" {
+			err = s.ag.SetEnv(ctx, id, map[string]string{name: r.PostForm.Get("value")}, nil)
+		} else {
+			err = s.ag.SetEnv(ctx, id, nil, []string{name})
+		}
+		if err != nil {
+			s.audit1(userOf(r), r, "site."+act, id+" "+name+" failed: "+err.Error())
+			http.Redirect(w, r, back+"?err="+url.QueryEscape(err.Error())+"#env", http.StatusSeeOther)
+			return
+		}
+		s.audit1(userOf(r), r, "site."+act, id+" "+name)
+		http.Redirect(w, r, back+"?done="+act+"#env", http.StatusSeeOther)
+		return
 	case "delete":
 		if strings.TrimSpace(strings.ToLower(r.PostForm.Get("confirm"))) != site.Domain {
 			http.Redirect(w, r, back+"?err="+url.QueryEscape(s.tr.T(s.lang(r), "sites.delete.mismatch")), http.StatusSeeOther)

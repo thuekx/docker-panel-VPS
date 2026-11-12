@@ -557,5 +557,14 @@
   "node.source.files": "File di panel (File Manager)",
   "node.source.files.help": "Panel menaruh aplikasi awal kecil di folder source. Unggah aplikasi Anda ke sana lewat File Manager (file .zip bisa diekstrak), lalu tekan Deploy.",
   "node.dir": "Folder aplikasi (opsional)",
-  "node.dir.help": "Hanya bila aplikasi ada di subfolder, misalnya apps/web di monorepo."
+  "node.dir.help": "Hanya bila aplikasi ada di subfolder, misalnya apps/web di monorepo.",
+  "env.title": "Nilai lingkungan (env)",
+  "env.help": "Pengaturan dan rahasia aplikasi Anda (alamat database, API key). Aplikasi menerimanya saat mulai, dan build juga menerimanya. Nilai tidak pernah ditampilkan lagi setelah disimpan; menyimpan akan memulai ulang aplikasi. Nilai yang dipakai saat build (misalnya NEXT_PUBLIC_…) berlaku di deploy berikutnya.",
+  "env.none": "Belum ada nilai.",
+  "env.name": "Nama",
+  "env.value": "Nilai",
+  "env.save": "Simpan dan mulai ulang aplikasi",
+  "env.delete": "Hapus",
+  "sites.done.env-set": "Nilai disimpan, aplikasi dimulai ulang dengannya.",
+  "sites.done.env-delete": "Nilai dihapus, aplikasi dimulai ulang tanpanya."
 }

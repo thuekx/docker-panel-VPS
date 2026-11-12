@@ -670,6 +670,7 @@ func (s Site) nodeServices(b *strings.Builder) {
     env_file:
       - path: ./deploy/app.env
         required: false
+        format: raw
     volumes:
       - ./wp/releases/%d:/app
     healthcheck:

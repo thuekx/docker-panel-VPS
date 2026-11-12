@@ -122,6 +122,12 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		write(202, map[string]string{"job": "j0123456789abcdef"})
 	case r.URL.Path == "/v1/sites/voltix-id/deploys/2/log":
 		write(200, map[string]string{"log": "npm ERR! missing script: build <script>"})
+	case r.URL.Path == "/v1/sites/voltix-id/env" && r.Method == "GET":
+		write(200, map[string][]string{"names": {"API_KEY", "DATABASE_URL"}})
+	case r.URL.Path == "/v1/sites/voltix-id/env" && r.Method == "POST":
+		b, _ := io.ReadAll(r.Body)
+		f.actions = append(f.actions, "env "+string(b))
+		write(200, map[string]bool{"ok": true})
 	case r.URL.Path == "/v1/sites/voltix-id/laravel/artisan":
 		b, _ := io.ReadAll(r.Body)
 		f.actions = append(f.actions, "artisan "+string(b))

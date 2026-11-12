@@ -256,3 +256,65 @@ func TestYAMLQuote(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestNodeEnv(t *testing.T) {
+	m, f, s, _ := nodeSite(t, okBuild, nil)
+	ctx := context.Background()
+	if err := m.SetEnv(ctx, s.ID, EnvChange{Set: map[string]string{"DATABASE_URL": "postgres://u:p@db/x?a=1#$HOME 'q' \"z\"", "NEXT_PUBLIC_API": "https://api"}}); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(m.envPath(s.ID))
+	if string(b) != "DATABASE_URL=postgres://u:p@db/x?a=1#$HOME 'q' \"z\"\nNEXT_PUBLIC_API=https://api\n" {
+		t.Fatalf("env file %q", b)
+	}
+	if st, _ := os.Stat(m.envPath(s.ID)); st.Mode().Perm() != 0o600 {
+		t.Errorf("mode %v", st.Mode())
+	}
+	names, _ := m.EnvNames(s.ID)
+	if strings.Join(names, ",") != "DATABASE_URL,NEXT_PUBLIC_API" {
+		t.Fatalf("names %v", names)
+	}
+	last := strings.Join(f.calls[len(f.calls)-1], " ")
+	if !strings.Contains(last, "up -d --wait") || !strings.HasSuffix(last, " app") {
+		t.Errorf("app not recreated: %s", last)
+	}
+	if err := m.SetEnv(ctx, s.ID, EnvChange{Delete: []string{"NEXT_PUBLIC_API"}, Set: map[string]string{"A_B": ""}}); err != nil {
+		t.Fatal(err)
+	}
+	if names, _ = m.EnvNames(s.ID); strings.Join(names, ",") != "A_B,DATABASE_URL" {
+		t.Fatalf("names %v", names)
+	}
+	for name, c := range map[string]EnvChange{
+		"reserved": {Set: map[string]string{"PORT": "80"}},
+		"digit":    {Set: map[string]string{"1A": "x"}},
+		"dash":     {Set: map[string]string{"A-B": "x"}},
+		"newline":  {Set: map[string]string{"A": "x\nB=y"}},
+		"long":     {Set: map[string]string{"A": strings.Repeat("x", MaxEnvValue+1)}},
+		"bad del":  {Delete: []string{"A=B"}},
+	} {
+		if err := m.SetEnv(ctx, s.ID, c); !errors.Is(err, ErrBadInput) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	// the build container gets the values too
+	if v := deployAndWait(t, m, s.ID); v.State != "done" {
+		t.Fatal(v)
+	}
+	var build string
+	for _, c := range f.calls {
+		if len(c) > 0 && c[0] == "run" {
+			build = strings.Join(c, " ")
+		}
+	}
+	if !strings.Contains(build, "--env-file "+m.envPath(s.ID)) {
+		t.Errorf("build lacks the env file: %s", build)
+	}
+	cf, _ := os.ReadFile(filepath.Join(m.dir(s.ID), "compose.yml"))
+	if !strings.Contains(string(cf), "format: raw") {
+		t.Error("env file not read raw")
+	}
+	wp, _, _, _ := laravelSite(t, "")
+	if _, err := wp.EnvNames("voltix-id"); !errors.Is(err, ErrNotNode) {
+		t.Error(err)
+	}
+}
