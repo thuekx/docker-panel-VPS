@@ -3,7 +3,9 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
-## [1.5.0] — unreleased
+## [1.5.0] — 2026-11-12
+
+Running at the owner's server since 15:37 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
 
 ### Added
 - **File Manager** per website (SITE-02): browse folders, open and edit text files (up to 2 MB, line ends kept),
