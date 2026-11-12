@@ -26,6 +26,12 @@ func (nopRunner) Docker(ctx context.Context, dir string, stdin io.Reader, args .
 	return nil, nil
 }
 
+func (n nopRunner) DockerTo(ctx context.Context, dir string, stdin io.Reader, w io.Writer, args ...string) ([]byte, error) {
+	_, _ = n.Docker(ctx, dir, stdin, args...)
+	_, err := io.WriteString(w, "-- dump\n")
+	return nil, err
+}
+
 const ip = "203.0.113.10"
 
 // serve starts the API on a real Unix socket so the peer check runs as in production.
