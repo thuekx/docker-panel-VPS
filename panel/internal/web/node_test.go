@@ -12,7 +12,7 @@ import (
 func TestFormCreateNode(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/", nil)
 	r.PostForm = url.Values{"app": {"node"}, "domain": {"shop.voltix.id"}, "primary": {"domain"}, "server": {"apache"}, "php": {"8.4"},
-		"admin_email": {"o@nostek.dev"}, "database": {"1"}, "version": {"13"}, "node": {" 24 "},
+		"admin_email": {"o@nostek.dev"}, "database": {"1"}, "version": {"13"}, "node_version": {" 24 "},
 		"repo": {" https://github.com/owner/shop.git "}, "branch": {"main"}, "build": {"npm run build:prod"}, "start": {""}}
 	c, _ := formCreate(r)
 	if c.App != "node" || c.Server != "" || c.PHP != "" || c.AdminEmail != "" || c.Database || c.Version != "24" ||
@@ -64,11 +64,11 @@ func TestNodePages(t *testing.T) {
 		}
 	}
 	// plan then create: the approve card carries the Node.js fields to the create step
-	form := url.Values{"step": {"plan"}, "app": {"node"}, "domain": {"voltix.id"}, "primary": {"domain"}, "node": {"24"},
+	form := url.Values{"step": {"plan"}, "app": {"node"}, "domain": {"voltix.id"}, "primary": {"domain"}, "node_version": {"24"},
 		"repo": {"https://github.com/owner/shop.git"}, "branch": {"main"}, "start": {"node server.js"}}
 	f.app = "node"
 	code, plan, _ := e.postWith(e.c, "/sites/new", form, body)
-	if code != 200 || !strings.Contains(plan, `name="repo" value="https://github.com/owner/shop.git"`) || !strings.Contains(plan, `name="node" value="24"`) ||
+	if code != 200 || !strings.Contains(plan, `name="repo" value="https://github.com/owner/shop.git"`) || !strings.Contains(plan, `name="node_version" value="24"`) ||
 		!strings.Contains(plan, "<code>node server.js</code>") {
 		t.Fatalf("plan %d", code)
 	}
@@ -150,5 +150,46 @@ func TestNodePages(t *testing.T) {
 	_, audit, _ := e.get(e.c, "/audit")
 	if !strings.Contains(audit, "site.deploy") || !strings.Contains(audit, "site.rollback") {
 		t.Error("audit lacks deploy or rollback")
+	}
+}
+
+func TestGoPythonPages(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	_, body, _ := e.get(e.c, "/sites/new")
+	for _, want := range []string{`name="app" value="go"`, `name="app" value="python"`, `name="go_version"`, `<option value="1.27" selected>Go 1.27`, `<option value="3.14" selected>Python 3.14`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("form lacks %q", want)
+		}
+	}
+	for _, app := range []string{"go", "python"} {
+		form := url.Values{"step": {"plan"}, "app": {app}, "domain": {"voltix.id"}, "primary": {"domain"}, "source": {"files"},
+			"node_version": {"24"}, "go_version": {"1.27"}, "python_version": {"3.14"}}
+		f.app = app
+		code, plan, _ := e.postWith(e.c, "/sites/new", form, body)
+		if code != 200 || !strings.Contains(plan, `name="`+app+`_version"`) || missingKey.MatchString(plan) {
+			t.Fatalf("%s plan %d %v", app, code, missingKey.FindString(plan))
+		}
+		form.Set("step", "create")
+		e.postWith(e.c, "/sites/new", form, plan)
+		n := len(f.created)
+		if want := map[string]string{"go": "1.27", "python": "3.14"}[app]; n == 0 || f.created[n-1].App != app || f.created[n-1].Version != want {
+			t.Fatalf("%s created %+v", app, f.created)
+		}
+		for _, lang := range []string{"en", "id"} {
+			e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+			for _, p := range []string{"/sites", "/sites/voltix-id"} {
+				code, page, _ := e.get(e.c, p)
+				if code != 200 || missingKey.MatchString(page) {
+					t.Errorf("%s %s (%s): %d %v", app, p, lang, code, missingKey.FindString(page))
+				}
+			}
+		}
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+	}
+	_, page, _ := e.get(e.c, "/sites/voltix-id")
+	if !strings.Contains(page, "Python 1.27") || !strings.Contains(page, ".venv/bin/python app.py") {
+		t.Error("python site overview")
 	}
 }

@@ -8,7 +8,7 @@
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "sites.status"}}</span>{{template "sitestatus" (dict3 $l $s.Status $s.Phase)}}</div>
   <div class="table-wrap"><table><tbody>
     <tr><th>{{t $l "sites.app"}}</th><td><span class="tag-srv c-teal">{{t $l (printf "sites.app.%s" $s.AppName)}}{{if and $s.Version (not $s.IsNode)}} {{$s.Version}}{{end}}</span>{{if $s.HasDB}} <span class="tag-srv c-blue">MariaDB</span>{{end}}</td></tr>
-    {{if $s.IsNode}}<tr><th>{{t $l "deploy.runtime"}}</th><td><span class="tag-srv c-green">Node.js {{$s.Version}}</span></td></tr>
+    {{if $s.IsNode}}<tr><th>{{t $l "deploy.runtime"}}</th><td><span class="tag-srv c-green">{{t $l (printf "sites.app.%s" $s.AppName)}} {{$s.Version}}</span></td></tr>
     {{else}}<tr><th>{{t $l "sites.server"}}</th><td><span class="tag-srv {{if eq $s.Server "nginx"}}c-green{{else}}c-orange{{end}}">{{if eq $s.AppName "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $s.Server)}}{{end}}</span></td></tr>{{end}}
     {{if $s.PHP}}<tr><th>PHP</th><td><span class="tag-srv c-violet">PHP {{$s.PHP}}</span></td></tr>{{end}}
     {{if $s.IsWP}}<tr><th>{{t $l "sites.wpurl"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a> · <a href="{{$s.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></td></tr>
@@ -46,8 +46,8 @@
     {{else}}<dt>{{t $l "node.repo"}}</dt><dd><code>{{$s.Repo}}</code></dd>
     <dt>{{t $l "node.branch"}}</dt><dd><code>{{$s.Branch}}</code></dd>{{end}}
     {{if $s.Dir}}<dt>{{t $l "node.dir"}}</dt><dd><code>{{$s.Dir}}</code></dd>{{end}}
-    <dt>{{t $l "node.build"}}</dt><dd><code>{{if $s.Build}}{{$s.Build}}{{else}}npm run build --if-present{{end}}</code></dd>
-    <dt>{{t $l "node.start"}}</dt><dd><code>{{if $s.Start}}{{$s.Start}}{{else}}npm start{{end}}</code></dd>
+    <dt>{{t $l "node.build"}}</dt><dd><code>{{if $s.Build}}{{$s.Build}}{{else}}{{t $l (printf "rt.build.%s" $s.AppName)}}{{end}}</code></dd>
+    <dt>{{t $l "node.start"}}</dt><dd><code>{{if $s.Start}}{{$s.Start}}{{else}}{{t $l (printf "rt.start.%s" $s.AppName)}}{{end}}</code></dd>
     <dt>{{t $l "deploy.live"}}</dt><dd>{{if $s.Release}}{{t $l "deploy.release" $s.Release}}{{else}}—{{end}}</dd>
   </dl>
   <p class="muted">{{t $l "deploy.help"}}</p>

@@ -122,9 +122,9 @@ func formCreate(r *http.Request) (agent.Create, string) {
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "nginx", "", ""
 	case "laravel": // always Nginx + PHP-FPM with its own MariaDB
 		c.App, c.Server, c.AdminEmail, c.Version = app, "nginx", "", strings.TrimSpace(f.Get("version"))
-	case "node": // APP-02: built from Git, no web server or PHP choice
+	case "node", "go", "python": // APP-02: built from Git or own files, no web server or PHP choice
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "", "", ""
-		c.Version = strings.TrimSpace(f.Get("node"))
+		c.Version = strings.TrimSpace(f.Get(app + "_version"))
 		c.Repo, c.Branch = strings.TrimSpace(f.Get("repo")), strings.TrimSpace(f.Get("branch"))
 		c.Build, c.Start = strings.TrimSpace(f.Get("build")), strings.TrimSpace(f.Get("start"))
 		c.Dir = strings.Trim(strings.TrimSpace(f.Get("dir")), "/")

@@ -141,8 +141,8 @@ type Site struct {
 // FromFiles is true when a Node.js app is built from the website's source/ folder.
 func (s Site) FromFiles() bool { return s.Source == "files" }
 
-// IsNode is true for a Node.js app (APP-02).
-func (s Site) IsNode() bool { return s.App == "node" }
+// IsNode is true for an app built from source by the agent: Node.js, Go or Python (APP-02).
+func (s Site) IsNode() bool { return s.App == "node" || s.App == "go" || s.App == "python" }
 
 // AppName is the app the site runs: wordpress, php or static.
 func (s Site) AppName() string {
@@ -204,6 +204,8 @@ type Catalog struct {
 	Servers []string  `json:"servers"`
 	Laravel []Laravel `json:"laravel"`
 	Node    []Node    `json:"node"`
+	Go      []Node    `json:"go"`
+	Python  []Node    `json:"python"`
 }
 
 // Node is one offered Node.js version (APP-02).

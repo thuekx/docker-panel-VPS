@@ -374,9 +374,10 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .app-card>span{display:flex;flex-direction:column;gap:2px}
 .app-card .muted{font-size:13px}
 .site-new .for-php{display:flex;flex-direction:column;gap:14px}
-.site-new:has(input[name=app][value=static]:checked) .for-php,.site-new:has(input[name=app][value=node]:checked) .for-php{display:none}
+.site-new:has(input[name=app][value=static]:checked) .for-php,.site-new:has(input[name=app][value=node]:checked) .for-php,.site-new:has(input[name=app][value=go]:checked) .for-php,.site-new:has(input[name=app][value=python]:checked) .for-php{display:none}
 .site-new .for-node{display:flex;flex-direction:column;gap:14px}
-.site-new:not(:has(input[name=app][value=node]:checked)) .for-node{display:none}
+.site-new:not(:has(input[name=app][value=node]:checked)):not(:has(input[name=app][value=go]:checked)):not(:has(input[name=app][value=python]:checked)) .for-node{display:none}
+.site-new:not(:has(input[name=app][value=node]:checked)) .rt-node,.site-new:not(:has(input[name=app][value=go]:checked)) .rt-go,.site-new:not(:has(input[name=app][value=python]:checked)) .rt-python{display:none}
 .site-new .for-git{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .site-new:has(input[name=source][value=files]:checked) .for-git{display:none}
 .site-new:not(:has(input[name=source][value=files]:checked)) .for-files{display:none}
