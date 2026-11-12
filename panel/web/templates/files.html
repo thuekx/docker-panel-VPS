@@ -1,0 +1,71 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "files.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (dict3 $l $s.ID "files")}}
+<section class="card wide tone c-amber fm" data-anim="card">
+  <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-folder"}}</span>{{t $l "files.title"}} <code class="proj">{{$s.Domain}}</code></span>
+    <span class="row"><a class="ghost btn" href="/files/{{$s.ID}}/zip?path={{$d.Path}}">{{t $l "files.zip.folder"}}</a></span></div>
+  <nav class="crumbs" aria-label="{{t $l "files.where"}}">{{range $i, $c := $d.Crumbs}}{{if $i}}<span aria-hidden="true">/</span>{{end}}<a href="/files/{{$s.ID}}?path={{$c.Path}}">{{if eq $c.Path "/"}}{{t $l "files.root"}}{{else}}{{$c.Name}}{{end}}</a>{{end}}</nav>
+  <p class="muted">{{t $l "files.help"}}</p>
+  {{if $d.Err}}<p class="banner warn">{{t $l "files.err.list"}} <code>{{$d.Err}}</code></p>{{else}}
+  <div class="table-wrap"><table class="fm-table">
+    <thead><tr><th>{{t $l "files.name"}}</th><th class="num">{{t $l "files.size"}}</th><th>{{t $l "files.perm"}}</th><th>{{t $l "files.modified"}}</th><th><span class="sr">{{t $l "files.actions"}}</span></th></tr></thead>
+    <tbody>
+    {{if $d.Parent}}<tr class="fm-up"><td colspan="5"><a href="/files/{{$s.ID}}?path={{$d.Parent}}"><span class="fi fi-up" aria-hidden="true"></span>{{t $l "files.up"}}</a></td></tr>{{end}}
+    {{range $d.Rows}}<tr data-anim="item">
+      <td class="fm-name"><span class="fi fi-{{.Kind}}" aria-hidden="true"></span>{{if eq .Type "dir"}}<a href="/files/{{$s.ID}}?path={{.Path}}"><b>{{.Name}}</b></a>{{else if .Editable}}<a href="/files/{{$s.ID}}/edit?path={{.Path}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}{{if .Target}} <span class="muted">→ {{.Target}}</span>{{end}}</td>
+      <td class="num">{{if eq .Type "dir"}}<span class="muted">{{t $l "files.folder"}}</span>{{else}}{{.Human}}{{end}}</td>
+      <td><code>{{.Mode}}</code></td>
+      <td class="muted">{{.When}}</td>
+      <td class="fm-act"><details class="menu"><summary class="ghost btn" aria-label="{{t $l "files.actions"}}: {{.Name}}">⋯</summary><div class="menu-pop">
+        {{if eq .Type "file"}}<a class="ghost btn" href="/files/{{$s.ID}}/download?path={{.Path}}">{{t $l "files.download"}}</a>{{if .Editable}}<a class="ghost btn" href="/files/{{$s.ID}}/edit?path={{.Path}}">{{t $l "files.edit"}}</a>{{end}}{{end}}
+        {{if eq .Type "dir"}}<a class="ghost btn" href="/files/{{$s.ID}}/zip?path={{.Path}}">{{t $l "files.zip"}}</a>{{end}}
+        {{if .Zip}}<form method="post" action="/files/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="unzip"><input type="hidden" name="dir" value="{{$d.Path}}"><input type="hidden" name="path" value="{{.Path}}"><button class="secondary" type="submit">{{t $l "files.unzip"}}</button></form>{{end}}
+        <form method="post" action="/files/{{$s.ID}}" class="mini"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="rename"><input type="hidden" name="dir" value="{{$d.Path}}"><input type="hidden" name="path" value="{{.Path}}">
+          <label>{{t $l "files.rename"}}<input name="name" value="{{.Name}}" autocomplete="off" spellcheck="false" required></label><button class="ghost" type="submit">{{t $l "files.rename.go"}}</button></form>
+        {{if ne .Type "link"}}<form method="post" action="/files/{{$s.ID}}" class="mini"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="chmod"><input type="hidden" name="dir" value="{{$d.Path}}"><input type="hidden" name="path" value="{{.Path}}">
+          <label>{{t $l "files.perm"}}<input name="mode" value="{{.Mode}}" inputmode="numeric" pattern="[0-7]{3,4}" maxlength="4" required></label><button class="ghost" type="submit">{{t $l "files.perm.go"}}</button></form>{{end}}
+        <form method="post" action="/files/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="delete"><input type="hidden" name="dir" value="{{$d.Path}}"><input type="hidden" name="path" value="{{.Path}}"><button class="danger" type="submit" data-confirm="{{t $l "files.delete.ask" .Name}}">{{t $l "files.delete"}}</button></form>
+      </div></details></td>
+    </tr>{{else}}<tr><td colspan="5" class="muted">{{t $l "files.empty"}}</td></tr>{{end}}
+    </tbody></table></div>
+  {{if $d.Truncated}}<p class="banner warn">{{t $l "files.truncated"}}</p>{{end}}
+  {{end}}
+</section>
+<section class="grid pair">
+<article class="card tone c-blue" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-cloud"}}</span>{{t $l "files.upload"}}</h2>
+  <p class="muted">{{t $l "files.upload.help" $d.MaxUpload}}</p>
+  <form method="post" action="/files/{{$s.ID}}/upload?path={{$d.Path}}" enctype="multipart/form-data" class="form" data-upload>
+    <input type="hidden" name="csrf" value="{{$csrf}}">
+    <label class="check"><input type="checkbox" name="overwrite" value="1"> {{t $l "files.upload.overwrite"}}</label>
+    <label class="drop">{{t $l "files.upload.pick"}}<input type="file" name="files" multiple required></label>
+    <div class="progress" hidden data-upload-bar><i></i></div>
+    <button class="primary" type="submit">{{t $l "files.upload.go"}}</button>
+  </form>
+</article>
+<article class="card tone c-green" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-folder"}}</span>{{t $l "files.new"}}</h2>
+  <form method="post" action="/files/{{$s.ID}}" class="form row">
+    <input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="mkdir"><input type="hidden" name="dir" value="{{$d.Path}}">
+    <label class="grow">{{t $l "files.new.folder"}}<input name="name" autocomplete="off" spellcheck="false" required></label>
+    <button class="secondary" type="submit">{{t $l "files.new.folder.go"}}</button>
+  </form>
+  <form method="post" action="/files/{{$s.ID}}" class="form row">
+    <input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="newfile"><input type="hidden" name="dir" value="{{$d.Path}}">
+    <label class="grow">{{t $l "files.new.file"}}<input name="name" autocomplete="off" spellcheck="false" required placeholder="index.html"></label>
+    <button class="secondary" type="submit">{{t $l "files.new.file.go"}}</button>
+  </form>
+</article>
+</section>
+<section class="card wide tone c-rose" data-anim="card">
+  <h2>{{t $l "files.trash"}}</h2>
+  <p class="muted">{{t $l "files.trash.help"}}</p>
+  {{if $d.Trash}}<div class="table-wrap"><table><thead><tr><th>{{t $l "files.trash.path"}}</th><th>{{t $l "sites.trash.deleted"}}</th><th>{{t $l "sites.trash.purge"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Trash}}<tr><td><span class="fi fi-{{if eq .Type "dir"}}dir{{else}}file{{end}}" aria-hidden="true"></span><code>{{.Path}}</code></td><td class="muted">{{.DeletedAt}}</td><td class="muted">{{.PurgeAt}}</td>
+    <td><form method="post" action="/files/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="restore"><input type="hidden" name="dir" value="{{$d.Path}}"><input type="hidden" name="entry" value="{{.Entry}}"><button class="secondary" type="submit">{{t $l "sites.restore"}}</button></form></td></tr>{{end}}
+  </tbody></table></div>{{else}}<p class="muted">{{t $l "files.trash.empty"}}</p>{{end}}
+</section>
+<p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
+{{end}}

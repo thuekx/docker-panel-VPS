@@ -41,17 +41,22 @@ func (r ExecRunner) Docker(ctx context.Context, dir string, stdin io.Reader, arg
 	if bin == "" {
 		bin = "docker"
 	}
-	cmd := exec.CommandContext(ctx, bin, args...)
-	cmd.Dir = dir
+	cmd := r.cmd(ctx, bin, dir, args)
 	cmd.Stdin = stdin
-	cmd.Env = []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME=/root"}
-	if v := os.Getenv("DOCKER_CONFIG"); v != "" {
-		cmd.Env = append(cmd.Env, "DOCKER_CONFIG="+v)
-	}
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
 	err := cmd.Run()
 	return out.Bytes(), err
+}
+
+func (r ExecRunner) cmd(ctx context.Context, bin, dir string, args []string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Dir = dir
+	cmd.Env = []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME=/root"}
+	if v := os.Getenv("DOCKER_CONFIG"); v != "" {
+		cmd.Env = append(cmd.Env, "DOCKER_CONFIG="+v)
+	}
+	return cmd
 }
 
 // Resolver looks up host addresses. Tests replace it.
@@ -63,6 +68,7 @@ type Config struct {
 	PublicIPv4  string // the server's public address; a host is routed only when it resolves here
 	PanelDomain string // never usable as a site host
 	PreviewZone string // e.g. preview.nostek.dev ("" = no preview addresses)
+	FileUID     int    // owner of files written by the file manager (0 = www-data, 33)
 }
 
 // Manager owns all site directories. One change runs at a time.
@@ -414,7 +420,7 @@ func (m *Manager) create(j *Job, s Site) {
 		return
 	}
 	j.Step("pull images")
-	if out, err := m.compose(ctx, s.ID, nil, "--profile", "tools", "pull", "--quiet"); err != nil {
+	if out, err := m.compose(ctx, s.ID, nil, "--profile", "tools", "pull", "--quiet", "--policy", "missing"); err != nil {
 		fail("pull images", err, out)
 		return
 	}
@@ -610,6 +616,7 @@ func (m *Manager) Purge() ([]string, error) {
 		}
 		gone = append(gone, t.Entry)
 	}
+	gone = append(gone, m.purgeFiles()...)
 	return gone, nil
 }
 

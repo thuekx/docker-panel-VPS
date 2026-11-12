@@ -1,0 +1,22 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "files.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (dict3 $l $s.ID "files")}}
+<section class="card wide tone c-amber" data-anim="card">
+  <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-file"}}</span>{{t $l "files.edit"}}</span>
+    <span class="row"><span class="muted">{{$d.Size}}{{if eq $d.EOL "crlf"}} · CRLF{{end}}</span><a class="ghost btn" href="/files/{{$s.ID}}/download?path={{$d.Path}}">{{t $l "files.download"}}</a></span></div>
+  <nav class="crumbs" aria-label="{{t $l "files.where"}}">{{range $i, $c := $d.Crumbs}}{{if $i}}<span aria-hidden="true">/</span>{{end}}<a href="{{if eq $c.Path $d.Path}}/files/{{$s.ID}}/edit?path={{$c.Path}}{{else}}/files/{{$s.ID}}?path={{$c.Path}}{{end}}">{{if eq $c.Path "/"}}{{t $l "files.root"}}{{else}}{{$c.Name}}{{end}}</a>{{end}}</nav>
+  {{if $d.TooBig}}<p class="banner warn">{{t $l "files.edit.toobig"}}</p>
+  {{else if $d.Binary}}<p class="banner warn">{{t $l "files.edit.binary"}}</p>
+  {{else}}
+  {{if eq $d.Path "/wp-config.php"}}<p class="banner warn">{{t $l "files.edit.wpconfig"}}</p>{{end}}
+  <form method="post" action="/files/{{$s.ID}}" class="form" data-editor>
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="op" value="save"><input type="hidden" name="path" value="{{$d.Path}}"><input type="hidden" name="eol" value="{{$d.EOL}}">
+    <textarea name="content" class="code" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off" rows="28" data-lang="{{$d.Lang}}" aria-label="{{$d.Path}}">{{$d.Content}}</textarea>
+    <div class="row"><button class="primary" type="submit">{{t $l "files.save"}}</button><span class="muted" data-dirty hidden>{{t $l "files.unsaved"}}</span><span class="muted">{{t $l "files.save.help"}}</span></div>
+  </form>
+  {{end}}
+</section>
+<p><a href="/files/{{$s.ID}}?path={{$d.Dir}}">{{t $l "files.back.folder"}}</a></p>
+{{end}}

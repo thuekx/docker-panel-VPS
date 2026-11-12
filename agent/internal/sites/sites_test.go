@@ -16,13 +16,24 @@ import (
 
 // fakeRunner records docker calls and answers ps with a fixed state.
 type fakeRunner struct {
-	mu    sync.Mutex
-	calls [][]string
-	stdin []string
-	fail  string // fail any call containing this word
-	ps    string
-	ins   string // docker inspect answer
-	stats string // docker stats answer
+	mu     sync.Mutex
+	calls  [][]string
+	stdin  []string
+	fail   string // fail any call containing this word
+	ps     string
+	ins    string            // docker inspect answer
+	stats  string            // docker stats answer
+	answer map[string]string // answer for any call containing the key
+	dumped string            // what DockerTo writes (export)
+}
+
+func (f *fakeRunner) DockerTo(ctx context.Context, dir string, stdin io.Reader, w io.Writer, args ...string) ([]byte, error) {
+	out, err := f.Docker(ctx, dir, stdin, args...)
+	if err != nil {
+		return out, err
+	}
+	_, err = io.WriteString(w, f.dumped)
+	return nil, err
 }
 
 func (f *fakeRunner) Docker(ctx context.Context, dir string, stdin io.Reader, args ...string) ([]byte, error) {
@@ -36,6 +47,11 @@ func (f *fakeRunner) Docker(ctx context.Context, dir string, stdin io.Reader, ar
 	j := strings.Join(args, " ")
 	if f.fail != "" && strings.Contains(j, f.fail) {
 		return []byte("boom"), errors.New("exit 1")
+	}
+	for k, v := range f.answer {
+		if strings.Contains(j, k) {
+			return []byte(v), nil
+		}
 	}
 	if strings.Contains(j, " ps ") {
 		return []byte(f.ps), nil

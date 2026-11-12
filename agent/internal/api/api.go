@@ -71,6 +71,22 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/sites/{id}/logs", s.logs)
 	mux.HandleFunc("GET /v1/sites/{id}/stack", s.stack)
 	mux.HandleFunc("POST /v1/sites/{id}/services/{svc}/restart", s.restartService)
+	mux.HandleFunc("GET /v1/sites/{id}/files", s.filesList)
+	mux.HandleFunc("GET /v1/sites/{id}/files/content", s.fileGet)
+	mux.HandleFunc("PUT /v1/sites/{id}/files/content", s.filePut)
+	mux.HandleFunc("GET /v1/sites/{id}/files/zip", s.fileZip)
+	mux.HandleFunc("POST /v1/sites/{id}/files/mkdir", s.fileOp("mkdir"))
+	mux.HandleFunc("POST /v1/sites/{id}/files/rename", s.fileOp("rename"))
+	mux.HandleFunc("POST /v1/sites/{id}/files/chmod", s.fileOp("chmod"))
+	mux.HandleFunc("POST /v1/sites/{id}/files/delete", s.fileOp("delete"))
+	mux.HandleFunc("POST /v1/sites/{id}/files/unzip", s.fileOp("unzip"))
+	mux.HandleFunc("GET /v1/sites/{id}/files/trash", s.filesTrash)
+	mux.HandleFunc("POST /v1/sites/{id}/files/trash/{entry}/restore", s.fileRestore)
+	mux.HandleFunc("GET /v1/sites/{id}/db", s.db)
+	mux.HandleFunc("POST /v1/sites/{id}/db/query", s.dbQuery)
+	mux.HandleFunc("GET /v1/sites/{id}/db/export", s.dbExport)
+	mux.HandleFunc("GET /v1/sites/{id}/db/backups/{name}", s.dbBackup)
+	mux.HandleFunc("PUT /v1/sites/{id}/db/import", s.dbImport)
 	mux.HandleFunc("GET /v1/trash", s.trash)
 	mux.HandleFunc("POST /v1/trash/{entry}/restore", s.restore)
 	mux.HandleFunc("GET /v1/jobs/{id}", s.job)
@@ -84,7 +100,7 @@ func (s *Server) Handler() http.Handler {
 			writeErr(w, http.StatusForbidden, "caller not allowed")
 			return
 		}
-		if r.URL.RawQuery != "" && !strings.HasSuffix(r.URL.Path, "/logs") {
+		if r.URL.RawQuery != "" && !strings.HasSuffix(r.URL.Path, "/logs") && !queryRoute(r.URL.Path) {
 			writeErr(w, http.StatusBadRequest, "no query parameters on this route")
 			return
 		}
@@ -105,11 +121,13 @@ func (s *Server) note(r *http.Request, action, site, result, detail string) {
 	s.Audit.Write(audit.Entry{Peer: PeerUID(r.Context()), Action: action, Site: site, Result: result, Detail: detail})
 }
 
-func decode(r *http.Request, v any) error {
+func decode(r *http.Request, v any) error { return decodeN(r, v, MaxBody) }
+
+func decodeN(r *http.Request, v any, max int64) error {
 	if ct := r.Header.Get("Content-Type"); ct != "application/json" {
 		return errors.New("content type must be application/json")
 	}
-	dec := json.NewDecoder(io.LimitReader(r.Body, MaxBody+1))
+	dec := json.NewDecoder(io.LimitReader(r.Body, max+1))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		return errors.New("body is not valid: " + err.Error())
