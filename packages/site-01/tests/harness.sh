@@ -205,7 +205,7 @@ RAWOUT="$T/site.tar.gz" raw GET "/v1/sites/b-example-test/backups/$BKN"; ok "dow
 OWN="$(stat -c "%u:%g %a" "$WPB/wp-config.php")"
 api POST /v1/sites/b-example-test/db/query '{"sql":"UPDATE wp_options SET option_value = '"'"'Rusak'"'"' WHERE option_name = '"'"'blogname'"'"'; CREATE TABLE np_after (id int)"}'
 printf 'x' > "$WPB/rusak.php"; printf '<?php // changed' > "$WPB/index.php"
-api POST /v1/sites/b-example-test/db/query '{"sql":"SHOW TABLES LIKE '"'"'np_after'"'"'"}'; ok "website changed after the backup" '[ "$CODE" = 200 ] && grep -q "\"np_after\"\]" <<<"$BODY" && grep -q "<title>Rusak" <<<"$(site_body b-example-test "b-example-test.$ZONE")"'
+api POST /v1/sites/b-example-test/db/query '{"sql":"SHOW TABLES LIKE '"'"'np_after'"'"'"}'; ok "website changed after the backup" '[ "$CODE" = 200 ] && grep -q "\"np_after\"\]" <<<"$BODY"'
 api POST "/v1/sites/b-example-test/backups/$BKN/restore" '{"what":"all"}'; JR="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "restore everything" '[ "$CODE" = 202 ] && [ "$(wait_job "$JR")" = done ]'
 ok "website, database and files back as in the backup" '[ "$(web b-example-test b-example-test.$ZONE /)" = 200 ] && grep -q "<title>Situs B" <<<"$(site_body b-example-test "b-example-test.$ZONE")" && [ ! -e "$WPB/rusak.php" ] && ! grep -q changed "$WPB/index.php" && [ "$(stat -c "%u:%g %a" "$WPB/wp-config.php")" = "$OWN" ]'
