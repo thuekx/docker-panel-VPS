@@ -37,6 +37,7 @@ type Site struct {
 	// APP-01: what the website runs; empty = WordPress (every site made before v1.8.0)
 	App      string `json:"app,omitempty"`
 	Database bool   `json:"database,omitempty"` // php: the app has its own MariaDB
+	Version  string `json:"version,omitempty"`  // laravel: major version installed at create time
 }
 
 // AppName is the app the site runs: wordpress, php or static.

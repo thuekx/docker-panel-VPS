@@ -12,6 +12,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/thuekx/docker-panel-VPS/agent/internal/catalog"
+	"github.com/thuekx/docker-panel-VPS/agent/internal/spec"
 )
 
 // installLaravel fills the empty website folder with a fresh Laravel project and prepares it: .env, app key,
@@ -22,7 +25,7 @@ func (m *Manager) installLaravel(ctx context.Context, s Site) ([]byte, error) {
 		return m.compose(ctx, s.ID, nil, append([]string{"run", "--rm", "-T", "--no-deps", "php"}, args...)...)
 	}
 	if out, err := run("composer", "create-project", "--no-interaction", "--no-scripts", "--prefer-dist",
-		"--no-progress", "laravel/laravel", "."); err != nil {
+		"--no-progress", "laravel/laravel:^"+s.Version+".0", "."); err != nil {
 		return out, err
 	}
 	if err := m.writeLaravelEnv(s); err != nil {
@@ -148,4 +151,15 @@ func (m *Manager) Artisan(ctx context.Context, id, op string) (string, error) {
 		return text, fmt.Errorf("%w: artisan failed: %s", ErrBadInput, tail(out))
 	}
 	return text, nil
+}
+
+// laravelVersion is the Laravel major version a create installs: the chosen one, else the newest; "" for other apps.
+func laravelVersion(c spec.Create) string {
+	if c.AppOf() != spec.AppLaravel {
+		return ""
+	}
+	if c.Version == "" {
+		return catalog.LaravelDefault
+	}
+	return c.Version
 }

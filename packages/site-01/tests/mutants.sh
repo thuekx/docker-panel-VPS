@@ -56,6 +56,7 @@ GO_MUTANTS=(
   'internal/sites/laravel.go|	if !s.IsLaravel() {|	if false {'   # APP-01 Laravel: artisan on another app
   'internal/sites/render.go|    root /var/www/html/public;|    root /var/www/html;'   # APP-01 Laravel: .env and vendor/ served
   'internal/sites/laravel.go|"DB_USERNAME": true, "DB_PASSWORD": true,|"DB_USERNAME": true,'   # APP-01 Laravel: password line kept in .env
+  'internal/spec/spec.go|		if phpLess(c.PHP, l.MinPHP) {|		if false {'   # APP-01 Laravel: version on a PHP too old for it
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

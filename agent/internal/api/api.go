@@ -169,7 +169,16 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 	for _, p := range catalog.All() {
 		out = append(out, phpView{p.Version, p.EOL, p.SecurityUntil, p.Version == catalog.Default})
 	}
-	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}})
+	type laravelView struct {
+		Version string `json:"version"`
+		MinPHP  string `json:"min_php"`
+		Default bool   `json:"default,omitempty"`
+	}
+	var lv []laravelView
+	for _, l := range catalog.LaravelAll() {
+		lv = append(lv, laravelView{l.Version, l.MinPHP, l.Version == catalog.LaravelDefault})
+	}
+	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv})
 }
 
 type siteView struct {
