@@ -337,9 +337,8 @@
   "wp.cli.line": "Command",
   "wp.cli.go": "Run",
   "wp.cli.examples": "Examples:",
-  "wp.err.read": "WordPress could not be read:",
+  "wp.err.read": "WordPress could not be read.",
   "wp.err.name": "Not a valid plugin or theme name.",
-  "wp.warn": "Some details are missing:",
   "wp.fixed": "managed by the system",
   "wp.install.plugin": "Install a plugin from wordpress.org",
   "wp.install.theme": "Install a theme from wordpress.org",
@@ -397,5 +396,13 @@
   "wp.st.must-use": "must-use",
   "wp.st.dropin": "drop-in",
   "wp.st.active-network": "network active",
-  "wp.done.set": "Setting saved."
+  "wp.done.set": "Setting saved.",
+  "wp.err.read.plain": "Usually the website is stopped or just starting. Start it from the Overview tab, wait a moment, then reload this page.",
+  "wp.warn.title": "Some details could not be shown",
+  "wp.warn.part.plugins": "The plugin list could not be read, so plugin updates may be missing.",
+  "wp.warn.part.themes": "The theme list could not be read, so theme updates may be missing.",
+  "wp.warn.part.core": "Checking for a newer WordPress failed (usually wordpress.org could not be reached).",
+  "wp.warn.part.other": "Some other detail could not be read.",
+  "wp.warn.plain": "The website keeps running and everything else still works. Reload this page later. If this keeps showing, send the technical details to your admin.",
+  "wp.warn.details": "Technical details"
 }

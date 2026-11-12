@@ -34,13 +34,37 @@ const (
 
 // WPItem is one plugin or theme as WP-CLI lists it.
 type WPItem struct {
-	Name          string `json:"name"`
-	Title         string `json:"title"`
-	Status        string `json:"status"` // active | inactive | active-network | must-use | dropin | parent
-	Version       string `json:"version"`
-	Update        string `json:"update"` // available | none | ...
-	UpdateVersion string `json:"update_version"`
-	AutoUpdate    string `json:"auto_update"` // on | off
+	Name          string  `json:"name"`
+	Title         FlexStr `json:"title"`
+	Status        FlexStr `json:"status"` // active | inactive | active-network | must-use | dropin | parent
+	Version       FlexStr `json:"version"`
+	Update        FlexStr `json:"update"` // available | none | ...
+	UpdateVersion FlexStr `json:"update_version"`
+	AutoUpdate    FlexStr `json:"auto_update"` // on | off
+}
+
+// FlexStr reads a JSON string, boolean, number or null as text. WP-CLI is not consistent: a must-use plugin
+// reports "update": false instead of "none", which broke the whole plugin list in v1.6.0.
+type FlexStr string
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (f *FlexStr) UnmarshalJSON(b []byte) error {
+	var s string
+	if json.Unmarshal(b, &s) == nil {
+		*f = FlexStr(s)
+		return nil
+	}
+	switch t := strings.TrimSpace(string(b)); t {
+	case "null":
+		*f = ""
+	case "false":
+		*f = "none"
+	case "true":
+		*f = "available"
+	default:
+		*f = FlexStr(t) // a number such as a version 6
+	}
+	return nil
 }
 
 // TLS is the certificate the edge serves for the site's address.
@@ -317,10 +341,10 @@ func (m *Manager) WordPress(ctx context.Context, id string) (WP, error) {
 		w.Admins = []string{}
 	}
 	if res[1].RC != 0 || lastJSON(res[1].Out, '[', &w.Plugins) != nil {
-		w.Warnings = append(w.Warnings, "plugins: "+wpErr(res[1]).Error())
+		w.Warnings = append(w.Warnings, "plugins: "+listErr(res[1]))
 	}
 	if res[2].RC != 0 || lastJSON(res[2].Out, '[', &w.Themes) != nil {
-		w.Warnings = append(w.Warnings, "themes: "+wpErr(res[2]).Error())
+		w.Warnings = append(w.Warnings, "themes: "+listErr(res[2]))
 	}
 	if res[3].RC != 0 {
 		w.Warnings = append(w.Warnings, "core: "+wpErr(res[3]).Error())
@@ -347,6 +371,14 @@ func (m *Manager) WordPress(ctx context.Context, id string) (WP, error) {
 	}
 	w.TLS = <-tlsc
 	return w, nil
+}
+
+// listErr explains a list that could not be read: the WP-CLI error, or that its answer was not understood.
+func listErr(o wpOut) string {
+	if o.RC != 0 {
+		return wpErr(o).Error()
+	}
+	return "the answer of WP-CLI could not be read"
 }
 
 // tlsCheck asks the local edge for the site's certificate and checks it like a browser would.

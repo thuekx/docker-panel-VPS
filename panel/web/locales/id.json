@@ -337,9 +337,8 @@
   "wp.cli.line": "Perintah",
   "wp.cli.go": "Jalankan",
   "wp.cli.examples": "Contoh:",
-  "wp.err.read": "WordPress tidak bisa dibaca:",
+  "wp.err.read": "WordPress belum bisa dibaca.",
   "wp.err.name": "Nama plugin atau tema tidak valid.",
-  "wp.warn": "Sebagian info belum lengkap:",
   "wp.fixed": "dikelola sistem",
   "wp.install.plugin": "Pasang plugin dari wordpress.org",
   "wp.install.theme": "Pasang tema dari wordpress.org",
@@ -397,5 +396,13 @@
   "wp.st.must-use": "wajib (mu)",
   "wp.st.dropin": "drop-in",
   "wp.st.active-network": "aktif jaringan",
-  "wp.done.set": "Pengaturan disimpan."
+  "wp.done.set": "Pengaturan disimpan.",
+  "wp.err.read.plain": "Biasanya karena website sedang berhenti atau baru dinyalakan. Nyalakan dari tab Ringkasan, tunggu sebentar, lalu muat ulang halaman ini.",
+  "wp.warn.title": "Sebagian info belum bisa ditampilkan",
+  "wp.warn.part.plugins": "Daftar plugin belum bisa dibaca, jadi jumlah update plugin mungkin tidak lengkap.",
+  "wp.warn.part.themes": "Daftar tema belum bisa dibaca, jadi jumlah update tema mungkin tidak lengkap.",
+  "wp.warn.part.core": "Pengecekan versi WordPress terbaru gagal (biasanya karena wordpress.org sedang tidak bisa dihubungi).",
+  "wp.warn.part.other": "Ada info lain yang belum bisa dibaca.",
+  "wp.warn.plain": "Website tetap berjalan normal dan fitur lain tetap bisa dipakai. Coba muat ulang halaman ini nanti. Kalau pesan ini terus muncul, kirim isi “Detail teknis” ke admin.",
+  "wp.warn.details": "Detail teknis"
 }

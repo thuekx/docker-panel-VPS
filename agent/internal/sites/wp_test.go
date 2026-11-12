@@ -22,7 +22,7 @@ case "$1 $2" in
 "eval "*nostek_login*) [ -n "$NP_HASH" ] || { echo "Error: no hash" >&2; exit 1; }
   echo "$NP_HASH" > "$NP_SEEN"; echo "NPJSON:{\"user\":\"$NP_USER\"}";;
 "eval "*) echo "PHP Notice: something"; echo 'NPJSON:{"version":"6.9","title":"Voltix","url":"https://voltix.id","admins":["admin-abc","ops"],"indexing":true,"maintenance":false,"debug":false,"system_cron":false,"file_edit_off":true,"ssl_admin":true}';;
-"plugin list") echo '[{"name":"akismet","title":"Akismet","status":"inactive","version":"5.3","update":"available","update_version":"5.4","auto_update":"off"},{"name":"nostek-panel","title":"Nostek Panel","status":"must-use","version":"","update":"none","update_version":"","auto_update":"off"}]';;
+"plugin list") echo '[{"name":"akismet","title":"Akismet","status":"inactive","version":"5.3","update":"available","update_version":"5.4","auto_update":"off"},{"name":"nostek-panel","title":"Nostek Panel","status":"must-use","version":"","update":false,"update_version":"","auto_update":"off"},{"name":"old","title":"Old","status":"inactive","version":6,"update":null,"update_version":"","auto_update":"off"}]';;
 "theme list") echo "Warning: could not reach wordpress.org" >&2; echo '[{"name":"twentytwentyfive","title":"Twenty Twenty-Five","status":"active","version":"1.3","update":"none","update_version":"","auto_update":"on"}]';;
 "core check-update") echo '[{"version":"6.9.1","update_type":"minor","package_url":"x"}]';;
 "core update") echo "Success: WordPress updated successfully.";;
@@ -128,7 +128,7 @@ func TestWordPressOverview(t *testing.T) {
 	if w.Version != "6.9" || w.CoreUpdate != "6.9.1" || w.Title != "Voltix" || !w.Indexing || !w.FileEditOff || len(w.Admins) != 2 {
 		t.Errorf("overview: %+v", w)
 	}
-	if len(w.Plugins) != 2 || w.PluginUpdates != 1 || len(w.Themes) != 1 || w.ThemeUpdates != 0 || w.Themes[0].AutoUpdate != "on" {
+	if len(w.Plugins) != 3 || w.PluginUpdates != 1 || w.Plugins[1].Update != "none" || w.Plugins[2].Version != "6" || len(w.Themes) != 1 || w.ThemeUpdates != 0 || w.Themes[0].AutoUpdate != "on" {
 		t.Errorf("items: %+v %+v", w.Plugins, w.Themes)
 	}
 	if len(w.Warnings) != 0 {

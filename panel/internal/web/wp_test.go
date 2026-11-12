@@ -33,7 +33,7 @@ func (f *fakeAgent) wordpress(w http.ResponseWriter, r *http.Request, write func
 			Themes: []agent.WPItem{{Name: "twentytwentyfive", Title: "Twenty Twenty-Five", Status: "active", Version: "1.3", Update: "none", AutoUpdate: "on"},
 				{Name: "twentytwentyfour", Title: "Twenty Twenty-Four", Status: "inactive", Version: "1.2", Update: "none", AutoUpdate: "off"}},
 			TLS:      agent.TLS{Host: "voltix-id.preview.nostek.dev", OK: true, Issuer: "R12", Expires: 1900000000},
-			Warnings: []string{}})
+			Warnings: []string{"plugins: WP-CLI failed: [{\"name\":\"x\"}]"}})
 	case "/login":
 		write(200, map[string]string{"url": loginLink, "user": "admin-abc123"})
 	case "/plugins", "/themes", "/core":
@@ -74,6 +74,9 @@ func TestWPPages(t *testing.T) {
 	}
 	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
 	_, body, _ := e.get(e.c, "/wp/voltix-id")
+	if strings.Index(body, "plugin list could not be read") < strings.Index(body, "Maintenance mode") || !strings.Contains(body, "Technical details") {
+		t.Error("warnings must sit at the bottom, explained in plain words")
+	}
 	for _, want := range []string{"Update to 6.9.1", "HTTPS certificate valid", "Take over wp-cron.php", "Maintenance mode", `href="/wp/voltix-id"`, "Log in to wp-admin"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("dashboard lacks %q", want)
