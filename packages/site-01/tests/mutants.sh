@@ -30,6 +30,18 @@ GO_MUTANTS=(
 	if err != nil {|	backup, err := m.dump(ctx, id, "before-import")
 	if false {'                                                                                                               # import runs without a safety copy
   'internal/api/files.go|detail := fmt.Sprintf("%s (%d chars)", firstWord(q.SQL), len(q.SQL))|detail := q.SQL'           # SQL text (may hold data) in the audit log
+  'internal/sites/wp.go|itemRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$`)|itemRe = regexp.MustCompile(`^.{1,200}$`)'  # a flag (--require=…) passes as a plugin name
+  'internal/sites/wp.go|strings.ReplaceAll(s, "'"'"'", |strings.ReplaceAll(s, "@@@", '                              # quotes break out of the WP-CLI argument list
+  'internal/sites/wp.go|"NP_HASH": hex.EncodeToString(sum[:])|"NP_HASH": tok'                                          # login token itself stored and passed to docker
+  'internal/sites/wp.go|		for _, f := range []string{"--ssh", "--http", "--path"} {|		for _, f := range []string{} {'                  # console reaches other machines or paths
+  'internal/api/wp.go|	if args, err := sites.SplitArgs(a.Line); err == nil && cmdWord.MatchString(args[0]) {|	if args, err := sites.SplitArgs(a.Line); err == nil {
+		first = a.Line
+	} else if err == nil {'                                                                                                   # console arguments (passwords) in the audit log
+  'internal/sites/wp.go|	if !m.mu.TryLock() {
+		return "", ErrBusy
+	}
+	defer m.mu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, d)|	ctx, cancel := context.WithTimeout(ctx, d)'                                                                           # two changes run at once
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

@@ -152,7 +152,10 @@ func parseBatch(mark string, n int, raw []byte) ([]wpOut, bool) {
 	return res, end
 }
 
-var wpErrRe = regexp.MustCompile(`(?m)^Error: (.*)$`)
+var (
+	wpErrRe  = regexp.MustCompile(`(?m)^Error: (.*)$`)
+	wpWarnRe = regexp.MustCompile(`(?m)^Warning: (.*)$`)
+)
 
 // wpErr turns a failed WP-CLI command into a short message the owner can act on.
 func wpErr(o wpOut) error {
@@ -162,6 +165,14 @@ func wpErr(o wpOut) error {
 	}
 	if m := wpErrRe.FindStringSubmatch(t); m != nil {
 		msg := strings.TrimSpace(m[1])
+		// WP-CLI often says why in a warning just before a generic error ("No plugins activated.")
+		if w := wpWarnRe.FindAllStringSubmatch(t, 3); len(w) > 0 {
+			var why []string
+			for _, x := range w {
+				why = append(why, strings.TrimSpace(x[1]))
+			}
+			msg = strings.Join(why, " ") + " " + msg
+		}
 		if len(msg) > 400 {
 			msg = msg[:400] + "..."
 		}

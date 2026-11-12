@@ -332,3 +332,15 @@ button.switch:focus-visible{outline:2px solid var(--c-teal);outline-offset:2px}
 .cli-in input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 button[data-busy].busy{opacity:.7;cursor:progress}
 .wp-go{max-width:560px}
+.ico{display:inline-flex;color:var(--tone,var(--teal-l))}
+.ico svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+button .ico{color:inherit}
+.quick a{font-weight:600}
+.facts{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:4px 0 0;color:var(--muted);font-size:14px}.facts b{color:var(--ink,inherit)}
+.upd-table td{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.upd-table form.upd{margin-left:auto}
+.checks li{flex-wrap:nowrap;align-items:flex-start}.checks li.tls{flex-wrap:wrap}
+.mk{flex:none;display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;font-size:12px;font-weight:700;margin-top:1px}
+.mk.ok{color:var(--c-green);background:color-mix(in srgb,var(--c-green) 16%,transparent)}
+.mk.warn{color:var(--c-amber);background:color-mix(in srgb,var(--c-amber) 16%,transparent)}
+.card .checks{margin-bottom:14px}

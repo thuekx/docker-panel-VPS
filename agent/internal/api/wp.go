@@ -123,12 +123,14 @@ func (s *Server) wpCLI(w http.ResponseWriter, r *http.Request) {
 	if args, err := sites.SplitArgs(a.Line); err == nil && cmdWord.MatchString(args[0]) {
 		first = args[0]
 	}
+	detail := fmt.Sprintf("%s (%d chars)", first, len(a.Line))
 	res, err := s.M.CLI(r.Context(), id, a.Line)
 	if err != nil {
-		s.fail(w, r, "wp-cli", id, err)
+		s.note(r, "wp-cli", id, "refused", detail+": "+err.Error())
+		s.fail(w, r, "", "", err)
 		return
 	}
-	s.note(r, "wp-cli", id, "ok", fmt.Sprintf("%s (%d chars) exit %d", first, len(a.Line), res.Code))
+	s.note(r, "wp-cli", id, "ok", fmt.Sprintf("%s exit %d", detail, res.Code))
 	writeJSON(w, 200, res)
 }
 
