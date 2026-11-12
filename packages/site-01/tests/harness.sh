@@ -55,9 +55,9 @@ api() { # METHOD PATH [BODY] -> body; HTTP code in $CODE
   out="$(curl -s --noproxy '*' --max-time "${MAXT:-30}" --unix-socket "$(SOCK)" -X "$1" -H 'Content-Type: application/json' ${3:+--data "$3"} -w '\n%{http_code}' "http://agent$2")"
   CODE="${out##*$'\n'}"; BODY="${out%$'\n'*}"
 }
-wait_job() { # job id -> state
+wait_job() { # job id [tries of 3 s] -> state
   local s=""
-  for _ in $(seq 1 120); do
+  for _ in $(seq 1 "${2:-120}"); do
     api GET "/v1/jobs/$1"; s="$(grep -o '"state":"[a-z]*"' <<<"$BODY" | cut -d'"' -f4)"
     [ "$s" != running ] && break; sleep 3
   done
@@ -249,6 +249,30 @@ api GET /v1/sites/d-example-test/db; ok "Database tab works with its own databas
 api POST /v1/sites/d-example-test/backups; JB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "PHP site backup holds its database" '[ "$(wait_job "$JB")" = done ] && f="$(ls "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/backups/"manual-*)" && tar -xzOf "$f" database.sql > "$T/d.sql" 2>/dev/null; grep -q "Database: app" "$T/d.sql"'
 
+# --- APP-01 Laravel (real build from the official images + Composer from packagist: needs outbound internet to
+# deb.debian.org, packagist.org and github.com). HARNESS_LARAVEL=0 skips only this part and says so in RESULT.
+api POST /v1/sites '{"app":"laravel","domain":"e.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"","title":""}'
+ok "Laravel refuses Apache" '[ "$CODE" = 422 ]'
+KEPT=4; LARAVEL=skipped
+if [ "${HARNESS_LARAVEL:-1}" = 1 ]; then
+  LARAVEL=tested; KEPT=5
+  printf '%s e-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" >> /etc/hosts
+  api POST /v1/sites '{"app":"laravel","domain":"e.example.test","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"","title":"Situs E"}'; JE2="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+  ok "Laravel site built and installed" '[ "$CODE" = 202 ] && [ "$(wait_job "$JE2" 300)" = done ]'
+  SE="$SITE01_TEST_ROOT/srv/nostek/sites/e-example-test"
+  ok "Laravel answers through Nginx (public/ only)" 'site_get e-example-test e-example-test.$ZONE / > "$T/e.html"; grep -qi "laravel" "$T/e.html" && ! grep -q "APP_KEY" <<<"$(site_get e-example-test e-example-test.$ZONE /.env)" && ! grep -q "APP_KEY" <<<"$(site_get e-example-test e-example-test.$ZONE /../.env)"'
+  ok "five containers run: web, php, db, queue, scheduler" '[ "$(docker ps -q --filter name=np-site-e-example-test --filter status=running | wc -l)" = 5 ]'
+  ok "PHP, queue and scheduler run as www-data" '( for c in php queue scheduler; do [ "$(docker exec np-site-e-example-test-$c-1 id -u)" = 33 ] || exit 1; done )'
+  EPW="$(cat "$SE/secrets/db_password")"
+  ok "database password never in an environment value or .env" '! grep -qF "$EPW" "$SE/wp/.env" && ( for c in php queue scheduler; do docker inspect np-site-e-example-test-$c-1 > "$T/i.json" || exit 1; grep -qF "$EPW" "$T/i.json" && exit 1; grep -q "DB_PASSWORD_FILE=/run/secrets/db_password" "$T/i.json" || exit 1; done; exit 0 ) && ! grep -q "^DB_PASSWORD" "$SE/wp/.env"'
+  ok ".env written for production with an app key" 'grep -q "^APP_ENV=production" "$SE/wp/.env" && grep -q "^APP_DEBUG=false" "$SE/wp/.env" && grep -q "^APP_KEY=base64:" "$SE/wp/.env" && [ "$(stat -c "%u %a" "$SE/wp/.env")" = "33 640" ]'
+  api GET /v1/sites/e-example-test/db; ok "migrations ran into its own database" '[ "$CODE" = 200 ] && grep -q "\"name\":\"app\"" <<<"$BODY" && grep -q "\"name\":\"migrations\"" <<<"$BODY"'
+  MAXT=330 api POST /v1/sites/e-example-test/laravel/artisan '{"op":"migrate"}'; ok "artisan migrate from the panel" '[ "$CODE" = 200 ] && grep -qi "nothing to migrate" <<<"$BODY"'
+  api POST /v1/sites/e-example-test/laravel/artisan '{"op":"db:wipe"}'; ok "artisan commands outside the list refused" '[ "$CODE" = 400 ]'
+  ok "queue worker and scheduler started" 'docker logs np-site-e-example-test-queue-1 2>&1 | grep -qi "processing jobs" && docker logs np-site-e-example-test-scheduler-1 2>&1 | grep -qi "schedule"'
+fi
+api POST /v1/sites/d-example-test/laravel/artisan '{"op":"migrate"}'; ok "no artisan on a plain PHP site" '[ "$CODE" = 400 ]'
+
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again (update) passes, websites untouched" '[ $RC = 0 ] && has "already built" && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$CIDS" ]'
@@ -259,10 +283,10 @@ ok "trashed domain stays reserved" '[ "$CODE" = 422 ]'
 api POST "/v1/trash/$ENTRY/restore"; ok "restore brings the site back with its data" '[ "$CODE" = 200 ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
 
 # --- revert keeps websites running
-run REVERT "${A[@]}"; ok "revert stops the agent, websites keep running" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -e "$SITE01_TEST_ROOT/usr/local/sbin/nostek-agent" ] && [ "$(web a-example-test a-example-test.$ZONE /)" = 200 ] && has "sites_kept=4"'
+run REVERT "${A[@]}"; ok "revert stops the agent, websites keep running" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -e "$SITE01_TEST_ROOT/usr/local/sbin/nostek-agent" ] && [ "$(web a-example-test a-example-test.$ZONE /)" = 200 ] && has "sites_kept=$KEPT"'
 run VERIFY "${A[@]}"; ok "verify fails after revert" '[ $RC = 1 ]'
 
 cleanup; TMP_ALL="$(mktemp -d)"
 LEFT="$(docker ps -aq --filter name=np-site- | wc -l)"
-if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT SITE-01 HARNESS PASS tests=$TESTS sisa_uji=0"; exit 0; fi
-echo "RESULT SITE-01 HARNESS FAIL bad=$BAD/$TESTS sisa_uji=$LEFT"; exit 1
+if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT SITE-01 HARNESS PASS tests=$TESTS laravel=$LARAVEL sisa_uji=0"; exit 0; fi
+echo "RESULT SITE-01 HARNESS FAIL bad=$BAD/$TESTS laravel=$LARAVEL sisa_uji=$LEFT"; exit 1
