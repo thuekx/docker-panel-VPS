@@ -2,15 +2,17 @@
 {{$l := .Lang}}{{$s := .Data.Site}}
 {{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "sites.done.%s" .Flash)}}</p>{{end}}
 {{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
-{{template "sitetabs" (dict3 $l $s.ID "site")}}
+{{template "sitetabs" (tabs $l $s "site")}}
 <section class="grid pair">
 <article class="card tone c-acc" data-anim="card">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "sites.status"}}</span>{{template "sitestatus" (dict3 $l $s.Status $s.Phase)}}</div>
   <div class="table-wrap"><table><tbody>
+    <tr><th>{{t $l "sites.app"}}</th><td><span class="tag-srv c-teal">{{t $l (printf "sites.app.%s" $s.AppName)}}</span>{{if $s.HasDB}} <span class="tag-srv c-blue">MariaDB</span>{{end}}</td></tr>
     <tr><th>{{t $l "sites.server"}}</th><td><span class="tag-srv {{if eq $s.Server "nginx"}}c-green{{else}}c-orange{{end}}">{{t $l (printf "sites.server.%s" $s.Server)}}</span></td></tr>
-    <tr><th>PHP</th><td><span class="tag-srv c-violet">PHP {{$s.PHP}}</span></td></tr>
-    <tr><th>{{t $l "sites.wpurl"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a> · <a href="{{$s.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></td></tr>
-    <tr><th>{{t $l "sites.job.user"}}</th><td><code>{{$s.AdminUser}}</code></td></tr>
+    {{if $s.PHP}}<tr><th>PHP</th><td><span class="tag-srv c-violet">PHP {{$s.PHP}}</span></td></tr>{{end}}
+    {{if $s.IsWP}}<tr><th>{{t $l "sites.wpurl"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a> · <a href="{{$s.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></td></tr>
+    <tr><th>{{t $l "sites.job.user"}}</th><td><code>{{$s.AdminUser}}</code></td></tr>{{else}}
+    <tr><th>{{t $l "sites.url"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a></td></tr>{{end}}
     <tr><th>{{t $l "sites.hosts"}}</th><td>{{range $s.Hosts}}<div><code>{{.Name}}</code> {{if .Routed}}<span class="pill s-ok">{{t $l "sites.host.ready"}}</span>{{else}}<span class="pill s-warn">{{t $l "sites.host.dns"}}</span>{{end}}</div>{{end}}</td></tr>
     <tr><th>{{t $l "sites.created"}}</th><td>{{.Data.Created}}</td></tr>
   </tbody></table></div>
@@ -24,7 +26,7 @@
     <button class="secondary" name="action" value="stop" type="submit">{{t $l "sites.act.stop"}}</button>
   </form>
   <h2>{{t $l "sites.logs"}}</h2>
-  <p class="row"><a class="ghost btn" href="/sites/{{$s.ID}}?logs=web">{{t $l "sites.logs.web"}}</a>{{if eq $s.Server "nginx"}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=php">PHP</a>{{end}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=db">{{t $l "sites.logs.db"}}</a></p>
+  <p class="row"><a class="ghost btn" href="/sites/{{$s.ID}}?logs=web">{{t $l "sites.logs.web"}}</a>{{if and (eq $s.Server "nginx") $s.PHP}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=php">PHP</a>{{end}}{{if $s.HasDB}}<a class="ghost btn" href="/sites/{{$s.ID}}?logs=db">{{t $l "sites.logs.db"}}</a>{{end}}</p>
   <h2>{{t $l "sites.delete"}}</h2>
   <p class="muted">{{t $l "sites.delete.help" $s.Domain}}</p>
   <form method="post" action="/sites/{{$s.ID}}" class="form">

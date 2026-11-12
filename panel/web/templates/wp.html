@@ -6,7 +6,7 @@
 {{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "wp.done.%s" .Flash)}}</p>{{end}}
 {{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{if $d.OutputErr}}<p class="err" role="alert" data-anim="shake">{{$d.OutputErr}}</p>{{end}}
-{{template "sitetabs" (dict3 $l $s.ID "wp")}}
+{{template "sitetabs" (tabs $l $s "wp")}}
 <section class="card wide tone c-teal wp-head" data-anim="card">
   <div class="wp-card">
     <a class="wp-shot" href="{{$s.URL}}" target="_blank" rel="noopener noreferrer" aria-label="{{t $l "wp.open"}}: {{$s.Domain}}">

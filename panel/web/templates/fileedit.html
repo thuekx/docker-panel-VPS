@@ -2,7 +2,7 @@
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}
 {{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "files.done.%s" .Flash)}}</p>{{end}}
 {{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
-{{template "sitetabs" (dict3 $l $s.ID "files")}}
+{{template "sitetabs" (tabs $l $s "files")}}
 <section class="card wide tone c-amber" data-anim="card">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-file"}}</span>{{t $l "files.edit"}}</span>
     <span class="row"><span class="muted">{{$d.Size}}{{if eq $d.EOL "crlf"}} · CRLF{{end}}</span><a class="ghost btn" href="/files/{{$s.ID}}/download?path={{$d.Path}}">{{t $l "files.download"}}</a></span></div>

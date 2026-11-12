@@ -113,6 +113,14 @@ func formCreate(r *http.Request) (agent.Create, string) {
 			c.Aliases = append(c.Aliases, a)
 		}
 	}
+	// APP-01: fields that do not belong to the chosen app are dropped, so a hidden field never blocks a request
+	switch app := low("app"); app {
+	case "", "wordpress":
+	case "static":
+		c.App, c.Server, c.PHP, c.AdminEmail = app, "nginx", "", ""
+	default: // php, or anything else for the agent to refuse
+		c.App, c.AdminEmail, c.Database = app, "", f.Get("database") == "1"
+	}
 	return c, raw
 }
 
@@ -143,7 +151,7 @@ func (s *Server) siteSubmit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.owners.set(job, userOf(r).ID)
-		s.audit1(userOf(r), r, "site.create", site.ID+" "+c.Domain+" "+c.Server+" php "+c.PHP)
+		s.audit1(userOf(r), r, "site.create", site.ID+" "+c.Domain+" "+site.AppName()+" "+c.Server+" php "+c.PHP)
 		http.Redirect(w, r, "/sites/job/"+job, http.StatusSeeOther)
 	default:
 		http.Error(w, "bad request", 400)
@@ -181,7 +189,7 @@ func jobProgress(j agent.Job) ([]stepRow, int) {
 	if j.Kind == "" || j.Kind == "create" {
 		keys = append([]string{}, jobSteps...)
 	}
-	if j.State == "done" && j.Kind != "" && j.Kind != "create" {
+	if j.State == "done" { // only what ran: a static site or a database-only restore skips steps
 		keys = nil // a finished restore of the database only never switched files: show what ran
 	}
 	steps := make([]string, 0, len(j.Steps))

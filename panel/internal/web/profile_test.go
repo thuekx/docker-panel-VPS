@@ -153,7 +153,7 @@ func TestJobStatusJSON(t *testing.T) {
 		Percent int
 		Steps   []stepRow
 	}
-	if err := json.Unmarshal([]byte(body), &v); err != nil || v.State != "done" || len(v.Steps) != 4 {
+	if err := json.Unmarshal([]byte(body), &v); err != nil || v.State != "done" || len(v.Steps) != 2 { // a finished job lists only the steps that ran
 		t.Fatalf("status body: %v %s", err, body)
 	}
 	if strings.Contains(body, "Pw-For-Test-Only") || strings.Contains(body, "password") {

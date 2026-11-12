@@ -2,7 +2,7 @@
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}
 {{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "db.done.%s" .Flash)}}</p>{{end}}
 {{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
-{{template "sitetabs" (dict3 $l $s.ID "db")}}
+{{template "sitetabs" (tabs $l $s "db")}}
 <section class="grid pair">
 <article class="card tone c-violet" data-anim="card">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-disk"}}</span>{{t $l "db.title"}}</span>{{if $d.Err}}<span class="pill s-unknown">{{t $l "sites.st.unknown"}}</span>{{else}}<span class="pill s-ok">{{t $l "db.online"}}</span>{{end}}</div>
