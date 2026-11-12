@@ -34,6 +34,8 @@ type fakeAgent struct {
 	appDB     bool
 	trash     []agent.Trashed
 	removed   []string
+	keys      int
+	repo      string // APP-02b: repository of the fake runtime site
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +58,9 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if f.app == "node" {
 		site.PHP, site.Server, site.AdminUser, site.Version = "", "", "", "24"
 		site.Repo, site.Branch, site.Start, site.Release = "https://github.com/owner/shop.git", "main", "node server.js", 3
+		if f.repo != "" {
+			site.Repo = f.repo
+		}
 	}
 	write := func(code int, v any) { w.WriteHeader(code); json.NewEncoder(w).Encode(v) }
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/files") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/db") {
@@ -85,6 +90,11 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			t = []agent.Trashed{}
 		}
 		write(200, map[string]any{"trash": t})
+	case r.URL.Path == "/v1/deploykeys" && r.Method == "POST":
+		f.keys++
+		write(200, agent.DeployKey{ID: "0123456789abcdef", Public: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey nostek-panel-deploy-0123456789abcdef", Fingerprint: "SHA256:testfp"})
+	case r.URL.Path == "/v1/sites/voltix-id/deploykey":
+		write(200, agent.DeployKey{Public: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey nostek-panel-deploy-0123456789abcdef", Fingerprint: "SHA256:testfp", HostKeys: []string{"ssh-ed25519 SHA256:hostfp"}})
 	case strings.HasPrefix(r.URL.Path, "/v1/trash/") && strings.HasSuffix(r.URL.Path, "/remove"):
 		f.removed = append(f.removed, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/trash/"), "/remove"))
 		write(200, map[string]any{"ok": true})

@@ -230,3 +230,45 @@ func TestTrashRemove(t *testing.T) {
 		t.Error("id trash page")
 	}
 }
+
+func TestPrivateRepoPages(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	_, body, _ := e.get(e.c, "/sites/new")
+	form := url.Values{"step": {"plan"}, "app": {"node"}, "domain": {"voltix.id"}, "primary": {"domain"}, "node_version": {"24"},
+		"repo": {"git@github.com:owner/private-shop.git"}, "branch": {"main"}}
+	f.app = "node"
+	code, plan, _ := e.postWith(e.c, "/sites/new", form, body)
+	if code != 200 || f.keys != 1 || !strings.Contains(plan, `name="key_id" value="0123456789abcdef"`) || !strings.Contains(plan, "AAAAITestKey") ||
+		!strings.Contains(plan, "Deploy keys") || !strings.Contains(plan, "SHA256:testfp") || missingKey.MatchString(plan) {
+		t.Fatalf("plan %d keys=%d %v", code, f.keys, missingKey.FindString(plan))
+	}
+	form.Set("step", "create")
+	form.Set("key_id", "0123456789abcdef")
+	e.postWith(e.c, "/sites/new", form, plan)
+	if n := len(f.created); n == 0 || f.created[n-1].KeyID != "0123456789abcdef" || f.created[n-1].Repo != "git@github.com:owner/private-shop.git" {
+		t.Fatalf("created %+v", f.created)
+	}
+	if f.keys != 1 {
+		t.Errorf("create made another key: %d", f.keys)
+	}
+	// a public repository gets no key, and a key id sent with it is dropped
+	form = url.Values{"step": {"plan"}, "app": {"node"}, "domain": {"voltix.id"}, "primary": {"domain"}, "node_version": {"24"},
+		"repo": {"https://github.com/owner/shop.git"}, "branch": {"main"}, "key_id": {"0123456789abcdef"}}
+	if _, plan, _ := e.postWith(e.c, "/sites/new", form, body); f.keys != 1 || strings.Contains(plan, `name="key_id"`) {
+		t.Errorf("public repository got a key: %d", f.keys)
+	}
+	f.repo = "git@github.com:owner/private-shop.git"
+	for _, lang := range []string{"en", "id"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		code, page, _ := e.get(e.c, "/sites/voltix-id")
+		if code != 200 || !strings.Contains(page, "AAAAITestKey") || !strings.Contains(page, "SHA256:hostfp") || missingKey.MatchString(page) {
+			t.Errorf("site page (%s) %d %v", lang, code, missingKey.FindString(page))
+		}
+	}
+	f.repo = ""
+	if _, page, _ := e.get(e.c, "/sites/voltix-id"); strings.Contains(page, "AAAAITestKey") {
+		t.Error("key shown for a public repository")
+	}
+}

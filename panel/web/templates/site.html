@@ -45,6 +45,8 @@
     {{if $s.FromFiles}}<dt>{{t $l "node.source"}}</dt><dd>{{t $l "node.source.files"}} · <a href="/files/{{$s.ID}}?path=source">{{t $l "files.title"}}</a></dd>
     {{else}}<dt>{{t $l "node.repo"}}</dt><dd><code>{{$s.Repo}}</code></dd>
     <dt>{{t $l "node.branch"}}</dt><dd><code>{{$s.Branch}}</code></dd>{{end}}
+    {{with .Data.Key}}<dt>{{t $l "dkey.title"}}</dt><dd><div class="reveal"><code id="dkey-pub">{{.Public}}</code><button class="secondary" type="button" data-copy="dkey-pub">{{t $l "reveal.copy"}}</button></div>
+      <span class="muted">{{t $l "dkey.fp"}} <code>{{.Fingerprint}}</code>. {{if .HostKeys}}{{t $l "dkey.hostkeys"}} {{range .HostKeys}}<code>{{.}}</code> {{end}}{{else}}{{t $l "dkey.nohost"}}{{end}}</span></dd>{{end}}
     {{if $s.Dir}}<dt>{{t $l "node.dir"}}</dt><dd><code>{{$s.Dir}}</code></dd>{{end}}
     <dt>{{t $l "node.build"}}</dt><dd><code>{{if $s.Build}}{{$s.Build}}{{else}}{{t $l (printf "rt.build.%s" $s.AppName)}}{{end}}</code></dd>
     <dt>{{t $l "node.start"}}</dt><dd><code>{{if $s.Start}}{{$s.Start}}{{else}}{{t $l (printf "rt.start.%s" $s.AppName)}}{{end}}</code></dd>

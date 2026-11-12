@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -141,6 +142,20 @@ type Site struct {
 // FromFiles is true when a Node.js app is built from the website's source/ folder.
 func (s Site) FromFiles() bool { return s.Source == "files" }
 
+// PrivateRepo is true when the app is read over SSH with its own deploy key (APP-02b).
+func (s Site) PrivateRepo() bool { return !s.FromFiles() && IsSSHRepo(s.Repo) }
+
+// IsSSHRepo is true for a repository address that needs a deploy key (the agent checks the address itself).
+func IsSSHRepo(r string) bool { return strings.HasPrefix(r, "git@") || strings.HasPrefix(r, "ssh://") }
+
+// DeployKey is the public half of a website's deploy key and the host keys pinned on the first fetch.
+type DeployKey struct {
+	ID          string   `json:"id,omitempty"`
+	Public      string   `json:"public"`
+	Fingerprint string   `json:"fingerprint"`
+	HostKeys    []string `json:"host_keys,omitempty"`
+}
+
 // IsNode is true for an app built from source by the agent: Node.js, Go or Python (APP-02).
 func (s Site) IsNode() bool { return s.App == "node" || s.App == "go" || s.App == "python" }
 
@@ -249,6 +264,18 @@ func (c *Client) BuildLog(ctx context.Context, id string, n int) (string, error)
 	return v.Log, c.call(ctx, "GET", fmt.Sprintf("/v1/sites/%s/deploys/%d/log", url.PathEscape(id), n), nil, &v)
 }
 
+// NewDeployKey makes a deploy key for a website about to be created from a private repository.
+func (c *Client) NewDeployKey(ctx context.Context) (DeployKey, error) {
+	var k DeployKey
+	return k, c.call(ctx, "POST", "/v1/deploykeys", nil, &k)
+}
+
+// SiteDeployKey returns the public deploy key of a website that reads a private repository.
+func (c *Client) SiteDeployKey(ctx context.Context, id string) (DeployKey, error) {
+	var k DeployKey
+	return k, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/deploykey", nil, &k)
+}
+
 // EnvNames lists the names of a Node.js app's environment values (the agent never returns values).
 func (c *Client) EnvNames(ctx context.Context, id string) ([]string, error) {
 	var v struct {
@@ -291,6 +318,7 @@ type Create struct {
 	Branch     string   `json:"branch,omitempty"`  // node
 	Build      string   `json:"build,omitempty"`   // node ("" = default)
 	Start      string   `json:"start,omitempty"`   // node ("" = default)
+	KeyID      string   `json:"key_id,omitempty"`  // private repository: deploy key made before the website
 	Domain     string   `json:"domain"`
 	Aliases    []string `json:"aliases"`
 	Primary    string   `json:"primary"`

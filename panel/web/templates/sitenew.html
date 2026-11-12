@@ -20,12 +20,19 @@
     <tr><th>{{t $l "sites.resources"}}</th><td>{{t $l (printf "sites.resources.%s" $k)}}{{if and (eq $p.App "php") $p.Database}} {{t $l "sites.resources.db"}}{{end}}</td></tr>
     <tr><th>{{t $l "sites.undo"}}</th><td>{{t $l "sites.undo.text"}}</td></tr>
   </tbody></table></div>
+  {{with .Data.Key}}<div class="deploykey" id="deploykey">
+    <h3>{{t $l "dkey.title"}}</h3>
+    <p>{{t $l "dkey.add"}}</p>
+    <ol class="dkey-steps"><li>{{t $l "dkey.step.github"}}</li><li>{{t $l "dkey.step.gitlab"}}</li><li>{{t $l "dkey.step.then"}}</li></ol>
+    <div class="reveal"><code id="dkey-pub">{{.Public}}</code><button class="secondary" type="button" data-copy="dkey-pub">{{t $l "reveal.copy"}}</button></div>
+    <p class="muted">{{t $l "dkey.fp"}} <code>{{.Fingerprint}}</code>. {{t $l "dkey.private"}}</p>
+  </div>{{end}}
   <form method="post" action="/sites/new" class="form row">
     <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="step" value="create">
     <input type="hidden" name="domain" value="{{$f.Domain}}"><input type="hidden" name="aliases" value="{{.Data.Aliases}}">
     <input type="hidden" name="primary" value="{{$f.Primary}}"><input type="hidden" name="server" value="{{$f.Server}}">
     <input type="hidden" name="php" value="{{$f.PHP}}"><input type="hidden" name="admin_email" value="{{$f.AdminEmail}}">
-    <input type="hidden" name="title" value="{{$f.Title}}"><input type="hidden" name="app" value="{{$f.App}}"><input type="hidden" name="version" value="{{$f.Version}}">{{if or (eq $f.App "node") (eq $f.App "go") (eq $f.App "python")}}<input type="hidden" name="{{$f.App}}_version" value="{{$f.Version}}"><input type="hidden" name="repo" value="{{$f.Repo}}"><input type="hidden" name="source" value="{{$f.Source}}"><input type="hidden" name="dir" value="{{$f.Dir}}"><input type="hidden" name="branch" value="{{$f.Branch}}"><input type="hidden" name="build" value="{{$f.Build}}"><input type="hidden" name="start" value="{{$f.Start}}">{{end}}{{if $f.Database}}<input type="hidden" name="database" value="1">{{end}}
+    <input type="hidden" name="title" value="{{$f.Title}}"><input type="hidden" name="app" value="{{$f.App}}"><input type="hidden" name="version" value="{{$f.Version}}">{{if or (eq $f.App "node") (eq $f.App "go") (eq $f.App "python")}}<input type="hidden" name="{{$f.App}}_version" value="{{$f.Version}}"><input type="hidden" name="repo" value="{{$f.Repo}}"><input type="hidden" name="source" value="{{$f.Source}}"><input type="hidden" name="dir" value="{{$f.Dir}}"><input type="hidden" name="branch" value="{{$f.Branch}}"><input type="hidden" name="build" value="{{$f.Build}}"><input type="hidden" name="start" value="{{$f.Start}}">{{with .Data.Key}}<input type="hidden" name="key_id" value="{{.ID}}">{{end}}{{end}}{{if $f.Database}}<input type="hidden" name="database" value="1">{{end}}
     <button class="primary" type="submit">{{t $l "sites.approve.go"}}</button>
     <a class="ghost btn" href="/sites/new">{{t $l "sites.back"}}</a>
   </form>

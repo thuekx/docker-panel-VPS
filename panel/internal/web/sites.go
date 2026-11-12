@@ -89,6 +89,7 @@ type newData struct {
 	Catalog agent.Catalog
 	Plan    *agent.Site
 	NoAgent bool
+	Key     *agent.DeployKey // private repository: the key to add to the repository before approving
 }
 
 func (s *Server) siteForm(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +132,9 @@ func formCreate(r *http.Request) (agent.Create, string) {
 		if low("source") == "files" {
 			c.Source, c.Repo, c.Branch = "files", "", ""
 		}
+		if agent.IsSSHRepo(c.Repo) {
+			c.KeyID = strings.TrimSpace(f.Get("key_id"))
+		}
 	default: // php, or anything else for the agent to refuse
 		c.App, c.AdminEmail, c.Database = app, "", f.Get("database") == "1"
 	}
@@ -150,6 +154,17 @@ func (s *Server) siteSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.PostForm.Get("step") {
 	case "plan":
+		if c.App != "" && agent.IsSSHRepo(c.Repo) && c.Source != "files" {
+			// a private repository: make its deploy key now, so it can be added to the repository before the build
+			k, err := s.ag.NewDeployKey(ctx)
+			if err != nil {
+				fail(err)
+				return
+			}
+			c.KeyID, d.Key = k.ID, &k
+			s.audit1(userOf(r), r, "site.deploykey", k.ID+" "+k.Fingerprint)
+			d.Form = c
+		}
 		p, err := s.ag.Plan(ctx, c)
 		if err != nil {
 			fail(err)
@@ -349,10 +364,11 @@ type siteData struct {
 	Service string
 	Created string
 	Stack   stackView
-	Artisan *artisanResult // the artisan command just run (Laravel)
-	Deploys []deployRow    // APP-02: deploy history of a Node.js website
-	NoHist  string         // why the history could not be read
-	Env     []string       // names of the app's environment values
+	Artisan *artisanResult   // the artisan command just run (Laravel)
+	Deploys []deployRow      // APP-02: deploy history of a Node.js website
+	Key     *agent.DeployKey // APP-02b: deploy key of a private repository
+	NoHist  string           // why the history could not be read
+	Env     []string         // names of the app's environment values
 }
 
 // deployRow is one deploy as the Overview shows it.
@@ -418,6 +434,11 @@ func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanRe
 			d.NoHist = err.Error()
 		}
 		d.Env, _ = s.ag.EnvNames(ctx, id)
+		if site.PrivateRepo() {
+			if k, err := s.ag.SiteDeployKey(ctx, id); err == nil {
+				d.Key = &k
+			}
+		}
 	}
 	if svc := r.URL.Query().Get("logs"); siteService(site, svc) {
 		d.Service = svc
