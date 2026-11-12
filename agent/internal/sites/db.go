@@ -52,8 +52,9 @@ func (r ExecRunner) DockerTo(ctx context.Context, dir string, stdin io.Reader, w
 	return errb.Bytes(), err
 }
 
-// client is the shell snippet run inside the db container; "$@" are fixed arguments from this file only.
-const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -uwordpress "$@"`
+// client is the shell snippet run inside the db container; "$@" are fixed arguments from this file only. The user is
+// the site's own database user (MARIADB_USER of the db service: "wordpress" or "app"), set at create time.
+const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -u"$MARIADB_USER" "$@"`
 
 func (m *Manager) dbArgs(prog string, args ...string) []string {
 	return append([]string{"exec", "-T", "db", "sh", "-c", client, prog}, args...)
@@ -67,7 +68,19 @@ func (m *Manager) dbSite(id string) (Site, error) {
 	if s.Phase != "ready" {
 		return s, fmt.Errorf("%w: the website is not ready", ErrBadInput)
 	}
+	if !s.HasDB() {
+		return s, fmt.Errorf("%w: this website has no database", ErrBadInput)
+	}
 	return s, nil
+}
+
+// dbName is the database of a site ("wordpress" for WordPress, "app" for other apps).
+func (m *Manager) dbName(id string) string {
+	s, err := m.Get(id)
+	if err != nil {
+		return "wordpress"
+	}
+	return s.DBName()
 }
 
 var sqlErrRe = regexp.MustCompile(`(?m)^ERROR [0-9]+ \([0-9A-Z]+\)(?: at line [0-9]+)?: .*$`)
@@ -119,16 +132,17 @@ FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_na
 
 // Database returns the tables of the site database.
 func (m *Manager) Database(ctx context.Context, id string) (DB, error) {
-	if _, err := m.dbSite(id); err != nil {
+	site, err := m.dbSite(id)
+	if err != nil {
 		return DB{}, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	out, err := m.compose(ctx, id, strings.NewReader(overviewSQL), m.dbArgs("mariadb", "--batch", "--skip-column-names", "wordpress")...)
+	out, err := m.compose(ctx, id, strings.NewReader(overviewSQL), m.dbArgs("mariadb", "--batch", "--skip-column-names", site.DBName())...)
 	if err != nil {
 		return DB{}, dbErr(out)
 	}
-	d := DB{Name: "wordpress", User: "wordpress", Host: "db", Tables: []Table{}}
+	d := DB{Name: site.DBName(), User: site.DBName(), Host: "db", Tables: []Table{}}
 	for i, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
 		f := strings.Split(line, "\t")
 		if i == 0 {
@@ -260,7 +274,7 @@ func (m *Manager) Query(ctx context.Context, id, sql string) (QueryAnswer, error
 	defer cancel()
 	in := fmt.Sprintf("SET SESSION sql_select_limit=%d;\n%s\n", QueryRows, sql)
 	start := m.now()
-	out, err := m.compose(ctx, id, strings.NewReader(in), m.dbArgs("mariadb", "--xml", "wordpress")...)
+	out, err := m.compose(ctx, id, strings.NewReader(in), m.dbArgs("mariadb", "--xml", m.dbName(id))...)
 	ms := m.now().Sub(start).Milliseconds()
 	if err != nil {
 		return QueryAnswer{}, dbErr(out)
@@ -314,7 +328,7 @@ func (m *Manager) dump(ctx context.Context, id, kind string) (string, error) {
 	dir := m.dir(id)
 	args := append([]string{"compose", "--project-directory", dir, "-p", Project(id), "-f", filepath.Join(dir, "compose.yml")},
 		m.dbArgs("mariadb-dump", "--single-transaction", "--quick", "--no-tablespaces", "--default-character-set=utf8mb4",
-			"--add-drop-table", "wordpress")...)
+			"--add-drop-table", m.dbName(id))...)
 	errOut, err := st.DockerTo(ctx, dir, nil, bw, args...)
 	err = errors.Join(err, bw.Flush(), gz.Close(), f.Close())
 	if err != nil {
@@ -419,7 +433,7 @@ func (m *Manager) Import(ctx context.Context, id string, body io.Reader) (string
 		return "", fmt.Errorf("the safety copy before import failed, nothing was changed: %w", err)
 	}
 	m.pruneDumps(id)
-	out, err := m.compose(ctx, id, in, m.dbArgs("mariadb", "--batch", "--default-character-set=utf8mb4", "wordpress")...)
+	out, err := m.compose(ctx, id, in, m.dbArgs("mariadb", "--batch", "--default-character-set=utf8mb4", m.dbName(id))...)
 	if err != nil {
 		return filepath.Base(backup), dbErr(out)
 	}

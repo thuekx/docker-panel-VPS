@@ -321,6 +321,10 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 	s := Site{
 		ID: id, Domain: c.Domain, Primary: c.Primary, Server: c.Server, PHP: c.PHP,
 		AdminEmail: c.AdminEmail, Title: c.Title, Created: m.now().Unix(), Phase: "creating",
+		Database: c.Database,
+	}
+	if c.AppOf() != spec.AppWordPress {
+		s.App = c.AppOf()
 	}
 	for i, h := range c.Hosts() {
 		role := "alias"
@@ -342,7 +346,9 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		return Site{}, errors.New("no address of this site points to this server yet (DNS); add the A record or use a preview address")
 	}
 	s.URL = "https://" + s.Canonical()
-	s.AdminUser = "admin-" + randHex(3)
+	if s.IsWP() {
+		s.AdminUser = "admin-" + randHex(3)
+	}
 	return s, nil
 }
 
@@ -388,7 +394,11 @@ func (m *Manager) create(j *Job, s Site) {
 		_ = writeSite(dir, s)
 	}
 	j.Step("files")
-	for _, d := range []string{dir, filepath.Join(dir, "wp"), filepath.Join(dir, "db")} {
+	dirs := []string{dir, filepath.Join(dir, "wp")}
+	if s.HasDB() {
+		dirs = append(dirs, filepath.Join(dir, "db"))
+	}
+	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			fail("files", err, nil)
 			return
@@ -409,12 +419,26 @@ func (m *Manager) create(j *Job, s Site) {
 		fail("files", err, nil)
 		return
 	}
-	files := map[string]string{"compose.yml": cf, "php.ini": PHPIni}
-	if s.Server == "nginx" {
+	files := map[string]string{"compose.yml": cf}
+	switch {
+	case s.AppName() == spec.AppStatic:
+		files["nginx.conf"] = NginxStaticConf
+	case s.IsWP() && s.Server == "nginx":
 		files["nginx.conf"] = NginxConf
+	case s.Server == "nginx":
+		files["nginx.conf"] = NginxPHPConf
+	}
+	if s.AppName() != spec.AppStatic {
+		files["php.ini"] = PHPIni
 	}
 	for name, body := range files {
 		if err := writeFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			fail("files", err, nil)
+			return
+		}
+	}
+	if !s.IsWP() {
+		if err := m.writeStarter(s); err != nil {
 			fail("files", err, nil)
 			return
 		}
@@ -431,6 +455,15 @@ func (m *Manager) create(j *Job, s Site) {
 	j.Step("start containers")
 	if out, err := m.compose(ctx, s.ID, nil, "up", "-d", "--wait", "--wait-timeout", "300"); err != nil {
 		fail("start containers", err, out)
+		return
+	}
+	if !s.IsWP() {
+		s.Phase = "ready"
+		if err := writeSite(dir, s); err != nil {
+			fail("finish", err, nil)
+			return
+		}
+		j.Done("")
 		return
 	}
 	j.Step("install WordPress")
@@ -647,10 +680,14 @@ type Stack struct {
 
 // services lists the services a site may have; anything else in the project is ignored.
 func services(s Site) []string {
-	if s.Server == "nginx" {
-		return []string{"web", "php", "db"}
+	l := []string{"web"}
+	if s.Server == "nginx" && s.AppName() != spec.AppStatic {
+		l = append(l, "php")
 	}
-	return []string{"web", "db"}
+	if s.HasDB() {
+		l = append(l, "db")
+	}
+	return l
 }
 
 func validService(s Site, svc string) bool {

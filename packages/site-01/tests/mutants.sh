@@ -25,7 +25,7 @@ GO_MUTANTS=(
   'internal/sites/files.go|	if rel == "." {
 		return FileTrash{}|	if false {
 		return FileTrash{}'                                                                                                   # the website folder itself can be deleted
-  'internal/sites/db.go|const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -uwordpress "$@"`|const client = `exec "$0" -uwordpress -p"$(cat /run/secrets/db_password)" "$@"`'  # database password in process arguments
+  'internal/sites/db.go|const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -u"$MARIADB_USER" "$@"`|const client = `exec "$0" -u"$MARIADB_USER" -p"$(cat /run/secrets/db_password)" "$@"`'  # database password in process arguments
   'internal/sites/db.go|	backup, err := m.dump(ctx, id, "before-import")
 	if err != nil {|	backup, err := m.dump(ctx, id, "before-import")
 	if false {'                                                                                                               # import runs without a safety copy
@@ -44,11 +44,15 @@ GO_MUTANTS=(
 	ctx, cancel := context.WithTimeout(ctx, d)|	ctx, cancel := context.WithTimeout(ctx, d)'                                                                           # two changes run at once
   'internal/sites/backup.go|		if part == ".." {|		if false && part == ".." {'                                                         # BAK-01: archive path leaves the website
   'internal/sites/backup.go|		safe, err := m.backup(ctx, j, s, "before-restore")|		safe, err := "", error(nil)'                       # BAK-01: restore without a safety copy
-  'internal/sites/backup.go|strings.NewReader(resetSQL)|strings.NewReader("")'                                                       # BAK-01: tables made after the backup stay behind
+  'internal/sites/backup.go|strings.NewReader(resetSQL(s.DBName()))|strings.NewReader("")'                                                       # BAK-01: tables made after the backup stay behind
   'internal/sites/backup.go|	if man.Site != id {|	if false {'                                                                        # BAK-01: another website's backup restored here
   'internal/sites/backup.go|	if !backupRe.MatchString(name) {|	if name == "" {'                                                          # BAK-01: any file name served or restored
   'internal/sites/backup.go|		if x.Kind != kind {|		if false {'                                                                     # BAK-01: daily keep prunes manual backups
   'internal/sites/backup.go|"mariadb-dump", "--single-transaction", |"mariadb-dump", '                                                    # BAK-01: inconsistent database copy
+  'internal/sites/wp.go|	if err == nil && !s.IsWP() {|	if false {'                                                                # APP-01: WordPress tools run on another app
+  'internal/sites/db.go|	if !s.HasDB() {|	if false {'                                                                             # APP-01: database tools on a site without database
+  'internal/spec/spec.go|		if c.Server != "nginx" || c.PHP != "" {|		if c.Server != "nginx" {'                                       # APP-01: PHP on a static site
+  'internal/sites/render.go|"DB_PASSWORD_FILE: /run/secrets/db_password"}|"DB_PASSWORD: x"}'                                       # APP-01: database password as an environment value
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

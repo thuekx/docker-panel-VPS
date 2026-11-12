@@ -133,7 +133,7 @@ th{color:var(--muted);font-weight:500}
 .approve .row{justify-content:flex-start}
 .choice{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px 18px}
 .choice legend{font-weight:600;margin-bottom:6px;padding:0}
-.choice label{display:flex;align-items:center;gap:8px;font-weight:500}
+.choice label{display:flex;flex-direction:row;align-items:center;gap:8px;font-weight:500}
 .choice input{width:auto;margin:0}
 textarea{font:inherit;width:100%;box-sizing:border-box;border-radius:12px;padding:10px 12px;background:var(--field);color:inherit;border:1px solid var(--line,rgba(125,139,168,.35))}
 .steps{margin:10px 0 14px 20px;padding:0}
@@ -361,3 +361,16 @@ details.tech>summary{cursor:pointer;color:var(--muted);font-size:13px}
 details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 @media (max-width:860px){.bak-table thead{display:none}.bak-table tr{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 .bak-table td{display:block;padding:0;border:0}.bak-table td:nth-child(3){display:none}.bak-table td.bak-acts{grid-column:1/-1;justify-content:flex-start}}
+/* APP-01 create form: fields follow the chosen app (all fields stay visible where :has is not supported) */
+.apps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.apps legend{grid-column:1/-1}
+.app-card{display:flex;flex-direction:row;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
+.app-card:has(input:checked){border-color:rgba(var(--acc-rgb),.6);background:rgba(var(--acc-rgb),.08)}
+.app-card input{width:auto;flex:none;margin:3px 0 0}
+.app-card>span{display:flex;flex-direction:column;gap:2px}
+.app-card .muted{font-size:13px}
+.site-new .for-php{display:flex;flex-direction:column;gap:14px}
+.site-new:has(input[name=app][value=static]:checked) .for-php{display:none}
+.site-new:not(:has(input[name=app][value=php]:checked)) .for-phpapp{display:none}
+.site-new:not(:has(input[name=app][value=wordpress]:checked)) .for-wp{display:none}
+.site-new:has(input[name=app][value=wordpress]:checked) .for-other{display:none}

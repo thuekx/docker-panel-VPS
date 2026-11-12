@@ -89,15 +89,32 @@ func Title(t string) error {
 	return nil
 }
 
+// Apps a website can run (APP-01). WordPress is the default when none is given.
+const (
+	AppWordPress = "wordpress"
+	AppPHP       = "php"    // plain PHP, optional MariaDB
+	AppStatic    = "static" // HTML / built React, Vue, Svelte, Astro, served by Nginx
+)
+
 // Create is the body of a create-site request.
 type Create struct {
+	App        string   `json:"app,omitempty"` // wordpress (default) | php | static
 	Domain     string   `json:"domain"`
 	Aliases    []string `json:"aliases"`
 	Primary    string   `json:"primary"` // "domain" (bare) or "www"
-	Server     string   `json:"server"`  // apache | nginx
-	PHP        string   `json:"php"`     // from catalog
+	Server     string   `json:"server"`  // apache | nginx (static: nginx)
+	PHP        string   `json:"php"`     // from catalog (static: empty)
 	AdminEmail string   `json:"admin_email"`
 	Title      string   `json:"title"`
+	Database   bool     `json:"database,omitempty"` // php: give the app its own MariaDB
+}
+
+// AppOf returns the app of a request, WordPress when none is given.
+func (c Create) AppOf() string {
+	if c.App == "" {
+		return AppWordPress
+	}
+	return c.App
 }
 
 // Check validates a create request against the catalogue. preview is the preview zone (may be empty) and
@@ -132,13 +149,35 @@ func (c Create) Check(reserved map[string]bool) error {
 	default:
 		return errors.New("primary must be domain or www")
 	}
-	switch c.Server {
-	case "apache", "nginx":
+	app := c.AppOf()
+	switch app {
+	case AppWordPress, AppPHP:
+		switch c.Server {
+		case "apache", "nginx":
+		default:
+			return errors.New("web server must be apache or nginx")
+		}
+		if _, ok := catalog.PHP(c.PHP); !ok {
+			return fmt.Errorf("PHP %q is not offered", c.PHP)
+		}
+	case AppStatic:
+		if c.Server != "nginx" || c.PHP != "" {
+			return errors.New("a static site runs on nginx without PHP")
+		}
 	default:
-		return errors.New("web server must be apache or nginx")
+		return errors.New("app must be wordpress, php or static")
 	}
-	if _, ok := catalog.PHP(c.PHP); !ok {
-		return fmt.Errorf("PHP %q is not offered", c.PHP)
+	if c.Database && app != AppPHP {
+		return errors.New("only a PHP app chooses its database (WordPress always has one, a static site none)")
+	}
+	if app != AppWordPress {
+		if c.AdminEmail != "" {
+			return errors.New("only WordPress takes an admin e-mail")
+		}
+		if c.Title == "" {
+			return nil
+		}
+		return Title(c.Title)
 	}
 	if err := Email(c.AdminEmail); err != nil {
 		return err

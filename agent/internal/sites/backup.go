@@ -159,9 +159,21 @@ func (m *Manager) SetSchedule(id string, daily bool, keep int) error {
 	return nil
 }
 
+// readySite returns a site that finished creating.
+func (m *Manager) readySite(id string) (Site, error) {
+	s, err := m.Get(id)
+	if err != nil {
+		return s, err
+	}
+	if s.Phase != "ready" {
+		return s, fmt.Errorf("%w: the website is not ready", ErrBadInput)
+	}
+	return s, nil
+}
+
 // StartBackup starts a backup job ("manual" from the panel).
 func (m *Manager) StartBackup(id string) (string, error) {
-	s, err := m.dbSite(id)
+	s, err := m.readySite(id)
 	if err != nil {
 		return "", err
 	}
@@ -279,32 +291,38 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 		step = "safety"
 	}
 	// 1. the database, into a private temporary file (its size must be known for the archive header)
-	j.Step(step + " database")
-	sqlPath := filepath.Join(dir, ".db-"+randHex(6)+".sql")
-	sqlf, err := os.OpenFile(sqlPath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(sqlPath)
-	defer sqlf.Close()
-	bw := bufio.NewWriterSize(sqlf, 1<<20)
-	sdir := m.dir(s.ID)
-	args := append([]string{"compose", "--project-directory", sdir, "-p", Project(s.ID), "-f", filepath.Join(sdir, "compose.yml")},
-		m.dbArgs("mariadb-dump", "--single-transaction", "--quick", "--no-tablespaces", "--default-character-set=utf8mb4",
-			"--add-drop-table", "--routines", "--events", "wordpress")...)
-	errOut, err := st.DockerTo(ctx, sdir, nil, bw, args...)
-	if err = errors.Join(err, bw.Flush()); err != nil {
-		if len(errOut) > 0 {
-			return "", fmt.Errorf("database copy failed: %w", dbErr(errOut))
+	var sqlf *os.File
+	var dbSize int64
+	if s.HasDB() {
+		j.Step(step + " database")
+		sqlPath := filepath.Join(dir, ".db-"+randHex(6)+".sql")
+		f, err := os.OpenFile(sqlPath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+		if err != nil {
+			return "", err
 		}
-		return "", fmt.Errorf("database copy failed: %w", err)
-	}
-	dbInfo, err := sqlf.Stat()
-	if err != nil {
-		return "", err
-	}
-	if _, err := sqlf.Seek(0, io.SeekStart); err != nil {
-		return "", err
+		defer os.Remove(sqlPath)
+		defer f.Close()
+		sqlf = f
+		bw := bufio.NewWriterSize(sqlf, 1<<20)
+		sdir := m.dir(s.ID)
+		args := append([]string{"compose", "--project-directory", sdir, "-p", Project(s.ID), "-f", filepath.Join(sdir, "compose.yml")},
+			m.dbArgs("mariadb-dump", "--single-transaction", "--quick", "--no-tablespaces", "--default-character-set=utf8mb4",
+				"--add-drop-table", "--routines", "--events", s.DBName())...)
+		errOut, err := st.DockerTo(ctx, sdir, nil, bw, args...)
+		if err = errors.Join(err, bw.Flush()); err != nil {
+			if len(errOut) > 0 {
+				return "", fmt.Errorf("database copy failed: %w", dbErr(errOut))
+			}
+			return "", fmt.Errorf("database copy failed: %w", err)
+		}
+		dbInfo, err := sqlf.Stat()
+		if err != nil {
+			return "", err
+		}
+		dbSize = dbInfo.Size()
+		if _, err := sqlf.Seek(0, io.SeekStart); err != nil {
+			return "", err
+		}
 	}
 
 	// 2. the archive
@@ -323,7 +341,7 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 	gz, _ := gzip.NewWriterLevel(out, gzip.BestSpeed)
 	tw := tar.NewWriter(gz)
 	man := Manifest{Format: BackupFormat, Site: s.ID, Domain: s.Domain, Server: s.Server, PHP: s.PHP, Kind: kind,
-		Created: now.Unix(), DBBytes: dbInfo.Size(), Complete: true}
+		Created: now.Unix(), DBBytes: dbSize, Complete: true}
 	files, bytes, err := m.countFiles(s.ID)
 	if err != nil {
 		out.Close()
@@ -345,13 +363,15 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 			return "", err
 		}
 	}
-	if err := tw.WriteHeader(&tar.Header{Name: "database.sql", Mode: 0o600, Size: dbInfo.Size(), ModTime: now, Typeflag: tar.TypeReg}); err != nil {
-		out.Close()
-		return "", err
-	}
-	if _, err := io.Copy(tw, sqlf); err != nil {
-		out.Close()
-		return "", err
+	if sqlf != nil {
+		if err := tw.WriteHeader(&tar.Header{Name: "database.sql", Mode: 0o600, Size: dbSize, ModTime: now, Typeflag: tar.TypeReg}); err != nil {
+			out.Close()
+			return "", err
+		}
+		if _, err := io.Copy(tw, sqlf); err != nil {
+			out.Close()
+			return "", err
+		}
 	}
 	if err := m.tarFiles(ctx, s.ID, tw); err != nil {
 		out.Close()
@@ -460,9 +480,17 @@ func (m *Manager) tarFiles(ctx context.Context, id string, tw *tar.Writer) error
 
 // StartRestore restores a backup: what is "all", "files" or "database".
 func (m *Manager) StartRestore(id, name, what string) (string, error) {
-	s, err := m.dbSite(id)
+	s, err := m.readySite(id)
 	if err != nil {
 		return "", err
+	}
+	if !s.HasDB() {
+		if what == "database" {
+			return "", fmt.Errorf("%w: this website has no database", ErrBadInput)
+		}
+		if what == "all" {
+			what = "files"
+		}
 	}
 	if err := backupName(name); err != nil {
 		return "", err
@@ -501,7 +529,10 @@ func (m *Manager) StartRestore(id, name, what string) (string, error) {
 	return j.ID, nil
 }
 
-const resetSQL = "DROP DATABASE IF EXISTS wordpress;\nCREATE DATABASE wordpress CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci;\n"
+// resetSQL empties the site database before a restore. name is the site's own database name, never input.
+func resetSQL(name string) string {
+	return "DROP DATABASE IF EXISTS " + name + ";\nCREATE DATABASE " + name + " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci;\n"
+}
 
 // readManifest reads and checks manifest.json, the first entry of a backup.
 func readManifest(p string) (Manifest, error) {
@@ -584,10 +615,10 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 			}
 			j.Step("restore database")
 			// start from an empty database, so tables made after the backup do not stay behind
-			if out, err := m.compose(ctx, s.ID, strings.NewReader(resetSQL), m.dbArgs("mariadb", "--batch")...); err != nil {
+			if out, err := m.compose(ctx, s.ID, strings.NewReader(resetSQL(s.DBName())), m.dbArgs("mariadb", "--batch")...); err != nil {
 				return fmt.Errorf("database restore failed: %w", dbErr(out))
 			}
-			out, err := m.compose(ctx, s.ID, tr, m.dbArgs("mariadb", "--batch", "--default-character-set=utf8mb4", "wordpress")...)
+			out, err := m.compose(ctx, s.ID, tr, m.dbArgs("mariadb", "--batch", "--default-character-set=utf8mb4", s.DBName())...)
 			if err != nil {
 				return fmt.Errorf("database restore failed: %w", dbErr(out))
 			}

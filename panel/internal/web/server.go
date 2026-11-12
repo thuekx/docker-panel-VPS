@@ -118,6 +118,9 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 				}
 				return m
 			},
+			"tabs": func(lang string, site agent.Site, current string) map[string]any {
+				return map[string]any{"L": lang, "S": site.ID, "P": current, "WP": site.IsWP(), "DB": site.HasDB()}
+			},
 			"dict3": func(lang, st, phase string) map[string]string {
 				return map[string]string{"L": lang, "S": st, "P": phase}
 			},

@@ -144,7 +144,7 @@ func TestBackupAndRestore(t *testing.T) {
 		t.Fatalf("mode %v", fi.Mode())
 	}
 	in := f.stdin[n:]
-	if len(in) != 2 || in[0] != resetSQL || in[1] != f.dumped {
+	if len(in) != 2 || in[0] != resetSQL("wordpress") || in[1] != f.dumped {
 		t.Fatalf("database fed %q", in)
 	}
 	var stop, up bool

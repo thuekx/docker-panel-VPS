@@ -30,6 +30,8 @@ type fakeAgent struct {
 	bakCalls  []string // "method path body" of every backup call
 	bakDown   bool
 	bakJob    agent.Job
+	app       string // APP-01: app of the fake site (empty = WordPress)
+	appDB     bool
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +41,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	site := agent.Site{ID: "voltix-id", Domain: "voltix.id", Server: "nginx", PHP: "8.4", AdminUser: "admin-abc123",
 		URL: "https://voltix-id.preview.nostek.dev", Phase: "ready", Status: "running",
 		Hosts: []agent.Host{{Name: "voltix.id", Role: "primary"}, {Name: "voltix-id.preview.nostek.dev", Role: "preview", Routed: true}}}
+	site.App, site.Database = f.app, f.appDB
+	if f.app == "static" {
+		site.PHP, site.AdminUser = "", ""
+	}
 	write := func(code int, v any) { w.WriteHeader(code); json.NewEncoder(w).Encode(v) }
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/files") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/db") {
 		f.filesDB(w, r, write)

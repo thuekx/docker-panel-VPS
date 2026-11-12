@@ -15,7 +15,8 @@
   {{if $j.Error}}<p class="err" role="alert">{{$j.Error}}</p><p class="muted">{{t $l "sites.job.failhelp"}}</p>{{end}}
   {{if eq $j.State "done"}}
   <div class="job-done" data-anim="card">
-    <p>{{t $l "sites.job.url"}} <a href="{{.Data.Site.URL}}" target="_blank" rel="noopener noreferrer">{{.Data.Site.URL}}</a> · <a href="{{.Data.Site.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></p>
+    <p>{{t $l "sites.job.url"}} <a href="{{.Data.Site.URL}}" target="_blank" rel="noopener noreferrer">{{.Data.Site.URL}}</a>{{if .Data.Site.IsWP}} · <a href="{{.Data.Site.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a>{{end}}</p>
+    {{if .Data.Site.IsWP}}
     <p>{{t $l "sites.job.user"}} <code>{{.Data.Site.AdminUser}}</code></p>
     {{if .Data.Password}}
       <p class="banner warn">{{t $l "sites.job.pwonce"}}</p>
@@ -24,6 +25,7 @@
       <form method="post" action="/sites/job/{{$j.ID}}/secret" class="form"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="primary" type="submit">{{t $l "sites.job.showpw"}}</button></form>
       <p class="muted">{{t $l "sites.job.pwhelp"}}</p>
     {{else}}<p class="muted">{{t $l "sites.job.pwgone"}}</p>{{end}}
+    {{else}}<p class="muted">{{t $l "sites.job.appnext"}}</p><p class="row"><a class="primary btn" href="/files/{{.Data.Site.ID}}">{{t $l "files.title"}}</a><a class="ghost btn" href="/sites/{{.Data.Site.ID}}">{{t $l "sites.tab.overview"}}</a></p>{{end}}
   </div>
   {{end}}
   <p><a href="/sites">{{t $l "sites.back.list"}}</a></p>

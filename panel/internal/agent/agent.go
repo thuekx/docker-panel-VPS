@@ -126,7 +126,23 @@ type Site struct {
 	Status     string `json:"status"`
 	Up         int    `json:"containers_up"`
 	Total      int    `json:"containers_total"`
+	App        string `json:"app"`      // APP-01: wordpress (empty) | php | static
+	Database   bool   `json:"database"` // php: own MariaDB
 }
+
+// AppName is the app the site runs: wordpress, php or static.
+func (s Site) AppName() string {
+	if s.App == "" {
+		return "wordpress"
+	}
+	return s.App
+}
+
+// IsWP is true for a WordPress site.
+func (s Site) IsWP() bool { return s.AppName() == "wordpress" }
+
+// HasDB is true when the site has its own database.
+func (s Site) HasDB() bool { return s.IsWP() || (s.App == "php" && s.Database) }
 
 // Container is one container of a site's stack with its live usage (STACK-01).
 type Container struct {
@@ -173,6 +189,8 @@ type Catalog struct {
 
 // Create is a create-site request.
 type Create struct {
+	App        string   `json:"app,omitempty"` // empty = WordPress
+	Database   bool     `json:"database,omitempty"`
 	Domain     string   `json:"domain"`
 	Aliases    []string `json:"aliases"`
 	Primary    string   `json:"primary"`
