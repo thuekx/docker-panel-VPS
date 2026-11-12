@@ -127,6 +127,10 @@ func formCreate(r *http.Request) (agent.Create, string) {
 		c.Version = strings.TrimSpace(f.Get("node"))
 		c.Repo, c.Branch = strings.TrimSpace(f.Get("repo")), strings.TrimSpace(f.Get("branch"))
 		c.Build, c.Start = strings.TrimSpace(f.Get("build")), strings.TrimSpace(f.Get("start"))
+		c.Dir = strings.Trim(strings.TrimSpace(f.Get("dir")), "/")
+		if low("source") == "files" {
+			c.Source, c.Repo, c.Branch = "files", "", ""
+		}
 	default: // php, or anything else for the agent to refuse
 		c.App, c.AdminEmail, c.Database = app, "", f.Get("database") == "1"
 	}

@@ -39,6 +39,8 @@ type Site struct {
 	Database bool   `json:"database,omitempty"` // php: the app has its own MariaDB
 	Version  string `json:"version,omitempty"`  // laravel: major version installed at create time; node: Node.js
 	// APP-02 (node): where the source comes from, how it is built and started, and the live release
+	Source  string `json:"source,omitempty"` // git (empty) | files
+	Dir     string `json:"dir,omitempty"`    // app folder inside the repository or source folder
 	Repo    string `json:"repo,omitempty"`
 	Branch  string `json:"branch,omitempty"`
 	Build   string `json:"build,omitempty"`
@@ -48,6 +50,9 @@ type Site struct {
 
 // IsNode is true for a Node.js app.
 func (s Site) IsNode() bool { return s.AppName() == spec.AppNode }
+
+// FromFiles is true when a Node.js app is built from the website's source/ folder instead of Git.
+func (s Site) FromFiles() bool { return s.Source == spec.SourceFiles }
 
 // NodePort is the port a Node.js app listens on (it gets PORT in its environment).
 const NodePort = 3000

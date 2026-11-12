@@ -270,16 +270,24 @@ func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
 		finish("failed", "files: "+err.Error())
 		return err
 	}
-	script := strings.Join([]string{
-		"set -e",
+	fetch := []string{
 		`echo "== git clone $NOSTEK_BRANCH"`,
-		`git clone --quiet --depth 1 --single-branch --branch "$NOSTEK_BRANCH" -- "$NOSTEK_REPO" .`,
-		`echo "` + commitMarker + `$(git rev-parse HEAD) $(git log -1 --format=%s | head -c 200)"`,
-		`rm -rf .git`,
+		`git clone --quiet --depth 1 --single-branch --branch "$NOSTEK_BRANCH" -- "$NOSTEK_REPO" "$HOME/src"`,
+		`echo "` + commitMarker + `$(git -C "$HOME/src" rev-parse HEAD) $(git -C "$HOME/src" log -1 --format=%s | head -c 200)"`,
+		`rm -rf "$HOME/src/.git"`,
+		`src="$HOME/src"`,
+	}
+	if s.FromFiles() {
+		fetch = []string{`echo "== copy the source folder"`, `src=/src`}
+	}
+	script := strings.Join(append(fetch,
+		`[ -d "$src/$NOSTEK_DIR" ] || { echo "app folder '$NOSTEK_DIR' not found"; exit 1; }`,
+		`cp -R "$src/$NOSTEK_DIR/." /app/`,
+		`[ -f package.json ] || { echo "package.json not found in the app folder"; exit 1; }`,
 		`echo "== install"`, spec.NodeInstall,
 		`echo "== build"`, s.BuildCmd(),
 		`echo "== build done"`,
-	}, "\n")
+	), "\n")
 	args := []string{"run", "--rm", "--name", fmt.Sprintf("np-build-%s-%d", s.ID, d.Release),
 		"--user", fmt.Sprintf("%d:%d", m.uid(), m.uid()),
 		"--memory", buildMemory, "--cpus", buildCPUs, "--pids-limit", buildPIDs,
@@ -287,7 +295,12 @@ func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
 		"--label", "nostek.build=" + s.ID,
 		"-e", "HOME=/tmp", "-e", "CI=1",
 		"-e", "NPM_CONFIG_UPDATE_NOTIFIER=false", "-e", "NEXT_TELEMETRY_DISABLED=1",
-		"-e", "NOSTEK_REPO=" + s.Repo, "-e", "NOSTEK_BRANCH=" + s.Branch,
+		"-e", "NOSTEK_DIR=" + s.Dir,
+	}
+	if s.FromFiles() {
+		args = append(args, "-v", filepath.Join(m.dir(s.ID), "wp", "source")+":/src:ro")
+	} else {
+		args = append(args, "-e", "NOSTEK_REPO="+s.Repo, "-e", "NOSTEK_BRANCH="+s.Branch)
 	}
 	if envf := filepath.Join(m.deployDir(s.ID), "app.env"); fileExists(envf) {
 		args = append(args, "--env-file", envf)
@@ -392,6 +405,12 @@ func (m *Manager) createNode(ctx context.Context, j *Job, s Site, fail func(stri
 	if err := os.Chown(filepath.Join(dir, "wp"), m.uid(), m.uid()); err != nil {
 		fail("files", err, nil)
 		return
+	}
+	if s.FromFiles() {
+		if err := m.writeNodeStarter(s); err != nil {
+			fail("files", err, nil)
+			return
+		}
 	}
 	if err := writeSite(dir, s); err != nil {
 		fail("files", err, nil)

@@ -551,5 +551,11 @@
   "sites.step.now.start new release": "Menjalankan rilis baru dan menunggu jawabannya…",
   "sites.step.previous release back": "Rilis sebelumnya aktif lagi",
   "sites.step.now.previous release back": "Mengembalikan rilis sebelumnya…",
-  "stack.svc.app": "Aplikasi"
+  "stack.svc.app": "Aplikasi",
+  "node.source": "Sumber",
+  "node.source.git": "Repository Git",
+  "node.source.files": "File di panel (File Manager)",
+  "node.source.files.help": "Panel menaruh aplikasi awal kecil di folder source. Unggah aplikasi Anda ke sana lewat File Manager (file .zip bisa diekstrak), lalu tekan Deploy.",
+  "node.dir": "Folder aplikasi (opsional)",
+  "node.dir.help": "Hanya bila aplikasi ada di subfolder, misalnya apps/web di monorepo."
 }

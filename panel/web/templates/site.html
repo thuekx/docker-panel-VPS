@@ -42,8 +42,10 @@
   <div class="deploy-head"><h2>{{t $l "deploy.title"}}</h2>
   <form method="post" action="/sites/{{$s.ID}}" class="form row"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="primary" name="action" value="deploy" type="submit"{{if ne $s.Phase "ready"}} disabled{{end}}>{{t $l "deploy.go"}}</button></form></div>
   <dl class="deploy-src">
-    <dt>{{t $l "node.repo"}}</dt><dd><code>{{$s.Repo}}</code></dd>
-    <dt>{{t $l "node.branch"}}</dt><dd><code>{{$s.Branch}}</code></dd>
+    {{if $s.FromFiles}}<dt>{{t $l "node.source"}}</dt><dd>{{t $l "node.source.files"}} · <a href="/files/{{$s.ID}}?path=source">{{t $l "files.title"}}</a></dd>
+    {{else}}<dt>{{t $l "node.repo"}}</dt><dd><code>{{$s.Repo}}</code></dd>
+    <dt>{{t $l "node.branch"}}</dt><dd><code>{{$s.Branch}}</code></dd>{{end}}
+    {{if $s.Dir}}<dt>{{t $l "node.dir"}}</dt><dd><code>{{$s.Dir}}</code></dd>{{end}}
     <dt>{{t $l "node.build"}}</dt><dd><code>{{if $s.Build}}{{$s.Build}}{{else}}npm run build --if-present{{end}}</code></dd>
     <dt>{{t $l "node.start"}}</dt><dd><code>{{if $s.Start}}{{$s.Start}}{{else}}npm start{{end}}</code></dd>
     <dt>{{t $l "deploy.live"}}</dt><dd>{{if $s.Release}}{{t $l "deploy.release" $s.Release}}{{else}}—{{end}}</dd>

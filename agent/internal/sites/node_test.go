@@ -84,7 +84,7 @@ func TestNodeSiteCreate(t *testing.T) {
 	j := strings.Join(build, " ")
 	for _, want := range []string{"--rm", "--memory 1536m", "--cap-drop ALL", "no-new-privileges:true", "--pids-limit 1024",
 		"NOSTEK_REPO=https://github.com/owner/shop.git", "NOSTEK_BRANCH=main", "--user " + strconv.Itoa(m.uid()), n.Image,
-		"/wp/releases/1:/app", spec.NodeInstall, spec.NodeBuild, "rm -rf .git"} {
+		"/wp/releases/1:/app", spec.NodeInstall, spec.NodeBuild, `rm -rf "$HOME/src/.git"`, "NOSTEK_DIR=", `cp -R "$src/$NOSTEK_DIR/." /app/`} {
 		if !strings.Contains(j, want) {
 			t.Errorf("build lacks %q: %s", want, j)
 		}
@@ -104,6 +104,40 @@ func TestNodeSiteCreate(t *testing.T) {
 	}
 	if svc := services(got); strings.Join(svc, ",") != "app" {
 		t.Errorf("services %v", svc)
+	}
+}
+
+func TestNodeFromFiles(t *testing.T) {
+	m, f := newTest(t, map[string][]string{"voltix.id": {ip}})
+	m.cfg.FileUID = os.Getuid()
+	job, s, err := m.Create(context.Background(), spec.Create{App: "node", Domain: "voltix.id", Primary: "domain",
+		Version: "22", Source: "files", Dir: "apps/web", Title: "Toko Voltix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := waitJob(t, m, job); v.State != "done" {
+		t.Fatalf("job %+v", v)
+	}
+	got, _ := m.Get(s.ID)
+	if !got.FromFiles() || got.Dir != "apps/web" || got.Repo != "" {
+		t.Fatalf("site %+v", got)
+	}
+	src := filepath.Join(m.wpDir(s.ID), "source")
+	js, err := os.ReadFile(filepath.Join(src, "server.js"))
+	if err != nil || !strings.Contains(string(js), "process.env.PORT") || strings.Count(string(js), "`") != 2 {
+		t.Fatalf("starter %v\n%s", err, js)
+	}
+	if _, err := os.Stat(filepath.Join(src, "package.json")); err != nil {
+		t.Fatal(err)
+	}
+	var build string
+	for _, c := range f.calls {
+		if len(c) > 0 && c[0] == "run" {
+			build = strings.Join(c, " ")
+		}
+	}
+	if !strings.Contains(build, src+":/src:ro") || !strings.Contains(build, "NOSTEK_DIR=apps/web") || strings.Contains(build, "git clone") || strings.Contains(build, "NOSTEK_REPO") {
+		t.Fatalf("build %s", build)
 	}
 }
 

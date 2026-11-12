@@ -6,6 +6,7 @@ package sites
 import (
 	"html"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/thuekx/docker-panel-VPS/agent/internal/spec"
@@ -77,4 +78,48 @@ func (m *Manager) writeStarter(s Site) error {
 		return err
 	}
 	return r.Chmod(name, 0o644)
+}
+
+// Starter Node.js app (APP-02, source "files"): no dependencies, so the first deploy needs no registry.
+const nodeStarterPackage = `{
+  "name": "nostek-starter",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "start": "node server.js" }
+}
+`
+
+const nodeStarterServer = `// Starter app made by Nostek Panel. Replace this folder with your own app (upload a .zip in the File Manager
+// and extract it here), then press Deploy. The app must listen on the port in the PORT environment value.
+const http = require('http');
+const page = ` + "`" + `{{PAGE}}` + "`" + `;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+  res.end(page.replace('{{NODE}}', process.version));
+}).listen(Number(process.env.PORT) || 3000, process.env.HOST || '0.0.0.0');
+`
+
+// writeNodeStarter fills the source folder of a new Node.js website built from its own files.
+func (m *Manager) writeNodeStarter(s Site) error {
+	title := s.Title
+	if title == "" {
+		title = s.Domain
+	}
+	page := strings.NewReplacer("{{TITLE}}", html.EscapeString(title), "{{LEAD}}", "This Node.js app is ready (Node.js <code>{{NODE}}</code>).",
+		"{{HOW}}", "Put your app in the <code>source</code> folder with the File Manager in Nostek Panel (upload a .zip and extract it), then press Deploy.",
+		"{{EXTRA}}", "").Replace(starterHTML)
+	page = strings.NewReplacer("`", "&#96;", "\\", "&#92;", "${", "&#36;{").Replace(page)
+	src := filepath.Join(m.wpDir(s.ID), "source")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		return err
+	}
+	for name, body := range map[string]string{"package.json": nodeStarterPackage, "server.js": strings.Replace(nodeStarterServer, "{{PAGE}}", page, 1)} {
+		if err := writeFile(filepath.Join(src, name), []byte(body), 0o644); err != nil {
+			return err
+		}
+		if err := os.Chown(filepath.Join(src, name), m.uid(), m.uid()); err != nil {
+			return err
+		}
+	}
+	return os.Chown(src, m.uid(), m.uid())
 }

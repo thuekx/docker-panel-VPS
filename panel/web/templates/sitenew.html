@@ -10,7 +10,7 @@
   <tbody>
 {{$k := $p.Server}}{{if eq $p.App "php"}}{{$k = printf "php-%s" $p.Server}}{{else if eq $p.App "static"}}{{$k = "static"}}{{else if eq $p.App "laravel"}}{{$k = "laravel"}}{{else if eq $p.App "node"}}{{$k = "node"}}{{end}}
     <tr><th>{{t $l "sites.app"}}</th><td>{{t $l (printf "sites.app.%s" $p.AppName)}}{{if $p.Version}} {{$p.Version}}{{end}}</td></tr>
-    {{if $p.IsNode}}<tr><th>{{t $l "node.repo"}}</th><td><code>{{$p.Repo}}</code> · {{t $l "node.branch"}} <code>{{$p.Branch}}</code></td></tr>
+    {{if $p.IsNode}}<tr><th>{{t $l "node.source"}}</th><td>{{if $p.FromFiles}}{{t $l "node.source.files"}}{{else}}<code>{{$p.Repo}}</code> · {{t $l "node.branch"}} <code>{{$p.Branch}}</code>{{end}}{{if $p.Dir}} · {{t $l "node.dir"}} <code>{{$p.Dir}}</code>{{end}}</td></tr>
     <tr><th>{{t $l "node.commands"}}</th><td><code>{{if $p.Build}}{{$p.Build}}{{else}}npm run build --if-present{{end}}</code> · <code>{{if $p.Start}}{{$p.Start}}{{else}}npm start{{end}}</code></td></tr>
     {{else}}<tr><th>{{t $l "sites.server"}}</th><td>{{if eq $f.App "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $p.Server)}}{{end}}</td></tr>{{end}}
     {{if $p.PHP}}<tr><th>PHP</th><td>{{$p.PHP}}{{range $.Data.Catalog.PHP}}{{if eq .Version $p.PHP}}{{if .EOL}} <span class="pill s-bad">{{t $l "sites.php.eol"}}</span>{{end}}{{end}}{{end}}</td></tr>{{end}}
@@ -25,7 +25,7 @@
     <input type="hidden" name="domain" value="{{$f.Domain}}"><input type="hidden" name="aliases" value="{{.Data.Aliases}}">
     <input type="hidden" name="primary" value="{{$f.Primary}}"><input type="hidden" name="server" value="{{$f.Server}}">
     <input type="hidden" name="php" value="{{$f.PHP}}"><input type="hidden" name="admin_email" value="{{$f.AdminEmail}}">
-    <input type="hidden" name="title" value="{{$f.Title}}"><input type="hidden" name="app" value="{{$f.App}}"><input type="hidden" name="version" value="{{$f.Version}}">{{if eq $f.App "node"}}<input type="hidden" name="node" value="{{$f.Version}}"><input type="hidden" name="repo" value="{{$f.Repo}}"><input type="hidden" name="branch" value="{{$f.Branch}}"><input type="hidden" name="build" value="{{$f.Build}}"><input type="hidden" name="start" value="{{$f.Start}}">{{end}}{{if $f.Database}}<input type="hidden" name="database" value="1">{{end}}
+    <input type="hidden" name="title" value="{{$f.Title}}"><input type="hidden" name="app" value="{{$f.App}}"><input type="hidden" name="version" value="{{$f.Version}}">{{if eq $f.App "node"}}<input type="hidden" name="node" value="{{$f.Version}}"><input type="hidden" name="repo" value="{{$f.Repo}}"><input type="hidden" name="source" value="{{$f.Source}}"><input type="hidden" name="dir" value="{{$f.Dir}}"><input type="hidden" name="branch" value="{{$f.Branch}}"><input type="hidden" name="build" value="{{$f.Build}}"><input type="hidden" name="start" value="{{$f.Start}}">{{end}}{{if $f.Database}}<input type="hidden" name="database" value="1">{{end}}
     <button class="primary" type="submit">{{t $l "sites.approve.go"}}</button>
     <a class="ghost btn" href="/sites/new">{{t $l "sites.back"}}</a>
   </form>
@@ -53,9 +53,17 @@
     <label class="check for-phpapp"><input type="checkbox" name="database" value="1"{{if $f.Database}} checked{{end}}> {{t $l "sites.app.db"}}</label>
     </div>
     <div class="for-node">
+    <fieldset class="choice"><legend>{{t $l "node.source"}}</legend>
+      <label><input type="radio" name="source" value="git" {{if ne $f.Source "files"}}checked{{end}}> {{t $l "node.source.git"}}</label>
+      <label><input type="radio" name="source" value="files" {{if eq $f.Source "files"}}checked{{end}}> {{t $l "node.source.files"}}</label>
+    </fieldset>
+    <div class="for-git">
     <label>{{t $l "node.repo"}}<input name="repo" value="{{$f.Repo}}" placeholder="https://github.com/owner/app.git" autocapitalize="none" spellcheck="false"><span class="muted">{{t $l "node.repo.help"}}</span></label>
-    <div class="grid2">
     <label>{{t $l "node.branch"}}<input name="branch" value="{{if $f.Branch}}{{$f.Branch}}{{else}}main{{end}}" autocapitalize="none" spellcheck="false"></label>
+    </div>
+    <p class="muted for-files">{{t $l "node.source.files.help"}}</p>
+    <div class="grid2">
+    <label>{{t $l "node.dir"}}<input name="dir" value="{{$f.Dir}}" placeholder="apps/web" autocapitalize="none" spellcheck="false"><span class="muted">{{t $l "node.dir.help"}}</span></label>
     <label>Node.js<select name="node">{{range .Data.Catalog.Node}}<option value="{{.Version}}" {{if or (and (eq $f.App "node") (eq .Version $f.Version)) (and .Default (or (ne $f.App "node") (eq $f.Version "")))}}selected{{end}}>Node.js {{.Version}}{{if .Default}} · {{t $l "sites.php.default"}}{{end}} · {{t $l "sites.php.until" .SecurityUntil}}</option>{{end}}</select></label>
     <label>{{t $l "node.build"}}<input name="build" value="{{$f.Build}}" placeholder="npm run build" autocapitalize="none" spellcheck="false"></label>
     <label>{{t $l "node.start"}}<input name="start" value="{{$f.Start}}" placeholder="npm start" autocapitalize="none" spellcheck="false"></label>

@@ -326,7 +326,10 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		Version:  laravelVersion(c),
 	}
 	if c.AppOf() == spec.AppNode {
-		s.Version, s.Repo, s.Branch, s.Build, s.Start = c.Version, c.Repo, c.Branch, c.Build, c.Start
+		s.Version, s.Repo, s.Branch, s.Build, s.Start, s.Dir = c.Version, c.Repo, c.Branch, c.Build, c.Start, c.Dir
+		if c.Source == spec.SourceFiles {
+			s.Source = spec.SourceFiles
+		}
 	}
 	if c.AppOf() != spec.AppWordPress {
 		s.App = c.AppOf()

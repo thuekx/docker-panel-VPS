@@ -109,7 +109,30 @@ var (
 	// Only public https Git addresses: no user name or password in the address, no query, no fragment.
 	repoRe   = regexp.MustCompile(`^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)+/?$`)
 	branchRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]*$`)
+	dirRe    = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*$`)
 )
+
+// Where a Node.js app's source comes from.
+const (
+	SourceGit   = "git"   // a public Git repository and branch
+	SourceFiles = "files" // the source/ folder of the website, filled with the File Manager
+)
+
+// AppDir checks the folder of the app inside the repository or the source folder ("" = the top).
+func AppDir(d string) error {
+	if d == "" {
+		return nil
+	}
+	if len(d) > 200 || !dirRe.MatchString(d) {
+		return errors.New("app folder must be a relative path such as apps/web, without .. or a leading /")
+	}
+	for _, part := range strings.Split(d, "/") {
+		if part == "." || part == ".." || strings.HasPrefix(part, "..") {
+			return errors.New("app folder must be a relative path such as apps/web, without .. or a leading /")
+		}
+	}
+	return nil
+}
 
 // Repo checks a public Git repository address (https only).
 func Repo(r string) error {
@@ -154,6 +177,8 @@ type Create struct {
 	Title      string   `json:"title"`
 	Database   bool     `json:"database,omitempty"` // php: give the app its own MariaDB
 	Version    string   `json:"version,omitempty"`  // laravel: major version ("" = newest); node: Node.js version
+	Source     string   `json:"source,omitempty"`   // node: git (default) | files
+	Dir        string   `json:"dir,omitempty"`      // node: app folder inside the repository or source folder
 	Repo       string   `json:"repo,omitempty"`     // node: public https Git repository
 	Branch     string   `json:"branch,omitempty"`   // node: branch to deploy
 	Build      string   `json:"build,omitempty"`    // node: build command ("" = default)
@@ -247,10 +272,22 @@ func (c Create) Check(reserved map[string]bool) error {
 		if _, ok := catalog.Node(c.Version); !ok {
 			return fmt.Errorf("Node.js %q is not offered", c.Version)
 		}
-		if err := Repo(c.Repo); err != nil {
-			return err
+		switch c.Source {
+		case "", SourceGit:
+			if err := Repo(c.Repo); err != nil {
+				return err
+			}
+			if err := Branch(c.Branch); err != nil {
+				return err
+			}
+		case SourceFiles:
+			if c.Repo != "" || c.Branch != "" {
+				return errors.New("a website built from its own files takes no repository or branch")
+			}
+		default:
+			return errors.New("source must be git or files")
 		}
-		if err := Branch(c.Branch); err != nil {
+		if err := AppDir(c.Dir); err != nil {
 			return err
 		}
 		for _, cmd := range []string{c.Build, c.Start} {
@@ -267,7 +304,7 @@ func (c Create) Check(reserved map[string]bool) error {
 	if c.Version != "" && app != AppLaravel && app != AppNode {
 		return errors.New("only Laravel and Node.js take a version")
 	}
-	if app != AppNode && (c.Repo != "" || c.Branch != "" || c.Build != "" || c.Start != "") {
+	if app != AppNode && (c.Repo != "" || c.Branch != "" || c.Build != "" || c.Start != "" || c.Source != "" || c.Dir != "") {
 		return errors.New("only a Node.js app takes a repository and commands")
 	}
 	if c.Database && app != AppPHP {

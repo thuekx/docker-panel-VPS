@@ -551,5 +551,11 @@
   "sites.step.now.start new release": "Starting the new release and waiting for it to answer…",
   "sites.step.previous release back": "Previous release live again",
   "sites.step.now.previous release back": "Putting the previous release back…",
-  "stack.svc.app": "App"
+  "stack.svc.app": "App",
+  "node.source": "Source",
+  "node.source.git": "Git repository",
+  "node.source.files": "Files in the panel (File Manager)",
+  "node.source.files.help": "The panel puts a small starter app in the source folder. Upload your app there with the File Manager (a .zip can be extracted), then press Deploy.",
+  "node.dir": "App folder (optional)",
+  "node.dir.help": "Only when the app is in a subfolder, for example apps/web in a monorepo."
 }

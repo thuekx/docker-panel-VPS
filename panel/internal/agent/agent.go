@@ -129,12 +129,17 @@ type Site struct {
 	App        string `json:"app"`      // APP-01: wordpress (empty) | php | laravel | static
 	Database   bool   `json:"database"` // php: own MariaDB
 	Version    string `json:"version"`  // laravel: major version; node: Node.js version
+	Source     string `json:"source"`   // node: git (empty) | files
+	Dir        string `json:"dir"`      // node: app folder
 	Repo       string `json:"repo"`     // node: Git repository
 	Branch     string `json:"branch"`   // node: branch
 	Build      string `json:"build"`    // node: build command ("" = default)
 	Start      string `json:"start"`    // node: start command ("" = default)
 	Release    int    `json:"release"`  // node: live release
 }
+
+// FromFiles is true when a Node.js app is built from the website's source/ folder.
+func (s Site) FromFiles() bool { return s.Source == "files" }
 
 // IsNode is true for a Node.js app (APP-02).
 func (s Site) IsNode() bool { return s.App == "node" }
@@ -259,6 +264,8 @@ type Create struct {
 	App        string   `json:"app,omitempty"` // empty = WordPress
 	Database   bool     `json:"database,omitempty"`
 	Version    string   `json:"version,omitempty"` // laravel: major version; node: Node.js version
+	Source     string   `json:"source,omitempty"`  // node: git | files
+	Dir        string   `json:"dir,omitempty"`     // node: app folder
 	Repo       string   `json:"repo,omitempty"`    // node
 	Branch     string   `json:"branch,omitempty"`  // node
 	Build      string   `json:"build,omitempty"`   // node ("" = default)

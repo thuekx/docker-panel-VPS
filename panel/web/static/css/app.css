@@ -377,6 +377,9 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .site-new:has(input[name=app][value=static]:checked) .for-php,.site-new:has(input[name=app][value=node]:checked) .for-php{display:none}
 .site-new .for-node{display:flex;flex-direction:column;gap:14px}
 .site-new:not(:has(input[name=app][value=node]:checked)) .for-node{display:none}
+.site-new .for-git{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.site-new:has(input[name=source][value=files]:checked) .for-git{display:none}
+.site-new:not(:has(input[name=source][value=files]:checked)) .for-files{display:none}
 .site-new .for-node .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .site-new:has(input[name=app][value=laravel]:checked) .for-server{display:none}
 .site-new:not(:has(input[name=app][value=laravel]:checked)) .for-laravel{display:none}

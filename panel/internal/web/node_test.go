@@ -19,8 +19,13 @@ func TestFormCreateNode(t *testing.T) {
 		c.Repo != "https://github.com/owner/shop.git" || c.Branch != "main" || c.Build != "npm run build:prod" || c.Start != "" {
 		t.Errorf("node %+v", c)
 	}
+	r.PostForm.Set("source", "files")
+	r.PostForm.Set("dir", "/apps/web/")
+	if c, _ = formCreate(r); c.Source != "files" || c.Repo != "" || c.Branch != "" || c.Dir != "apps/web" {
+		t.Errorf("files source %+v", c)
+	}
 	r.PostForm.Set("app", "php")
-	if c, _ = formCreate(r); c.Repo != "" || c.Build != "" || c.Version != "" {
+	if c, _ = formCreate(r); c.Repo != "" || c.Build != "" || c.Version != "" || c.Source != "" || c.Dir != "" {
 		t.Errorf("node fields on a PHP app %+v", c)
 	}
 }
