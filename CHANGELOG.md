@@ -3,7 +3,9 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
-## [1.8.0] — not yet released
+## [1.8.0] — 2026-11-12
+
+Running at the owner's server since 19:32 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **More than WordPress** (APP-01, first wave). "Add website" now asks which app:
