@@ -3,6 +3,19 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.7.0] — not yet released
+
+### Added
+- **Backup** tab per website (BAK-01):
+  - **Make a backup now**: one archive with every file and a consistent copy of the database.
+  - **Restore** everything, files only or database only. A safety copy of the current state is always made
+    first, so a restore can be undone; the domain must be typed to confirm.
+  - **Download** and **delete** backups.
+  - **Automatic daily backup** (after 02:00 WIB) with 1–30 days kept. Backups made by hand are never pruned.
+  - Live progress while a backup or restore runs; plain-language messages when something fails.
+- Backups live in the website's own folder under `/srv`, so the nightly off-site backup (03:30 WIB) carries them too.
+- nostek-agent: `/v1/sites/{id}/backups…` routes; restore refuses archives of another website and any path that
+  leaves the website folder.
 ## [1.6.1] — 2026-11-12
 
 ### Fixed
