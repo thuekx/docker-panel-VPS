@@ -225,7 +225,11 @@ func (m *Manager) syncCompose(s Site) error {
 }
 
 func (m *Manager) wpSite(id string) (Site, error) {
-	s, err := m.dbSite(id)
+	s, err := m.Get(id)
+	if err == nil && !s.IsWP() {
+		return s, fmt.Errorf("%w: this website does not run WordPress", ErrBadInput)
+	}
+	s, err = m.dbSite(id)
 	if err != nil {
 		return s, err
 	}
