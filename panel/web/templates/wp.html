@@ -27,8 +27,7 @@
     {{if not $d.Err}}<p class="facts"><span>WordPress <b>{{$w.Version}}</b></span><span>PHP <b>{{$w.PHP}}</b></span><span>{{if $w.TLS.OK}}<span class="pill s-ok">HTTPS ✓</span>{{else}}<span class="pill s-warn">HTTPS !</span>{{end}}</span>{{if or $w.CoreUpdate $w.PluginUpdates $w.ThemeUpdates}}<span class="pill s-warn">{{t $l "wp.updates.n" (add3 (len1 $w.CoreUpdate) $w.PluginUpdates $w.ThemeUpdates)}}</span>{{end}}</p>{{end}}
     <nav class="subtabs" aria-label="WordPress">{{range $x := list3 "dashboard" "plugins" "themes"}}<a href="/wp/{{$s.ID}}?tab={{$x}}"{{if eq $d.Tab $x}} aria-current="page"{{end}}>{{t $l (printf "wp.tab.%s" $x)}}{{if and (eq $x "plugins") $w.PluginUpdates}} <span class="badge">{{$w.PluginUpdates}}</span>{{end}}{{if and (eq $x "themes") $w.ThemeUpdates}} <span class="badge">{{$w.ThemeUpdates}}</span>{{end}}</a>{{end}}<a href="/wp/{{$s.ID}}?tab=cli"{{if eq $d.Tab "cli"}} aria-current="page"{{end}}>WP-CLI</a><a href="/db/{{$s.ID}}">{{t $l "db.title"}}</a></nav>
     <p class="quick"><a href="/files/{{$s.ID}}"><span class="ico" aria-hidden="true">{{template "ico-folder"}}</span>{{t $l "files.title"}}</a><a href="/db/{{$s.ID}}"><span class="ico" aria-hidden="true">{{template "ico-disk"}}</span>{{t $l "db.title"}}</a><a href="/sites/{{$s.ID}}?logs=web#logs"><span class="ico" aria-hidden="true">{{template "ico-list"}}</span>{{t $l "sites.logs"}}</a><a href="/wp/{{$s.ID}}?tab=cli"><span class="ico" aria-hidden="true">{{template "ico-term"}}</span>WP-CLI</a></p>
-    {{if $d.Err}}<p class="banner warn">{{t $l "wp.err.read"}} <code>{{$d.Err}}</code></p>{{end}}
-    {{range $w.Warnings}}<p class="banner warn">{{t $l "wp.warn"}} <code>{{.}}</code></p>{{end}}
+    {{if $d.Err}}<div class="banner warn"><p><b>{{t $l "wp.err.read"}}</b> {{t $l "wp.err.read.plain"}}</p><details><summary>{{t $l "wp.warn.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details></div>{{end}}
   </div>
 </section>
 {{if $d.Output}}<section class="card wide tone c-green" data-anim="card"><h2>{{t $l "wp.output"}}</h2><pre class="logs">{{$d.Output}}</pre></section>{{end}}
@@ -120,5 +119,12 @@
 </section>
 {{end}}
 {{end}}
+{{if $d.Notes}}<section class="card wide tone c-amber wp-notes" data-anim="card">
+  <h2>{{t $l "wp.warn.title"}}</h2>
+  <ul class="plain">{{range $d.Notes}}<li>{{t $l (printf "wp.warn.part.%s" .Part)}}</li>{{end}}</ul>
+  <p class="muted">{{t $l "wp.warn.plain"}}</p>
+  <details><summary>{{t $l "wp.warn.details"}}</summary><pre class="logs">{{range $d.Notes}}{{.Detail}}
+{{end}}</pre></details>
+</section>{{end}}
 <p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
 {{end}}

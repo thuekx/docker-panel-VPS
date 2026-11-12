@@ -3,6 +3,18 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.6.1] — 2026-11-12
+
+### Fixed
+- WordPress Tools: the plugin list could fail to load ("Some details are missing: plugins: WP-CLI failed …")
+  when WP-CLI reported a must-use plugin with `"update": false` instead of text. Such values are now read as text,
+  so one odd plugin no longer hides the whole list.
+
+### Changed
+- When part of the WordPress overview cannot be read, the page now explains it at the bottom in plain words
+  (what is missing, that the website keeps running, what to do); the raw WP-CLI output is folded under
+  "Technical details".
+
 ## [1.6.0] — 2026-11-12
 
 Running at the owner's server since 16:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).

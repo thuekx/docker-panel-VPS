@@ -34,6 +34,24 @@ type wpData struct {
 	CLI       *agent.CLIResult
 	TLSUntil  string
 	TLSDays   int
+	Notes     []wpNote // parts of the overview that could not be read, explained at the bottom
+}
+
+// wpNote is one part of the overview that could not be read: Part names it for people, Detail is for support.
+type wpNote struct{ Part, Detail string }
+
+func wpNotes(warnings []string) []wpNote {
+	var out []wpNote
+	for _, w := range warnings {
+		part := "other"
+		for _, p := range []string{"plugins", "themes", "core"} {
+			if strings.HasPrefix(w, p+": ") {
+				part = p
+			}
+		}
+		out = append(out, wpNote{Part: part, Detail: w})
+	}
+	return out
 }
 
 func wpTab(t string) string {
@@ -63,6 +81,7 @@ func (s *Server) renderWP(w http.ResponseWriter, r *http.Request, site agent.Sit
 		d.Err = err.Error()
 	}
 	d.WP = x
+	d.Notes = wpNotes(x.Warnings)
 	if x.TLS.Expires > 0 {
 		t := time.Unix(x.TLS.Expires, 0)
 		d.TLSUntil = t.In(s.loc()).Format("02 Jan 2006")
