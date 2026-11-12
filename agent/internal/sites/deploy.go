@@ -220,6 +220,12 @@ func (m *Manager) switchRelease(ctx context.Context, s *Site, n int) ([]byte, er
 	return m.compose(ctx, s.ID, nil, "up", "-d", "--wait", "--wait-timeout", strconv.Itoa(StartTimeout), "app")
 }
 
+// Where the build container sees the deploy key and the pinned host keys of a private repository.
+const (
+	buildKeyPath    = "/run/nostek/deploy_key"
+	buildKnownHosts = "/run/nostek/known_hosts"
+)
+
 // appFileCheck stops a build early when the app folder lacks the file its runtime needs.
 var appFileCheck = map[string]string{
 	spec.AppNode:   `[ -f package.json ] || { echo "package.json not found in the app folder"; exit 1; }`,
@@ -309,7 +315,12 @@ func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
 	if s.FromFiles() {
 		args = append(args, "-v", filepath.Join(m.dir(s.ID), "wp", "source")+":/src:ro")
 	} else {
-		args = append(args, "-e", "NOSTEK_REPO="+s.Repo, "-e", "NOSTEK_BRANCH="+s.Branch)
+		args = append(args, "-e", "NOSTEK_REPO="+s.Repo, "-e", "NOSTEK_BRANCH="+s.Branch, "-e", "GIT_TERMINAL_PROMPT=0")
+		if spec.IsSSHRepo(s.Repo) {
+			// the deploy key read only; the host key is learnt on the first fetch and pinned from then on
+			args = append(args, "-v", m.deployKeyPath(s.ID)+":"+buildKeyPath+":ro", "-v", m.knownHostsPath(s.ID)+":"+buildKnownHosts,
+				"-e", "GIT_SSH_COMMAND=ssh -i "+buildKeyPath+" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="+buildKnownHosts+" -o ConnectTimeout=20")
+		}
 	}
 	if envf := filepath.Join(m.deployDir(s.ID), "app.env"); fileExists(envf) {
 		args = append(args, "--env-file", envf)
@@ -417,6 +428,12 @@ func (m *Manager) createNode(ctx context.Context, j *Job, s Site, fail func(stri
 	}
 	if s.FromFiles() {
 		if err := m.writeAppStarter(s); err != nil {
+			fail("files", err, nil)
+			return
+		}
+	}
+	if spec.IsSSHRepo(s.Repo) {
+		if err := m.adoptDeployKey(s, s.keyID); err != nil {
 			fail("files", err, nil)
 			return
 		}

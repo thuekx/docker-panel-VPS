@@ -111,6 +111,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/trash", s.trash)
 	mux.HandleFunc("POST /v1/trash/{entry}/restore", s.restore)
 	mux.HandleFunc("POST /v1/trash/{entry}/remove", s.removeTrash)
+	mux.HandleFunc("POST /v1/deploykeys", s.newDeployKey)
+	mux.HandleFunc("GET /v1/sites/{id}/deploykey", s.siteDeployKey)
 	mux.HandleFunc("GET /v1/jobs/{id}", s.job)
 	mux.HandleFunc("POST /v1/jobs/{id}/secret", s.secret)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -333,6 +335,32 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 	entry := r.PathValue("entry")
 	id, err := s.M.Restore(r.Context(), entry)
 	s.result(w, r, "restore", entry, err, map[string]any{"site": id})
+}
+
+func (s *Server) newDeployKey(w http.ResponseWriter, r *http.Request) {
+	k, err := s.M.NewDeployKey()
+	if errors.Is(err, sites.ErrBadInput) {
+		writeErr(w, 429, err.Error())
+		return
+	}
+	s.result(w, r, "deploy-key", k.ID, err, k)
+}
+
+func (s *Server) siteDeployKey(w http.ResponseWriter, r *http.Request) {
+	k, err := s.M.SiteDeployKey(r.PathValue("id"))
+	if errors.Is(err, sites.ErrNoDeployKey) {
+		writeErr(w, 404, err.Error())
+		return
+	}
+	if errors.Is(err, sites.ErrNotFound) {
+		writeErr(w, 404, "site not found")
+		return
+	}
+	if err != nil {
+		writeErr(w, 500, "cannot read the deploy key")
+		return
+	}
+	writeJSON(w, 200, k)
 }
 
 func (s *Server) removeTrash(w http.ResponseWriter, r *http.Request) {

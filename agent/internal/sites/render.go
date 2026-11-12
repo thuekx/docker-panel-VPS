@@ -46,9 +46,11 @@ type Site struct {
 	Build   string `json:"build,omitempty"`
 	Start   string `json:"start,omitempty"`
 	Release int    `json:"release,omitempty"` // live release number (0 = none yet)
+
+	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
 
-// IsNode is true for a Node.js app.
+// IsRuntime is true for an app built from source: Node.js, Go or Python.
 func (s Site) IsRuntime() bool { return spec.IsRuntimeApp(s.AppName()) }
 
 // FromFiles is true when a Node.js app is built from the website's source/ folder instead of Git.

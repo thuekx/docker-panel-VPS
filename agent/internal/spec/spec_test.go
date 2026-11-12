@@ -205,3 +205,39 @@ func TestNodeCreate(t *testing.T) {
 		t.Error("php app took a source")
 	}
 }
+
+func TestSSHRepo(t *testing.T) {
+	for _, ok := range []string{"git@github.com:owner/app.git", "git@gitlab.com:group/sub/app.git", "ssh://git@git.example.com:2222/owner/app.git", "ssh://git@172.17.0.1:2222/srv/app.git"} {
+		if Repo(ok) != nil || !IsSSHRepo(ok) {
+			t.Errorf("%s refused", ok)
+		}
+	}
+	for _, bad := range []string{"git@github.com:-oProxyCommand=sh", "git@-oProxyCommand=x:a/b", "root@github.com:owner/app.git", "ssh://root@host/a.git",
+		"ssh://git@host/../etc", "git@github.com:owner/app.git;id", "git@github.com:owner/app.git --upload-pack=x", "ext::sh -c id", "git@github.com:",
+		"file:///etc", "ssh://git@host:99999999/a"} {
+		if Repo(bad) == nil || IsSSHRepo(bad) {
+			t.Errorf("%s accepted", bad)
+		}
+	}
+	if IsSSHRepo("https://github.com/owner/app.git") {
+		t.Error("https address taken as SSH")
+	}
+	base := Create{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "git@github.com:owner/app.git", Branch: "main"}
+	if base.Check(nil) == nil {
+		t.Error("SSH repository without a deploy key accepted")
+	}
+	base.KeyID = "0123456789abcdef"
+	if err := base.Check(nil); err != nil {
+		t.Errorf("SSH repository with a key: %v", err)
+	}
+	for _, c := range []Create{
+		{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "https://github.com/owner/app.git", Branch: "main", KeyID: "0123456789abcdef"},
+		{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Source: SourceFiles, KeyID: "0123456789abcdef"},
+		{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "git@github.com:owner/app.git", Branch: "main", KeyID: "../../etc/passwd"},
+		{Domain: "voltix.id", Primary: "domain", Server: "nginx", PHP: "8.4", AdminEmail: "o@voltix.id", KeyID: "0123456789abcdef"},
+	} {
+		if c.Check(nil) == nil {
+			t.Errorf("accepted %+v", c)
+		}
+	}
+}

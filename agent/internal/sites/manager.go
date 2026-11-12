@@ -339,6 +339,12 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		if c.Source == spec.SourceFiles {
 			s.Source = spec.SourceFiles
 		}
+		if spec.IsSSHRepo(c.Repo) {
+			if err := m.pendingKey(c.KeyID); err != nil {
+				return Site{}, err
+			}
+			s.keyID = c.KeyID
+		}
 	}
 	if c.AppOf() != spec.AppWordPress {
 		s.App = c.AppOf()
@@ -726,6 +732,7 @@ func (m *Manager) Purge() ([]string, error) {
 		gone = append(gone, t.Entry)
 	}
 	gone = append(gone, m.purgeFiles()...)
+	gone = append(gone, m.purgePendingKeys()...)
 	return gone, nil
 }
 

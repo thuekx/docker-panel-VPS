@@ -108,10 +108,14 @@ const (
 )
 
 var (
-	// Only public https Git addresses: no user name or password in the address, no query, no fragment.
-	repoRe   = regexp.MustCompile(`^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)+/?$`)
-	branchRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]*$`)
-	dirRe    = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*$`)
+	// Public https Git addresses: no user name or password in the address, no query, no fragment.
+	repoRe = regexp.MustCompile(`^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)+/?$`)
+	// Private repositories over SSH with the website's deploy key: git@host:owner/app.git or
+	// ssh://git@host[:port]/owner/app.git (APP-02b). Only the user "git"; no options can be smuggled in.
+	sshRepoRe = regexp.MustCompile(`^(git@[a-z0-9]([a-z0-9.-]*[a-z0-9])?:|ssh://git@[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?/)[A-Za-z0-9_][A-Za-z0-9._~-]*(/[A-Za-z0-9._~-]+)*/?$`)
+	keyIDRe   = regexp.MustCompile(`^[a-f0-9]{16}$`)
+	branchRe  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]*$`)
+	dirRe     = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]*(/[A-Za-z0-9_][A-Za-z0-9._-]*)*$`)
 )
 
 // Where a Node.js app's source comes from.
@@ -136,10 +140,22 @@ func AppDir(d string) error {
 	return nil
 }
 
-// Repo checks a public Git repository address (https only).
+// Repo checks a Git repository address: public https, or SSH (git@host:owner/app.git) for a private repository
+// read with the website's deploy key.
 func Repo(r string) error {
-	if r == "" || len(r) > MaxRepo || !repoRe.MatchString(r) || strings.Contains(r, "..") {
-		return errors.New("repository must be a public https address such as https://github.com/owner/app.git, without a user name or password")
+	if r == "" || len(r) > MaxRepo || !(repoRe.MatchString(r) || sshRepoRe.MatchString(r)) || strings.Contains(r, "..") {
+		return errors.New("repository must be a public https address such as https://github.com/owner/app.git (no user name or password), or for a private repository an SSH address such as git@github.com:owner/app.git")
+	}
+	return nil
+}
+
+// IsSSHRepo is true for a private repository address read with a deploy key.
+func IsSSHRepo(r string) bool { return sshRepoRe.MatchString(r) && !strings.Contains(r, "..") }
+
+// KeyID checks the id of a deploy key made before the website (16 hex characters).
+func KeyID(k string) error {
+	if !keyIDRe.MatchString(k) {
+		return errors.New("deploy key id is not valid")
 	}
 	return nil
 }
@@ -185,6 +201,7 @@ type Create struct {
 	Branch     string   `json:"branch,omitempty"`   // node: branch to deploy
 	Build      string   `json:"build,omitempty"`    // node: build command ("" = default)
 	Start      string   `json:"start,omitempty"`    // node: start command ("" = default)
+	KeyID      string   `json:"key_id,omitempty"`   // SSH repository: the deploy key made for it (POST /v1/deploykeys)
 }
 
 // Default commands of a Node.js app. Install uses the lock file when there is one.
@@ -296,8 +313,15 @@ func (c Create) Check(reserved map[string]bool) error {
 			if err := Branch(c.Branch); err != nil {
 				return err
 			}
+			if IsSSHRepo(c.Repo) {
+				if err := KeyID(c.KeyID); err != nil {
+					return errors.New("a private repository (SSH address) needs its deploy key: make one first")
+				}
+			} else if c.KeyID != "" {
+				return errors.New("a deploy key is only for an SSH repository address")
+			}
 		case SourceFiles:
-			if c.Repo != "" || c.Branch != "" {
+			if c.Repo != "" || c.Branch != "" || c.KeyID != "" {
 				return errors.New("a website built from its own files takes no repository or branch")
 			}
 		default:
@@ -320,7 +344,7 @@ func (c Create) Check(reserved map[string]bool) error {
 	if c.Version != "" && app != AppLaravel && !IsRuntimeApp(app) {
 		return errors.New("only Laravel, Node.js, Go and Python take a version")
 	}
-	if !IsRuntimeApp(app) && (c.Repo != "" || c.Branch != "" || c.Build != "" || c.Start != "" || c.Source != "" || c.Dir != "") {
+	if !IsRuntimeApp(app) && (c.Repo != "" || c.Branch != "" || c.Build != "" || c.Start != "" || c.Source != "" || c.Dir != "" || c.KeyID != "") {
 		return errors.New("only an app built from source takes a repository and commands")
 	}
 	if c.Database && app != AppPHP {
