@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-
 func TestBackupRoutes(t *testing.T) {
 	c, logPath := serve(t, map[int]bool{os.Getuid(): true})
 	wait := func(job string) map[string]any {
