@@ -3,6 +3,13 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.9.1] — 2026-11-12
+
+### Added
+- **Choose the Laravel version** when adding a Laravel website: Laravel 13 (newest, default) or Laravel 12. The panel
+  says which PHP version each one needs (13: PHP 8.3 or newer, 12: PHP 8.2 or newer) and refuses a combination that
+  cannot work. The Overview shows the version.
+
 ## [1.9.0] — 2026-11-12
 
 Running at the owner's server since 20:34 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).

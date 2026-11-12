@@ -85,3 +85,12 @@ only on the edge network and their own back network; secrets never in git, argv,
 - Panel: Laravel card on the Overview with a fixed list of artisan commands (migrate, optimize, optimize:clear,
   queue:restart); logs and restart for queue and scheduler; Database, Files, Backup tabs as for every site.
 - Not yet: Laravel from the owner's Git repository (APP-02 with the Git deploy), Horizon/Octane, Redis.
+
+## Laravel version choice (v1.9.1)
+
+- Owner asked 2026-11-12 ~20:40 WIB for a choice of Laravel version. "Add website" → Laravel now offers
+  **Laravel 13** (newest, default, needs PHP 8.3 or newer) and **Laravel 12** (needs PHP 8.2 or newer)
+  (`catalog.Laravel`). The agent refuses a version it does not know, a PHP version below the minimum, and a
+  version on any app other than Laravel. The site remembers its version (`site.json`), shown on the Overview.
+- Install uses `composer create-project laravel/laravel:^<version>.0`, so it takes the newest release of that
+  major version. Sites made before v1.9.1 have no stored version; nothing changes for them.
