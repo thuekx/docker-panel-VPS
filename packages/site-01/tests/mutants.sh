@@ -51,7 +51,7 @@ GO_MUTANTS=(
   'internal/sites/backup.go|"mariadb-dump", "--single-transaction", |"mariadb-dump", '                                                    # BAK-01: inconsistent database copy
   'internal/sites/wp.go|	if err == nil && !s.IsWP() {|	if false {'                                                                # APP-01: WordPress tools run on another app
   'internal/sites/db.go|	if !s.HasDB() {|	if false {'                                                                             # APP-01: database tools on a site without database
-  'internal/spec/spec.go|		if c.Server != "nginx" || c.PHP != "" {|		if c.Server != "nginx" {'                                       # APP-01: PHP on a static site
+  'internal/spec/spec.go| c.PHP != "" {| false {'                                       # APP-01: PHP on a static site
   'internal/sites/render.go|"DB_PASSWORD_FILE: /run/secrets/db_password"}|"DB_PASSWORD: x"}'                                       # APP-01: database password as an environment value
   'internal/sites/laravel.go|	if !s.IsLaravel() {|	if false {'   # APP-01 Laravel: artisan on another app
   'internal/sites/render.go|    root /var/www/html/public;|    root /var/www/html;'   # APP-01 Laravel: .env and vendor/ served
