@@ -20,6 +20,9 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ## [1.10.0] — 2026-11-12
 
+Running at the owner's server since 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS), together
+with 1.9.1.
+
 ### Added
 - **Node.js websites** (APP-02, first part). "Add website" offers Node.js: Express, NestJS, Nuxt, SvelteKit, Next.js
   and other Node.js apps, on the official Node.js image (22, 24 default, or 26), pinned by digest.
@@ -36,6 +39,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   Node.js apps, and an auto-deploy webhook (APP-02 parts b and c).
 
 ## [1.9.1] — 2026-11-12
+
+Released to the owner's server with 1.10.0 (22:29 WIB).
 
 ### Added
 - **Choose the Laravel version** when adding a Laravel website: Laravel 13 (newest, default) or Laravel 12. The panel
