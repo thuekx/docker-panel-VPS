@@ -61,6 +61,7 @@ wait_job() { # job id -> state
     api GET "/v1/jobs/$1"; s="$(grep -o '"state":"[a-z]*"' <<<"$BODY" | cut -d'"' -f4)"
     [ "$s" != running ] && break; sleep 3
   done
+  [ "$s" = done ] || echo "    | job $1: ${BODY:0:600}" >&2
   echo "$s"
 }
 web() { # site-id host path -> http code from inside nostek-edge (as the edge proxy would call it)

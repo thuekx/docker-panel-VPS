@@ -3,6 +3,26 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.5.0] — unreleased
+
+### Added
+- **File Manager** per website (SITE-02): browse folders, open and edit text files (up to 2 MB, line ends kept),
+  upload several files at once (up to 256 MB each, with a progress bar), download a file or a whole folder as .zip,
+  extract a .zip in place, new folder and new file, rename or move, permissions (rwx only, never setuid). Deleting
+  moves to a per-website trash that keeps files 7 days and can restore them.
+- Everything works only inside the website's WordPress folder: no path, link or `..` reaches the database files,
+  the website's secrets or the host. Files written by the panel belong to www-data like the files WordPress writes.
+- **Database** per website: name, user, version, size and tables with rows and size; SQL console (SELECT shows up
+  to 1000 rows; errors are shown as MariaDB reports them); export as .sql.gz; import .sql or .sql.gz up to 512 MB.
+  Every import first takes a copy of the current database and keeps the newest 3, so an import can be undone.
+- Tabs on each website: Overview, File Manager, Database.
+- nostek-agent: `/v1/sites/{id}/files…` and `/v1/sites/{id}/db…` routes. The database password is read inside the
+  database container; it never appears in an argument list, a log or an answer. The audit log records every file
+  and database change, never file content or SQL text.
+
+### Changed
+- The edge proxy allows 30 minutes to read a request (was 60 seconds), so large uploads finish.
+
 ## [1.4.0] — 2026-11-12
 
 Running at the owner's server since 14:22 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
