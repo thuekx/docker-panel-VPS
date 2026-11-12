@@ -92,3 +92,44 @@ func TestCreateCheck(t *testing.T) {
 		t.Errorf("hosts = %v", h)
 	}
 }
+
+func TestCreateApps(t *testing.T) {
+	base := Create{Domain: "voltix.id", Primary: "domain", Server: "nginx", PHP: "8.4"}
+	ok := []Create{
+		func() Create { c := base; c.App = "static"; c.PHP = ""; return c }(),
+		func() Create { c := base; c.App = "static"; c.PHP = ""; c.Title = "Voltix"; return c }(),
+		func() Create { c := base; c.App = "php"; return c }(),
+		func() Create { c := base; c.App = "php"; c.Server = "apache"; c.Database = true; return c }(),
+	}
+	for _, c := range ok {
+		if err := c.Check(nil); err != nil {
+			t.Errorf("%+v refused: %v", c, err)
+		}
+	}
+	bad := []Create{
+		func() Create { c := base; c.App = "static"; return c }(),                                  // PHP on a static site
+		func() Create { c := base; c.App = "static"; c.PHP = ""; c.Server = "apache"; return c }(), // apache
+		func() Create { c := base; c.App = "static"; c.PHP = ""; c.Database = true; return c }(),   // database
+		func() Create { c := base; c.App = "php"; c.PHP = "7.4"; return c }(),
+		func() Create { c := base; c.App = "php"; c.AdminEmail = "o@nostek.dev"; return c }(),
+		func() Create { c := base; c.App = "php"; c.Title = "x$(id)"; return c }(),
+		func() Create { c := base; c.App = "laravel"; return c }(),
+		func() Create {
+			c := base
+			c.App = "wordpress"
+			c.Database = true
+			c.AdminEmail = "o@nostek.dev"
+			c.Title = "V"
+			return c
+		}(),
+		func() Create { c := base; return c }(), // WordPress needs e-mail and title
+	}
+	for _, c := range bad {
+		if err := c.Check(nil); err == nil {
+			t.Errorf("%+v accepted", c)
+		}
+	}
+	if (Create{}).AppOf() != AppWordPress {
+		t.Error("default app is not WordPress")
+	}
+}
