@@ -3,6 +3,15 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.4.0] — unreleased
+
+### Added
+- **Stack** card on each website (STACK-01): every container of the site (web server, PHP-FPM, database) with
+  image, state and health, CPU and memory with bars, uptime and restart count. Values update by themselves every
+  few seconds; a state change swaps the card in. Logs and restart per container.
+- Website list shows how many containers run (for example `3/3 running`).
+- nostek-agent: `GET /v1/sites/{id}/stack` and `POST /v1/sites/{id}/services/{web|php|db}/restart`.
+
 ## [1.3.0] — 2026-11-12
 
 Running at the owner's server since 01:07 WIB (`panel-01 UPDATE` + VERIFY PASS, certificate valid).

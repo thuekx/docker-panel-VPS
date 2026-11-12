@@ -124,6 +124,29 @@ type Site struct {
 	Created    int64  `json:"created"`
 	Phase      string `json:"phase"`
 	Status     string `json:"status"`
+	Up         int    `json:"containers_up"`
+	Total      int    `json:"containers_total"`
+}
+
+// Container is one container of a site's stack with its live usage (STACK-01).
+type Container struct {
+	Service  string  `json:"service"`
+	Name     string  `json:"name"`
+	Image    string  `json:"image"`
+	State    string  `json:"state"`
+	Health   string  `json:"health"`
+	Status   string  `json:"status"`
+	CPU      float64 `json:"cpu"`
+	MemBytes int64   `json:"mem"`
+	MemLimit int64   `json:"mem_limit"`
+	Restarts int     `json:"restarts"`
+	Started  int64   `json:"started"`
+}
+
+// Stack is a site's compose project and its containers.
+type Stack struct {
+	Project    string      `json:"project"`
+	Containers []Container `json:"containers"`
 }
 
 // Trashed is a deleted site that can still be restored.
@@ -233,6 +256,17 @@ func (c *Client) Secret(ctx context.Context, id string) (string, error) {
 // Action runs start, stop or restart.
 func (c *Client) Action(ctx context.Context, id, action string) error {
 	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/"+url.PathEscape(action), nil, nil)
+}
+
+// Stack reads a site's containers with live CPU and memory.
+func (c *Client) Stack(ctx context.Context, id string) (Stack, error) {
+	var v Stack
+	return v, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/stack", nil, &v)
+}
+
+// RestartService restarts one container of a site (web, php or db).
+func (c *Client) RestartService(ctx context.Context, id, svc string) error {
+	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/services/"+url.PathEscape(svc)+"/restart", nil, nil)
 }
 
 // Delete moves a site to the trash.

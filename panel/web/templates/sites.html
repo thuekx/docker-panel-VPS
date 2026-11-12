@@ -6,10 +6,11 @@
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "nav.sites"}}</span>{{if not .Data.NoAgent}}<a class="primary btn" href="/sites/new">{{t $l "sites.new"}}</a>{{end}}</div>
   {{if .Data.Sites}}
   <div class="table-wrap"><table>
-  <thead><tr><th>{{t $l "sites.domain"}}</th><th>{{t $l "sites.status"}}</th><th>{{t $l "sites.server"}}</th><th>PHP</th><th>{{t $l "sites.address"}}</th></tr></thead>
+  <thead><tr><th>{{t $l "sites.domain"}}</th><th>{{t $l "sites.status"}}</th><th>{{t $l "stack.containers"}}</th><th>{{t $l "sites.server"}}</th><th>PHP</th><th>{{t $l "sites.address"}}</th></tr></thead>
   <tbody>{{range .Data.Sites}}<tr data-anim="item">
     <td><a href="/sites/{{.ID}}">{{.Domain}}</a></td>
     <td>{{template "sitestatus" (dict3 $l .Status .Phase)}}</td>
+    <td class="nowrap">{{if .Total}}<span class="ctr-dots" aria-label="{{t $l "stack.count" .Up .Total}}">{{t $l "stack.count" .Up .Total}}</span>{{else}}—{{end}}</td>
     <td><span class="tag-srv {{if eq .Server "nginx"}}c-green{{else}}c-orange{{end}}">{{t $l (printf "sites.server.%s" .Server)}}</span></td>
     <td><span class="tag-srv c-violet">PHP {{.PHP}}</span></td>
     <td><a href="{{.URL}}" rel="noopener noreferrer" target="_blank">{{.URL}}</a></td>

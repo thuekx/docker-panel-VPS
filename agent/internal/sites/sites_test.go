@@ -21,6 +21,8 @@ type fakeRunner struct {
 	stdin []string
 	fail  string // fail any call containing this word
 	ps    string
+	ins   string // docker inspect answer
+	stats string // docker stats answer
 }
 
 func (f *fakeRunner) Docker(ctx context.Context, dir string, stdin io.Reader, args ...string) ([]byte, error) {
@@ -37,6 +39,12 @@ func (f *fakeRunner) Docker(ctx context.Context, dir string, stdin io.Reader, ar
 	}
 	if strings.Contains(j, " ps ") {
 		return []byte(f.ps), nil
+	}
+	if len(args) > 0 && args[0] == "inspect" {
+		return []byte(f.ins), nil
+	}
+	if len(args) > 0 && args[0] == "stats" {
+		return []byte(f.stats), nil
 	}
 	return nil, nil
 }

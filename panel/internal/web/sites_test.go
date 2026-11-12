@@ -15,11 +15,12 @@ import (
 
 // fakeAgent answers like nostek-agent for the routes the panel uses.
 type fakeAgent struct {
-	mu      sync.Mutex
-	created []agent.Create
-	secret  string
-	deleted []string
-	actions []string
+	mu        sync.Mutex
+	created   []agent.Create
+	secret    string
+	deleted   []string
+	actions   []string
+	stackDown bool
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +62,15 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s := f.secret
 		f.secret = ""
 		write(200, map[string]string{"password": s})
+	case r.URL.Path == "/v1/sites/voltix-id/stack":
+		if f.stackDown {
+			write(502, map[string]string{"error": "cannot read containers: docker not reachable"})
+			return
+		}
+		write(200, agent.Stack{Project: "np-site-voltix-id", Containers: []agent.Container{
+			{Service: "web", Name: "np-site-voltix-id-web-1", Image: "nginx:1.30-alpine", State: "running", CPU: 0.4, MemBytes: 8 << 20, MemLimit: 256 << 20, Started: 1700000000 - 7200},
+			{Service: "php", Name: "np-site-voltix-id-php-1", Image: "wordpress:7.1.4-php8.4-fpm", State: "exited", CPU: -1, MemBytes: -1, Restarts: 3},
+			{Service: "db", Name: "np-site-voltix-id-db-1", Image: "mariadb:11.8", State: "running", Health: "unhealthy", CPU: 1.5, MemBytes: 120 << 20, MemLimit: 512 << 20, Started: 1700000000 - 600}}})
 	case r.URL.Path == "/v1/sites/voltix-id" && r.Method == "GET":
 		write(200, site)
 	case r.URL.Path == "/v1/sites/voltix-id/delete":
@@ -203,5 +213,60 @@ func TestSiteActionsAndDeleteConfirm(t *testing.T) {
 	_, body, _ := e.get(e.c, "/sites")
 	if !strings.Contains(body, "voltix.id") || !strings.Contains(body, "Running") {
 		t.Fatal("list does not show the site")
+	}
+}
+
+func TestSiteStackShownHonestly(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	if code, _, _ := e.get(e.c, "/stack/voltix-id"); code != 303 {
+		t.Fatal("stack JSON reachable without login")
+	}
+	e.setupAdmin(e.c, "admin@example.test")
+	code, body, _ := e.get(e.c, "/sites/voltix-id")
+	if code != 200 || !strings.Contains(body, "np-site-voltix-id-php-1") || !strings.Contains(body, "1/3 running") {
+		t.Fatalf("site page: %d", code)
+	}
+	// php stopped and db unhealthy are never green; only web is
+	if strings.Count(body, `class="pill s-ok" data-f="state"`) != 1 || !strings.Contains(body, `class="pill s-bad" data-f="state">Stopped`) || !strings.Contains(body, "Running · unhealthy") {
+		t.Fatal("container states not shown honestly")
+	}
+	if !strings.Contains(body, "8 MB / 256 MB") || !strings.Contains(body, "2h 0m") {
+		t.Fatal("usage or uptime missing")
+	}
+	code, js, h := e.get(e.c, "/stack/voltix-id")
+	if code != 200 || !strings.HasPrefix(h.Get("Content-Type"), "application/json") || !strings.Contains(js, `"mem_pct":23`) {
+		t.Fatalf("stack JSON: %d %s", code, js)
+	}
+	_, list, _ := e.get(e.c, "/sites")
+	if !strings.Contains(list, "Containers") {
+		t.Fatal("list lacks the containers column")
+	}
+	// restart one container: only known services, audited
+	_, page, _ := e.get(e.c, "/sites/voltix-id")
+	for _, bad := range []string{"cli", "edge", ""} {
+		if code, _, _ := e.postWith(e.c, "/sites/voltix-id", url.Values{"action": {"restart-service"}, "service": {bad}}, page); code != 400 {
+			t.Errorf("service %q accepted: %d", bad, code)
+		}
+	}
+	code, _, h = e.postWith(e.c, "/sites/voltix-id", url.Values{"action": {"restart-service"}, "service": {"php"}}, page)
+	if code != 303 || h.Get("Location") != "/sites/voltix-id?done=restart_php" {
+		t.Fatalf("restart php: %d %s", code, h.Get("Location"))
+	}
+	if f.actions[len(f.actions)-1] != "services/php/restart" {
+		t.Fatalf("agent call: %v", f.actions)
+	}
+	_, audit, _ := e.get(e.c, "/audit")
+	if !strings.Contains(audit, "site.restart_php") {
+		t.Fatal("restart not audited")
+	}
+	// agent cannot read docker: unknown, never green
+	f.stackDown = true
+	_, body, _ = e.get(e.c, "/sites/voltix-id")
+	if !strings.Contains(body, "cannot be read") || strings.Contains(body, `data-stack-count`) {
+		t.Fatal("docker failure must show unknown")
+	}
+	if code, _, _ := e.get(e.c, "/stack/voltix-id"); code != 502 {
+		t.Fatalf("stack JSON on failure: %d", code)
 	}
 }

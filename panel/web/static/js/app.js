@@ -126,5 +126,58 @@
     timer = setTimeout(poll, 800);
   }
 
-  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); });
+  // A site page follows its containers: CPU, memory, uptime and restarts update every 5 seconds while the
+  // page is visible. When a container changes state the stack card is swapped in once from the page.
+  function stack() {
+    var card = document.querySelector("[data-stack]");
+    if (!card) return;
+    var url = card.getAttribute("data-stack"), live = card.querySelector("[data-live]"), fails = 0;
+    function set(el, f, v) {
+      var x = el.querySelector('[data-f="' + f + '"]');
+      if (!x) return;
+      if (f.slice(-4) === "_pct") {
+        var w = Math.max(0, Math.min(100, v)) + "%";
+        if (reduce || !window.anime) x.style.width = w; else window.anime.animate(x, { width: w, duration: 700, ease: "outExpo" });
+        return;
+      }
+      if (x.textContent !== String(v)) {
+        x.textContent = v;
+        if (!reduce && window.Motion) window.Motion.animate(x, { opacity: [0.35, 1] }, { duration: 0.4 });
+      }
+    }
+    function swap() {
+      fetch(location.href, { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.text(); }).then(function (html) {
+        var next = new DOMParser().parseFromString(html, "text/html").getElementById("stack");
+        if (!next) return;
+        card.replaceWith(next); card = next; live = card.querySelector("[data-live]");
+        all("#stack [data-bar]").forEach(function (el) { el.style.width = (parseInt(el.getAttribute("data-bar"), 10) || 0) + "%"; });
+        if (live) live.hidden = false;
+      });
+    }
+    function poll() {
+      if (document.hidden) { setTimeout(poll, 5000); return; }
+      fetch(url, { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
+        .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then(function (d) {
+          fails = 0;
+          if (live) live.hidden = false;
+          card.classList.remove("stale");
+          var changed = false, seen = 0;
+          (d.containers || []).forEach(function (c) {
+            var el = card.querySelector('[data-ctr="' + c.service + '"]');
+            if (!el) { changed = true; return; }
+            seen++;
+            if (el.getAttribute("data-state") !== c.state + "/" + c.health) { changed = true; return; }
+            set(el, "cpu", c.cpu); set(el, "mem", c.mem); set(el, "since", c.since); set(el, "restarts", c.restarts);
+            set(el, "cpu_pct", c.cpu_pct); set(el, "mem_pct", c.mem_pct);
+          });
+          if (changed || seen !== card.querySelectorAll("[data-ctr]").length) swap();
+        })
+        .catch(function () { fails++; if (live) live.hidden = true; if (fails > 1) card.classList.add("stale"); })
+        .then(function () { setTimeout(poll, fails > 3 ? 20000 : 5000); });
+    }
+    setTimeout(poll, 3000);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); });
 })();

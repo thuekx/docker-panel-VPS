@@ -120,6 +120,13 @@ api GET /v1/sites; ok "both sites listed as running" '[ "$(grep -o "\"status\":\
 api POST /v1/sites/a-example-test/stop; api GET /v1/sites/a-example-test; ok "stop shows stopped" 'grep -q "\"status\":\"stopped\"" <<<"$BODY"'
 api POST /v1/sites/a-example-test/start; ok "start brings it back" '[ "$CODE" = 200 ] && [ "$(web a-example-test a-example-test.$ZONE /)" = 200 ]'
 
+# --- STACK-01: containers with live usage; restart one container
+stackcheck() { python3 -c 'import json,sys; s=json.load(sys.stdin); c=s["containers"]; assert s["project"]=="np-site-b-example-test", s; assert [x["service"] for x in c]==["web","php","db"], c; assert all(x["state"]=="running" and x["mem"]>0 and x["cpu"]>=0 and x["started"]>0 for x in c), c; assert c[2]["health"]=="healthy", c; assert "@" not in "".join(x["image"] for x in c)' <<<"$BODY"; }
+api GET /v1/sites/b-example-test/stack; ok "stack lists web, php, db with live CPU and memory" '[ "$CODE" = 200 ] && stackcheck'
+PHP_START="$(docker inspect -f "{{.State.StartedAt}}" np-site-b-example-test-php-1)"
+api POST /v1/sites/b-example-test/services/php/restart; ok "restart one container (php) only" '[ "$CODE" = 200 ] && [ "$(docker inspect -f "{{.State.StartedAt}}" np-site-b-example-test-php-1)" != "$PHP_START" ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
+api POST /v1/sites/a-example-test/services/php/restart; ok "apache site has no php container to restart" '[ "$CODE" = 400 ]'
+
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again (update) passes, websites untouched" '[ $RC = 0 ] && has "already built" && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$CIDS" ]'

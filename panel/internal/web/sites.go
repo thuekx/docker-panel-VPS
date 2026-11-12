@@ -287,6 +287,7 @@ type siteData struct {
 	Logs    string
 	Service string
 	Created string
+	Stack   stackView
 }
 
 func (s *Server) siteShow(w http.ResponseWriter, r *http.Request) {
@@ -303,6 +304,11 @@ func (s *Server) siteShow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := siteData{Site: site, Created: time.Unix(site.Created, 0).In(s.loc()).Format("02 Jan 2006 15:04")}
+	if st, err := s.ag.Stack(ctx, id); err == nil {
+		d.Stack = s.stackOf(st)
+	} else {
+		d.Stack = stackView{Err: err.Error()}
+	}
 	if svc := r.URL.Query().Get("logs"); svc == "web" || svc == "db" || (svc == "php" && site.Server == "nginx") {
 		d.Service = svc
 		if out, err := s.ag.Logs(ctx, id, svc, 200); err == nil {
@@ -332,6 +338,14 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 	switch act {
 	case "start", "stop", "restart":
 		err = s.ag.Action(ctx, id, act)
+	case "restart-service":
+		svc := r.PostForm.Get("service")
+		if svc != "web" && svc != "db" && !(svc == "php" && site.Server == "nginx") {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		err = s.ag.RestartService(ctx, id, svc)
+		act = "restart_" + svc
 	case "delete":
 		if strings.TrimSpace(strings.ToLower(r.PostForm.Get("confirm"))) != site.Domain {
 			http.Redirect(w, r, back+"?err="+url.QueryEscape(s.tr.T(s.lang(r), "sites.delete.mismatch")), http.StatusSeeOther)

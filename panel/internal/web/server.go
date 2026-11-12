@@ -145,6 +145,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /sites/job/{job}", s.need(true, s.siteJob))
 	mux.HandleFunc("POST /sites/job/{job}/secret", s.need(true, s.siteSecret))
 	mux.HandleFunc("GET /sites/{id}", s.need(true, s.siteShow))
+	mux.HandleFunc("GET /stack/{id}", s.need(true, s.siteStack))
 	mux.HandleFunc("POST /sites/{id}", s.need(true, s.siteAction))
 	mux.HandleFunc("POST /trash/{entry}/restore", s.need(true, s.siteRestore))
 	mux.HandleFunc("GET /sites/job/{job}/status", s.need(true, s.siteJobStatus))
