@@ -48,6 +48,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if f.app == "static" {
 		site.PHP, site.AdminUser = "", ""
 	}
+	if f.app == "node" {
+		site.PHP, site.Server, site.AdminUser, site.Version = "", "", "", "24"
+		site.Repo, site.Branch, site.Start, site.Release = "https://github.com/owner/shop.git", "main", "node server.js", 3
+	}
 	write := func(code int, v any) { w.WriteHeader(code); json.NewEncoder(w).Encode(v) }
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/files") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/db") {
 		f.filesDB(w, r, write)
@@ -64,7 +68,8 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/v1/catalog":
 		write(200, agent.Catalog{PHP: []agent.PHP{{Version: "8.1", EOL: true}, {Version: "8.4", Default: true, SecurityUntil: "2028-12-31"}},
-			Laravel: []agent.Laravel{{Version: "13", MinPHP: "8.3", Default: true}, {Version: "12", MinPHP: "8.2"}}})
+			Laravel: []agent.Laravel{{Version: "13", MinPHP: "8.3", Default: true}, {Version: "12", MinPHP: "8.2"}},
+			Node:    []agent.Node{{Version: "26", SecurityUntil: "2029-04-30"}, {Version: "24", SecurityUntil: "2028-04-30", Default: true}}})
 	case r.URL.Path == "/v1/sites" && r.Method == "GET":
 		write(200, map[string]any{"sites": []agent.Site{site}})
 	case r.URL.Path == "/v1/trash":
@@ -73,7 +78,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var c agent.Create
 		b, _ := io.ReadAll(r.Body)
 		json.Unmarshal(b, &c)
-		if c.Server != "apache" && c.Server != "nginx" {
+		if c.Server != "apache" && c.Server != "nginx" && c.App != "node" {
 			write(422, map[string]string{"error": "web server must be apache or nginx"})
 			return
 		}
@@ -107,6 +112,16 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/v1/sites/voltix-id/delete":
 		f.deleted = append(f.deleted, "voltix-id")
 		write(200, map[string]any{"trash": "voltix-id.1700000000", "days": 7})
+	case r.URL.Path == "/v1/sites/voltix-id/deploys" && r.Method == "GET":
+		write(200, []agent.Deploy{
+			{Release: 3, Started: 1700000000, Ended: 1700000095, Commit: "0123456789abcdef0123456789abcdef01234567", Message: "Checkout <b>v2</b>", Result: "live"},
+			{Release: 2, Started: 1699990000, Ended: 1699990030, Result: "failed", Error: "build failed: see the build log"},
+			{Release: 1, Started: 1699980000, Ended: 1699980090, Commit: "89abcdef0123456789abcdef0123456789abcdef", Message: "First", Result: "ok"}})
+	case r.URL.Path == "/v1/sites/voltix-id/deploys" && r.Method == "POST":
+		f.actions = append(f.actions, "deploy")
+		write(202, map[string]string{"job": "j0123456789abcdef"})
+	case r.URL.Path == "/v1/sites/voltix-id/deploys/2/log":
+		write(200, map[string]string{"log": "npm ERR! missing script: build <script>"})
 	case r.URL.Path == "/v1/sites/voltix-id/laravel/artisan":
 		b, _ := io.ReadAll(r.Body)
 		f.actions = append(f.actions, "artisan "+string(b))

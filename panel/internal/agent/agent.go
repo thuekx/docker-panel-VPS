@@ -128,8 +128,16 @@ type Site struct {
 	Total      int    `json:"containers_total"`
 	App        string `json:"app"`      // APP-01: wordpress (empty) | php | laravel | static
 	Database   bool   `json:"database"` // php: own MariaDB
-	Version    string `json:"version"`  // laravel: major version
+	Version    string `json:"version"`  // laravel: major version; node: Node.js version
+	Repo       string `json:"repo"`     // node: Git repository
+	Branch     string `json:"branch"`   // node: branch
+	Build      string `json:"build"`    // node: build command ("" = default)
+	Start      string `json:"start"`    // node: start command ("" = default)
+	Release    int    `json:"release"`  // node: live release
 }
+
+// IsNode is true for a Node.js app (APP-02).
+func (s Site) IsNode() bool { return s.App == "node" }
 
 // AppName is the app the site runs: wordpress, php or static.
 func (s Site) AppName() string {
@@ -190,6 +198,53 @@ type Catalog struct {
 	PHP     []PHP     `json:"php"`
 	Servers []string  `json:"servers"`
 	Laravel []Laravel `json:"laravel"`
+	Node    []Node    `json:"node"`
+}
+
+// Node is one offered Node.js version (APP-02).
+type Node struct {
+	Version       string `json:"version"`
+	SecurityUntil string `json:"security_until"`
+	Default       bool   `json:"default"`
+}
+
+// Deploy is one entry of a Node.js website's deploy history.
+type Deploy struct {
+	Release  int    `json:"release"`
+	Started  int64  `json:"started"`
+	Ended    int64  `json:"ended"`
+	Commit   string `json:"commit"`
+	Message  string `json:"message"`
+	Result   string `json:"result"` // running | live | ok | failed | removed
+	Error    string `json:"error"`
+	Rollback bool   `json:"rollback"`
+}
+
+// Deploys reads the deploy history of a Node.js website, newest first.
+func (c *Client) Deploys(ctx context.Context, id string) ([]Deploy, error) {
+	var v []Deploy
+	return v, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/deploys", nil, &v)
+}
+
+// StartDeploy builds the branch again and switches the website to it; it returns the job id.
+func (c *Client) StartDeploy(ctx context.Context, id string) (string, error) {
+	var v struct {
+		Job string `json:"job"`
+	}
+	return v.Job, c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/deploys", nil, &v)
+}
+
+// BuildLog reads the build log of one release.
+func (c *Client) BuildLog(ctx context.Context, id string, n int) (string, error) {
+	var v struct {
+		Log string `json:"log"`
+	}
+	return v.Log, c.call(ctx, "GET", fmt.Sprintf("/v1/sites/%s/deploys/%d/log", url.PathEscape(id), n), nil, &v)
+}
+
+// Rollback puts a kept release live again.
+func (c *Client) Rollback(ctx context.Context, id string, n int) error {
+	return c.call(ctx, "POST", fmt.Sprintf("/v1/sites/%s/deploys/%d/rollback", url.PathEscape(id), n), nil, nil)
 }
 
 // Laravel is one offered Laravel major version and the lowest PHP it needs.
@@ -203,7 +258,11 @@ type Laravel struct {
 type Create struct {
 	App        string   `json:"app,omitempty"` // empty = WordPress
 	Database   bool     `json:"database,omitempty"`
-	Version    string   `json:"version,omitempty"` // laravel: major version
+	Version    string   `json:"version,omitempty"` // laravel: major version; node: Node.js version
+	Repo       string   `json:"repo,omitempty"`    // node
+	Branch     string   `json:"branch,omitempty"`  // node
+	Build      string   `json:"build,omitempty"`   // node ("" = default)
+	Start      string   `json:"start,omitempty"`   // node ("" = default)
 	Domain     string   `json:"domain"`
 	Aliases    []string `json:"aliases"`
 	Primary    string   `json:"primary"`

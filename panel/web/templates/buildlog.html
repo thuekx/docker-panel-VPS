@@ -1,0 +1,9 @@
+{{define "content"}}
+{{$l := .Lang}}{{$s := .Data.Site}}
+{{template "sitetabs" (tabs $l $s "site")}}
+<section class="card wide tone c-blue" data-anim="card">
+  <div class="deploy-head"><h2>{{t $l "deploy.log.title" .Data.Release}}</h2><a class="ghost btn" href="/sites/{{$s.ID}}#deploy">{{t $l "deploy.back"}}</a></div>
+  <p class="muted">{{t $l "deploy.log.help"}}</p>
+  <pre class="build-log">{{.Data.Log}}</pre>
+</section>
+{{end}}

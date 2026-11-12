@@ -84,7 +84,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "buildlog"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -103,6 +103,7 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 			"f1":    func(f float64) string { return strconv.FormatFloat(f, 'f', 1, 64) },
 			"list3": func(a, b, c string) []string { return []string{a, b, c} },
 			"list4": func(a, b, c, d string) []string { return []string{a, b, c, d} },
+			"list":  func(a ...string) []string { return a },
 			"add3":  func(a, b, c int) int { return a + b + c },
 			"len1": func(s string) int {
 				if s == "" {
@@ -166,6 +167,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /sites/job/{job}/secret", s.need(true, s.siteSecret))
 	mux.HandleFunc("GET /sites/{id}", s.need(true, s.siteShow))
 	mux.HandleFunc("GET /stack/{id}", s.need(true, s.siteStack))
+	mux.HandleFunc("GET /sites/{id}/deploys/{n}/log", s.need(true, s.buildLog))
 	mux.HandleFunc("POST /sites/{id}", s.need(true, s.siteAction))
 	mux.HandleFunc("POST /trash/{entry}/restore", s.need(true, s.siteRestore))
 	mux.HandleFunc("GET /sites/job/{job}/status", s.need(true, s.siteJobStatus))
