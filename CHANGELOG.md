@@ -3,6 +3,25 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.8.0] — not yet released
+
+### Added
+- **More than WordPress** (APP-01, first wave). "Add website" now asks which app:
+  - **WordPress** as before.
+  - **PHP**: your own PHP code (plain PHP, CodeIgniter, Slim …) on Apache or Nginx with PHP 8.1–8.5, and a MariaDB
+    database if you tick it. The app reads `DB_HOST`, `DB_NAME`, `DB_USER` and the password from the file named in
+    `DB_PASSWORD_FILE`. Nginx sends every path that is not a file to `index.php`.
+  - **Static site**: HTML, or the built `dist/` of React, Vue, Svelte or Astro. Nginx only, the folder is read-only,
+    unknown paths fall back to `index.html` (single-page apps).
+  - A small starter page is put in place; replace it in the File Manager.
+- Overview, File Manager, Stack, Logs, Backup and PHP settings work for every app. The WordPress tab shows only for
+  WordPress, the Database tab only for websites with a database.
+
+### Changed
+- The database tools log in with the website's own database user instead of assuming WordPress.
+
+Laravel follows in the next wave (it needs its own PHP image with `pdo_mysql` and Composer).
+
 ## [1.7.0] — 2026-11-12
 
 Running at the owner's server since 18:31 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS,
