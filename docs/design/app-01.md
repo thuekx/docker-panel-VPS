@@ -1,6 +1,6 @@
 # APP-01 — One-click apps besides WordPress
 
-Status: wave 1 BUILT 2026-11-12 (v1.8.0: plain PHP + static). Laravel moved to wave 2 (it needs its own image with
+Status: wave 1 LIVE 2026-11-12 19:32 WIB (v1.8.0: plain PHP + static); wave 2 Laravel BUILT 2026-11-12 (v1.9.0). Laravel moved to wave 2 (it needs its own image with
 `pdo_mysql` and Composer; the WordPress images have only `mysqli`). Owner asked: one-click for React, Next.js,
 Laravel, Go, plain PHP and other popular stacks, ready to use.
 
@@ -67,3 +67,21 @@ only on the edge network and their own back network; secrets never in git, argv,
   Files, Stack, Logs, PHP settings (PHP sites), domain and preview address work as for WordPress. Agent routes for
   WordPress tools and databases refuse other apps with a plain 400.
 - Tests: unit tests in both modules, real-Docker harness section APP-01, 4 extra mutants.
+
+## Wave 2 as built (v1.9.0): Laravel
+
+- Owner decision 2026-11-12 19:34 WIB: the Laravel image is **built on the server from official images**, not a
+  community image. Recipe (`catalog.LaravelDockerfile`): the pinned official WordPress PHP-FPM image of the chosen
+  PHP version (the same one WordPress sites use; WordPress is never started) + `pdo_mysql` + `unzip`, and the
+  `composer` binary from the pinned official `composer:2` image. Local tag `nostek-local/laravel:php<v>-<hash of
+  recipe>`, so a new recipe never reuses an old build. Built once per PHP version (1–3 minutes the first time).
+- Services: `web` (Nginx, root `public/`), `php` (PHP-FPM), `queue` (`queue:work`), `scheduler` (`schedule:work`),
+  `db` (MariaDB 11.8, database and user `app`). php, queue and scheduler run as www-data (33).
+- Create: files → build PHP image → pull images → install Laravel (`composer create-project --no-scripts`,
+  `.env` from `.env.example`, `key:generate`, `package:discover`, `storage:link`, `migrate --force`) → start.
+- `.env`: production, debug off, `APP_URL`, `DB_*` without a password. The database settings are also environment
+  values (they win over `.env`). The password stays a file: a PHP prepend file (`auto_prepend_file`) reads
+  `DB_PASSWORD_FILE` and hands the value to Laravel before it starts, for the web, artisan, queue and scheduler.
+- Panel: Laravel card on the Overview with a fixed list of artisan commands (migrate, optimize, optimize:clear,
+  queue:restart); logs and restart for queue and scheduler; Database, Files, Backup tabs as for every site.
+- Not yet: Laravel from the owner's Git repository (APP-02 with the Git deploy), Horizon/Octane, Redis.
