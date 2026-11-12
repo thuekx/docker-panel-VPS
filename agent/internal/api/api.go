@@ -96,6 +96,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/wp/check", s.wpCheck)
 	mux.HandleFunc("POST /v1/sites/{id}/wp/cli", s.wpCLI)
 	mux.HandleFunc("POST /v1/sites/{id}/laravel/artisan", s.artisan)
+	mux.HandleFunc("GET /v1/sites/{id}/deploys", s.deploys)
+	mux.HandleFunc("POST /v1/sites/{id}/deploys", s.deployStart)
+	mux.HandleFunc("GET /v1/sites/{id}/deploys/{n}/log", s.deployLog)
+	mux.HandleFunc("POST /v1/sites/{id}/deploys/{n}/rollback", s.rollback)
 	mux.HandleFunc("GET /v1/sites/{id}/backups", s.backups)
 	mux.HandleFunc("POST /v1/sites/{id}/backups", s.backupStart)
 	mux.HandleFunc("POST /v1/sites/{id}/backups/schedule", s.backupSchedule)
@@ -178,7 +182,16 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 	for _, l := range catalog.LaravelAll() {
 		lv = append(lv, laravelView{l.Version, l.MinPHP, l.Version == catalog.LaravelDefault})
 	}
-	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv})
+	type nodeView struct {
+		Version       string `json:"version"`
+		SecurityUntil string `json:"security_until"`
+		Default       bool   `json:"default,omitempty"`
+	}
+	var nv []nodeView
+	for _, n := range catalog.NodeAll() {
+		nv = append(nv, nodeView{n.Version, n.SecurityUntil, n.Version == catalog.NodeDefault})
+	}
+	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv, "node": nv})
 }
 
 type siteView struct {
