@@ -132,6 +132,24 @@ func TestFilesAndDBNeedLogin(t *testing.T) {
 	}
 }
 
+func TestFilesAndDBPagesHaveNoMissingKeys(t *testing.T) {
+	e := newEnv(t)
+	e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	for _, lang := range []string{"en", "id"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		for _, p := range []string{"/files/voltix-id", "/files/voltix-id/edit?path=/index.php", "/files/voltix-id/edit?path=/logo.png", "/db/voltix-id", "/sites/voltix-id"} {
+			code, body, _ := e.get(e.c, p)
+			if code != 200 || missingKey.MatchString(body) {
+				t.Errorf("%s (%s): %d or missing key %v", p, lang, code, missingKey.FindString(body))
+			}
+		}
+	}
+	if got := []string{size(405), size(7500), size(4718592), size(3 << 30)}; strings.Join(got, ",") != "405 B,7.3 KB,4.5 MB,3.0 GB" {
+		t.Errorf("sizes: %v", got)
+	}
+}
+
 func TestFileManagerPages(t *testing.T) {
 	e := newEnv(t)
 	f := e.withAgent()

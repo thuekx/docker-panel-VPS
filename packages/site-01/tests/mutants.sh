@@ -20,6 +20,16 @@ GO_MUTANTS=(
   'internal/sites/manager.go|		if a != m.cfg.PublicIPv4 {|		if false {'                                                     # a split A record counts as pointing here
   'internal/sites/manager.go|"--admin_email="+s.AdminEmail, "--skip-email", "--prompt=admin_password")|"--admin_email="+s.AdminEmail, "--skip-email", "--admin_password="+pw)'  # password in process arguments
   'internal/catalog/catalog.go|MariaDB = "mariadb:11.8@sha256:|MariaDB = "mariadb:11.8" + "@x'                            # image not pinned by digest
+  'internal/sites/files.go|r, err := os.OpenRoot(m.wpDir(id))|r, err := os.OpenRoot(m.dir(id))'                          # file manager reaches secrets and database files
+  'internal/sites/files.go|v > 0o777 {|v > 0o7777 {'                                                                     # setuid/setgid permissions allowed
+  'internal/sites/files.go|	if rel == "." {
+		return FileTrash{}|	if false {
+		return FileTrash{}'                                                                                                   # the website folder itself can be deleted
+  'internal/sites/db.go|const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -uwordpress "$@"`|const client = `exec "$0" -uwordpress -p"$(cat /run/secrets/db_password)" "$@"`'  # database password in process arguments
+  'internal/sites/db.go|	backup, err := m.dump(ctx, id, "before-import")
+	if err != nil {|	backup, err := m.dump(ctx, id, "before-import")
+	if false {'                                                                                                               # import runs without a safety copy
+  'internal/api/files.go|detail := fmt.Sprintf("%s (%d chars)", firstWord(q.SQL), len(q.SQL))|detail := q.SQL'           # SQL text (may hold data) in the audit log
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

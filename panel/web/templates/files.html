@@ -64,7 +64,7 @@
   <p class="muted">{{t $l "files.trash.help"}}</p>
   {{if $d.Trash}}<div class="table-wrap"><table><thead><tr><th>{{t $l "files.trash.path"}}</th><th>{{t $l "sites.trash.deleted"}}</th><th>{{t $l "sites.trash.purge"}}</th><th></th></tr></thead><tbody>
   {{range $d.Trash}}<tr><td><span class="fi fi-{{if eq .Type "dir"}}dir{{else}}file{{end}}" aria-hidden="true"></span><code>{{.Path}}</code></td><td class="muted">{{.DeletedAt}}</td><td class="muted">{{.PurgeAt}}</td>
-    <td><form method="post" action="/files/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="restore"><input type="hidden" name="dir" value="{{$d.Path}}"><input type="hidden" name="entry" value="{{.Entry}}"><button class="secondary" type="submit">{{t $l "sites.trash.restore"}}</button></form></td></tr>{{end}}
+    <td><form method="post" action="/files/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="restore"><input type="hidden" name="dir" value="{{$d.Path}}"><input type="hidden" name="entry" value="{{.Entry}}"><button class="secondary" type="submit">{{t $l "sites.restore"}}</button></form></td></tr>{{end}}
   </tbody></table></div>{{else}}<p class="muted">{{t $l "files.trash.empty"}}</p>{{end}}
 </section>
 <p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>

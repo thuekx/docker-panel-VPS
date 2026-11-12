@@ -102,6 +102,9 @@ func TestFileRoutes(t *testing.T) {
 	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/db/query", `{"sql":""}`); code != 400 {
 		t.Errorf("empty SQL answered %d %v", code, out)
 	}
+	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/db/query", `{"sql":"UPDATE wp_users SET user_pass = 'topsecret-xyz'"}`); code != 200 {
+		t.Errorf("query answered %d %v", code, out)
+	}
 	if code, _, _ := raw(t, c, "PUT", "/v1/sites/voltix-id/db/import", "application/json", "{}"); code != 400 {
 		t.Errorf("import with JSON type answered %d", code)
 	}
@@ -114,7 +117,10 @@ func TestFileRoutes(t *testing.T) {
 			t.Errorf("audit lacks %s", want)
 		}
 	}
-	if strings.Contains(string(bl), "hello2") {
-		t.Error("audit holds file content")
+	if strings.Contains(string(bl), "hello2") || strings.Contains(string(bl), "topsecret-xyz") {
+		t.Error("audit holds file content or SQL text")
+	}
+	if !strings.Contains(string(bl), `"action":"db-query","site":"voltix-id","result":"ok","detail":"UPDATE (`) {
+		t.Error("audit lacks the query kind")
 	}
 }

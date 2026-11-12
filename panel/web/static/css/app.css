@@ -292,3 +292,10 @@ form[data-editor] textarea.code{min-height:62vh}
 .null{color:var(--muted);font-style:italic}
 ul.plain{list-style:none;padding:0;margin:6px 0 0;display:flex;flex-direction:column;gap:6px}
 @media (max-width:640px){.fm-table th:nth-child(3),.fm-table td:nth-child(3),.fm-table th:nth-child(4),.fm-table td:nth-child(4){display:none}.menu-pop{min-width:220px}}
+.fm .proj,.lbl .proj{margin-left:10px;font-size:12px;color:var(--muted);padding:2px 8px;border-radius:8px;background:var(--hover)}
+.form label.check,label.check{flex-direction:row;align-items:center;gap:8px;font-size:14px;color:inherit}
+label.check input{width:auto;margin:0}
+.card.fm{overflow:visible}.card.fm::after{display:none}
+@media (min-width:641px){.fm .table-wrap{overflow:visible}}
+.fm-table tr:nth-last-child(-n+3):not(:nth-child(-n+3)) .menu-pop{top:auto;bottom:calc(100% + 6px)}
+.card form+h2,.card ul+h2{margin-top:22px}

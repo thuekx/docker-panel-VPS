@@ -26,6 +26,21 @@ const (
 	maxImportBody = 513 << 20 // database import file plus form overhead
 )
 
+// size is a file size for people: 405 B, 7.3 KB, 4.5 MB, 1.2 GB.
+func size(b int64) string {
+	switch {
+	case b < 0:
+		return "—"
+	case b < 1024:
+		return fmt.Sprintf("%d B", b)
+	case b < 1<<20:
+		return fmt.Sprintf("%.1f KB", float64(b)/(1<<10))
+	case b < 1<<30:
+		return fmt.Sprintf("%.1f MB", float64(b)/(1<<20))
+	}
+	return fmt.Sprintf("%.1f GB", float64(b)/(1<<30))
+}
+
 // long lifts the server's 30-second deadlines for one transfer.
 func long(w http.ResponseWriter, d time.Duration) {
 	rc := http.NewResponseController(w)
@@ -141,7 +156,7 @@ func (s *Server) filesPage(w http.ResponseWriter, r *http.Request) {
 		row := fileRow{Entry: e, Path: path.Join(dir, e.Name), Kind: kindOf(e),
 			When: time.Unix(e.Modified, 0).In(s.loc()).Format("02 Jan 2006 15:04")}
 		if e.Type == "file" {
-			row.Human = human(e.Size)
+			row.Human = size(e.Size)
 			row.Editable = e.Size <= maxEdit
 			row.Zip = strings.HasSuffix(strings.ToLower(e.Name), ".zip")
 		}
@@ -435,7 +450,7 @@ func (s *Server) filesEdit(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, filesURL(site.ID, path.Dir(p), "err", err.Error()), http.StatusSeeOther)
 		return
 	}
-	d.Size = human(int64(len(b)))
+	d.Size = size(int64(len(b)))
 	switch {
 	case len(b) > maxEdit:
 		d.TooBig = true
@@ -492,12 +507,12 @@ func (s *Server) renderDB(w http.ResponseWriter, r *http.Request, site agent.Sit
 		d.Err = err.Error()
 	}
 	d.DB = db
-	d.Size = human(db.Size)
+	d.Size = size(db.Size)
 	for _, t := range db.Tables {
-		d.Tables = append(d.Tables, tableRow{t, human(t.Data), human(t.Index)})
+		d.Tables = append(d.Tables, tableRow{t, size(t.Data), size(t.Index)})
 	}
 	for _, b := range db.Backups {
-		d.Backups = append(d.Backups, dumpRow{b, human(b.Size), time.Unix(b.Created, 0).In(s.loc()).Format("02 Jan 2006 15:04")})
+		d.Backups = append(d.Backups, dumpRow{b, size(b.Size), time.Unix(b.Created, 0).In(s.loc()).Format("02 Jan 2006 15:04")})
 	}
 	if code != http.StatusOK {
 		w.WriteHeader(code)
