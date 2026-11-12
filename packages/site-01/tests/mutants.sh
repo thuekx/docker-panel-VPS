@@ -53,6 +53,9 @@ GO_MUTANTS=(
   'internal/sites/db.go|	if !s.HasDB() {|	if false {'                                                                             # APP-01: database tools on a site without database
   'internal/spec/spec.go|		if c.Server != "nginx" || c.PHP != "" {|		if c.Server != "nginx" {'                                       # APP-01: PHP on a static site
   'internal/sites/render.go|"DB_PASSWORD_FILE: /run/secrets/db_password"}|"DB_PASSWORD: x"}'                                       # APP-01: database password as an environment value
+  'internal/sites/laravel.go|	if !s.IsLaravel() {|	if false {'   # APP-01 Laravel: artisan on another app
+  'internal/sites/render.go|    root /var/www/html/public;|    root /var/www/html;'   # APP-01 Laravel: .env and vendor/ served
+  'internal/sites/laravel.go|"DB_USERNAME": true, "DB_PASSWORD": true,|"DB_USERNAME": true,'   # APP-01 Laravel: password line kept in .env
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"
