@@ -128,6 +128,7 @@ type Site struct {
 	Total      int    `json:"containers_total"`
 	App        string `json:"app"`      // APP-01: wordpress (empty) | php | laravel | static
 	Database   bool   `json:"database"` // php: own MariaDB
+	Version    string `json:"version"`  // laravel: major version
 }
 
 // AppName is the app the site runs: wordpress, php or static.
@@ -186,14 +187,23 @@ type PHP struct {
 
 // Catalog lists what can be created.
 type Catalog struct {
-	PHP     []PHP    `json:"php"`
-	Servers []string `json:"servers"`
+	PHP     []PHP     `json:"php"`
+	Servers []string  `json:"servers"`
+	Laravel []Laravel `json:"laravel"`
+}
+
+// Laravel is one offered Laravel major version and the lowest PHP it needs.
+type Laravel struct {
+	Version string `json:"version"`
+	MinPHP  string `json:"min_php"`
+	Default bool   `json:"default"`
 }
 
 // Create is a create-site request.
 type Create struct {
 	App        string   `json:"app,omitempty"` // empty = WordPress
 	Database   bool     `json:"database,omitempty"`
+	Version    string   `json:"version,omitempty"` // laravel: major version
 	Domain     string   `json:"domain"`
 	Aliases    []string `json:"aliases"`
 	Primary    string   `json:"primary"`

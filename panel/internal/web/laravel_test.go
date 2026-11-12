@@ -14,8 +14,16 @@ func TestFormCreateLaravel(t *testing.T) {
 	r.PostForm = url.Values{"app": {"laravel"}, "domain": {"shop.voltix.id"}, "primary": {"domain"}, "server": {"apache"}, "php": {"8.4"},
 		"admin_email": {"o@nostek.dev"}, "database": {"1"}}
 	c, _ := formCreate(r)
-	if c.App != "laravel" || c.Server != "nginx" || c.PHP != "8.4" || c.AdminEmail != "" || c.Database {
+	if c.App != "laravel" || c.Server != "nginx" || c.PHP != "8.4" || c.AdminEmail != "" || c.Database || c.Version != "" {
 		t.Errorf("laravel %+v", c)
+	}
+	r.PostForm.Set("version", " 12 ")
+	if c, _ = formCreate(r); c.Version != "12" {
+		t.Errorf("version %q", c.Version)
+	}
+	r.PostForm.Set("app", "php")
+	if c, _ = formCreate(r); c.Version != "" {
+		t.Errorf("version on a PHP app %q", c.Version)
 	}
 }
 
@@ -56,7 +64,8 @@ func TestLaravelPages(t *testing.T) {
 	f := e.withAgent()
 	e.setupAdmin(e.c, "admin@example.test")
 	_, body, _ := e.get(e.c, "/sites/new")
-	if !strings.Contains(body, `name="app" value="laravel"`) || !strings.Contains(body, "for-server") {
+	if !strings.Contains(body, `name="app" value="laravel"`) || !strings.Contains(body, "for-server") ||
+		!strings.Contains(body, `<option value="13" selected>Laravel 13 · newest · needs PHP 8.3 or newer`) || !strings.Contains(body, `<option value="12" >Laravel 12`) {
 		t.Error("form lacks Laravel")
 	}
 	f.app = "laravel"
@@ -71,7 +80,7 @@ func TestLaravelPages(t *testing.T) {
 	}
 	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
 	_, page, _ := e.get(e.c, "/sites/voltix-id")
-	for _, want := range []string{"Run migrate", `value="optimize-clear"`, `href="/db/voltix-id"`, "?logs=scheduler", ".env"} {
+	for _, want := range []string{"Laravel 13</span>", "Run migrate", `value="optimize-clear"`, `href="/db/voltix-id"`, "?logs=scheduler", ".env"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("overview lacks %q", want)
 		}

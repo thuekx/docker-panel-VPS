@@ -507,5 +507,7 @@
   "lar.op.queue-restart": "Mulai ulang antrean",
   "lar.out": "Hasil: %s",
   "lar.done": "Perintah artisan selesai.",
-  "lar.env": "Pengaturan aplikasi ada di file .env (File Manager). Password database tidak ada di sana: panel memberikannya dari file rahasia."
+  "lar.env": "Pengaturan aplikasi ada di file .env (File Manager). Password database tidak ada di sana: panel memberikannya dari file rahasia.",
+  "sites.laravel.newest": "terbaru",
+  "sites.laravel.needs": "butuh PHP %s ke atas"
 }

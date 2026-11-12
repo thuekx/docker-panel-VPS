@@ -9,7 +9,7 @@
   <div class="table-wrap"><table>
   <tbody>
 {{$k := $p.Server}}{{if eq $p.App "php"}}{{$k = printf "php-%s" $p.Server}}{{else if eq $p.App "static"}}{{$k = "static"}}{{else if eq $p.App "laravel"}}{{$k = "laravel"}}{{end}}
-    <tr><th>{{t $l "sites.app"}}</th><td>{{t $l (printf "sites.app.%s" $p.AppName)}}</td></tr>
+    <tr><th>{{t $l "sites.app"}}</th><td>{{t $l (printf "sites.app.%s" $p.AppName)}}{{if $p.Version}} {{$p.Version}}{{end}}</td></tr>
     <tr><th>{{t $l "sites.server"}}</th><td>{{if eq $f.App "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $p.Server)}}{{end}}</td></tr>
     {{if $p.PHP}}<tr><th>PHP</th><td>{{$p.PHP}}{{range $.Data.Catalog.PHP}}{{if eq .Version $p.PHP}}{{if .EOL}} <span class="pill s-bad">{{t $l "sites.php.eol"}}</span>{{end}}{{end}}{{end}}</td></tr>{{end}}
     <tr><th>{{if $p.IsWP}}{{t $l "sites.wpurl"}}{{else}}{{t $l "sites.url"}}{{end}}</th><td><code>{{$p.URL}}</code></td></tr>
@@ -23,7 +23,7 @@
     <input type="hidden" name="domain" value="{{$f.Domain}}"><input type="hidden" name="aliases" value="{{.Data.Aliases}}">
     <input type="hidden" name="primary" value="{{$f.Primary}}"><input type="hidden" name="server" value="{{$f.Server}}">
     <input type="hidden" name="php" value="{{$f.PHP}}"><input type="hidden" name="admin_email" value="{{$f.AdminEmail}}">
-    <input type="hidden" name="title" value="{{$f.Title}}"><input type="hidden" name="app" value="{{$f.App}}">{{if $f.Database}}<input type="hidden" name="database" value="1">{{end}}
+    <input type="hidden" name="title" value="{{$f.Title}}"><input type="hidden" name="app" value="{{$f.App}}"><input type="hidden" name="version" value="{{$f.Version}}">{{if $f.Database}}<input type="hidden" name="database" value="1">{{end}}
     <button class="primary" type="submit">{{t $l "sites.approve.go"}}</button>
     <a class="ghost btn" href="/sites/new">{{t $l "sites.back"}}</a>
   </form>
@@ -47,6 +47,7 @@
       <label><input type="radio" name="server" value="nginx" {{if eq $f.Server "nginx"}}checked{{end}}> {{t $l "sites.server.nginx"}}</label>
     </fieldset>
     <label>PHP<select name="php">{{range .Data.Catalog.PHP}}<option value="{{.Version}}" {{if eq .Version $f.PHP}}selected{{end}}>PHP {{.Version}}{{if .Default}} · {{t $l "sites.php.default"}}{{end}}{{if .EOL}} · {{t $l "sites.php.eol"}}{{else}} · {{t $l "sites.php.until" .SecurityUntil}}{{end}}</option>{{end}}</select></label>
+    <label class="for-laravel">Laravel<select name="version">{{range .Data.Catalog.Laravel}}<option value="{{.Version}}" {{if or (eq .Version $f.Version) (and .Default (eq $f.Version ""))}}selected{{end}}>Laravel {{.Version}}{{if .Default}} · {{t $l "sites.laravel.newest"}}{{end}} · {{t $l "sites.laravel.needs" .MinPHP}}</option>{{end}}</select></label>
     <label class="check for-phpapp"><input type="checkbox" name="database" value="1"{{if $f.Database}} checked{{end}}> {{t $l "sites.app.db"}}</label>
     </div>
     <label>{{t $l "sites.aliases"}}<textarea name="aliases" rows="2" placeholder="voltix.co.id" autocapitalize="none" spellcheck="false">{{.Data.Aliases}}</textarea><span class="muted">{{t $l "sites.aliases.help"}}</span></label>

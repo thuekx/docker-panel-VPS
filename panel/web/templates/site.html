@@ -7,7 +7,7 @@
 <article class="card tone c-acc" data-anim="card">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "sites.status"}}</span>{{template "sitestatus" (dict3 $l $s.Status $s.Phase)}}</div>
   <div class="table-wrap"><table><tbody>
-    <tr><th>{{t $l "sites.app"}}</th><td><span class="tag-srv c-teal">{{t $l (printf "sites.app.%s" $s.AppName)}}</span>{{if $s.HasDB}} <span class="tag-srv c-blue">MariaDB</span>{{end}}</td></tr>
+    <tr><th>{{t $l "sites.app"}}</th><td><span class="tag-srv c-teal">{{t $l (printf "sites.app.%s" $s.AppName)}}{{if $s.Version}} {{$s.Version}}{{end}}</span>{{if $s.HasDB}} <span class="tag-srv c-blue">MariaDB</span>{{end}}</td></tr>
     <tr><th>{{t $l "sites.server"}}</th><td><span class="tag-srv {{if eq $s.Server "nginx"}}c-green{{else}}c-orange{{end}}">{{if eq $s.AppName "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $s.Server)}}{{end}}</span></td></tr>
     {{if $s.PHP}}<tr><th>PHP</th><td><span class="tag-srv c-violet">PHP {{$s.PHP}}</span></td></tr>{{end}}
     {{if $s.IsWP}}<tr><th>{{t $l "sites.wpurl"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a> · <a href="{{$s.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></td></tr>

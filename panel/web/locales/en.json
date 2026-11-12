@@ -507,5 +507,7 @@
   "lar.op.queue-restart": "Restart queue",
   "lar.out": "Output: %s",
   "lar.done": "Artisan command finished.",
-  "lar.env": "App settings are in the .env file (File Manager). The database password is not in it: the panel hands it over from a secret file."
+  "lar.env": "App settings are in the .env file (File Manager). The database password is not in it: the panel hands it over from a secret file.",
+  "sites.laravel.newest": "newest",
+  "sites.laravel.needs": "needs PHP %s or newer"
 }
