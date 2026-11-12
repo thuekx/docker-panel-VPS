@@ -95,6 +95,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/wp/settings", s.wpSet)
 	mux.HandleFunc("POST /v1/sites/{id}/wp/check", s.wpCheck)
 	mux.HandleFunc("POST /v1/sites/{id}/wp/cli", s.wpCLI)
+	mux.HandleFunc("POST /v1/sites/{id}/laravel/artisan", s.artisan)
 	mux.HandleFunc("GET /v1/sites/{id}/backups", s.backups)
 	mux.HandleFunc("POST /v1/sites/{id}/backups", s.backupStart)
 	mux.HandleFunc("POST /v1/sites/{id}/backups/schedule", s.backupSchedule)

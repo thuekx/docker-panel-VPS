@@ -3,6 +3,18 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.9.0] — not yet released
+
+### Added
+- **Laravel websites** (APP-01, second wave). "Add website" offers Laravel: a fresh Laravel project, ready to use,
+  with its own MariaDB database, a queue worker and the scheduler, on Nginx + PHP-FPM (PHP 8.1–8.5).
+  - The PHP image for Laravel is built on the server from official images only (official PHP-FPM + `pdo_mysql`,
+    official Composer), pinned by digest. The first Laravel website per PHP version takes 1–3 minutes longer.
+  - The panel writes `.env` (production mode, the website address, the database). The database password is never
+    in `.env` or an environment value: the panel hands it to Laravel from a secret file.
+  - Overview: a Laravel card with safe artisan commands (migrate, optimize, clear caches, restart queue), and logs
+    and restart for the queue worker and the scheduler.
+
 ## [1.8.0] — 2026-11-12
 
 Running at the owner's server since 19:32 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).

@@ -8,7 +8,7 @@
   <p class="lead">{{t $l "sites.approve.lead" $p.Domain}}</p>
   <div class="table-wrap"><table>
   <tbody>
-{{$k := $p.Server}}{{if eq $p.App "php"}}{{$k = printf "php-%s" $p.Server}}{{else if eq $p.App "static"}}{{$k = "static"}}{{end}}
+{{$k := $p.Server}}{{if eq $p.App "php"}}{{$k = printf "php-%s" $p.Server}}{{else if eq $p.App "static"}}{{$k = "static"}}{{else if eq $p.App "laravel"}}{{$k = "laravel"}}{{end}}
     <tr><th>{{t $l "sites.app"}}</th><td>{{t $l (printf "sites.app.%s" $p.AppName)}}</td></tr>
     <tr><th>{{t $l "sites.server"}}</th><td>{{if eq $f.App "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $p.Server)}}{{end}}</td></tr>
     {{if $p.PHP}}<tr><th>PHP</th><td>{{$p.PHP}}{{range $.Data.Catalog.PHP}}{{if eq .Version $p.PHP}}{{if .EOL}} <span class="pill s-bad">{{t $l "sites.php.eol"}}</span>{{end}}{{end}}{{end}}</td></tr>{{end}}
@@ -34,7 +34,7 @@
   <form method="post" action="/sites/new" class="form site-new">
     <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="step" value="plan">
     <fieldset class="choice apps"><legend>{{t $l "sites.app"}}</legend>
-      {{range $a := list3 "wordpress" "php" "static"}}<label class="app-card"><input type="radio" name="app" value="{{$a}}" {{if or (eq $f.App $a) (and (eq $a "wordpress") (eq $f.App ""))}}checked{{end}}><span><b>{{t $l (printf "sites.app.%s" $a)}}</b><span class="muted">{{t $l (printf "sites.app.%s.help" $a)}}</span></span></label>{{end}}
+      {{range $a := list4 "wordpress" "laravel" "php" "static"}}<label class="app-card"><input type="radio" name="app" value="{{$a}}" {{if or (eq $f.App $a) (and (eq $a "wordpress") (eq $f.App ""))}}checked{{end}}><span><b>{{t $l (printf "sites.app.%s" $a)}}</b><span class="muted">{{t $l (printf "sites.app.%s.help" $a)}}</span></span></label>{{end}}
     </fieldset>
     <label>{{t $l "sites.domain"}}<input name="domain" value="{{$f.Domain}}" placeholder="voltix.id" required autofocus autocapitalize="none" spellcheck="false"></label>
     <fieldset class="choice"><legend>{{t $l "sites.primary"}}</legend>
@@ -42,7 +42,7 @@
       <label><input type="radio" name="primary" value="www" {{if eq $f.Primary "www"}}checked{{end}}> {{t $l "sites.primary.www"}}</label>
     </fieldset>
     <div class="for-php">
-    <fieldset class="choice"><legend>{{t $l "sites.server"}}</legend>
+    <fieldset class="choice for-server"><legend>{{t $l "sites.server"}}</legend>
       <label><input type="radio" name="server" value="apache" {{if ne $f.Server "nginx"}}checked{{end}}> {{t $l "sites.server.apache"}}</label>
       <label><input type="radio" name="server" value="nginx" {{if eq $f.Server "nginx"}}checked{{end}}> {{t $l "sites.server.nginx"}}</label>
     </fieldset>

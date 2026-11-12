@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -118,6 +119,8 @@ func formCreate(r *http.Request) (agent.Create, string) {
 	case "", "wordpress":
 	case "static":
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "nginx", "", ""
+	case "laravel": // always Nginx + PHP-FPM with its own MariaDB
+		c.App, c.Server, c.AdminEmail = app, "nginx", ""
 	default: // php, or anything else for the agent to refuse
 		c.App, c.AdminEmail, c.Database = app, "", f.Get("database") == "1"
 	}
@@ -170,6 +173,9 @@ type jobData struct {
 // jobSteps is the order in which the agent reports the steps of a create job.
 var jobSteps = []string{"files", "pull images", "start containers", "install WordPress"}
 
+// laravelSteps is the order of a Laravel create; the agent reports "build PHP image" right after "files".
+var laravelSteps = []string{"files", "build PHP image", "pull images", "install Laravel", "start containers"}
+
 // jobKindSteps is the order of the steps of the other jobs (BAK-01).
 var jobKindSteps = map[string][]string{
 	"backup":  {"copy database", "copy files"},
@@ -188,6 +194,11 @@ func jobProgress(j agent.Job) ([]stepRow, int) {
 	keys := append([]string{}, jobKindSteps[j.Kind]...)
 	if j.Kind == "" || j.Kind == "create" {
 		keys = append([]string{}, jobSteps...)
+		for _, st := range j.Steps {
+			if st == "build PHP image" {
+				keys = append([]string{}, laravelSteps...)
+			}
+		}
 	}
 	if j.State == "done" { // only what ran: a static site or a database-only restore skips steps
 		keys = nil // a finished restore of the database only never switched files: show what ran
@@ -321,9 +332,22 @@ type siteData struct {
 	Service string
 	Created string
 	Stack   stackView
+	Artisan *artisanResult // the artisan command just run (Laravel)
 }
 
+// artisanResult is the output of one artisan command shown on the Overview.
+type artisanResult struct {
+	Op, Output, Err string
+}
+
+// artisanOps are the artisan commands the panel offers; the agent keeps the same fixed list.
+var artisanOps = []string{"migrate", "optimize", "optimize-clear", "queue-restart"}
+
 func (s *Server) siteShow(w http.ResponseWriter, r *http.Request) {
+	s.showSite(w, r, nil)
+}
+
+func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanResult) {
 	id := r.PathValue("id")
 	if !siteRe.MatchString(id) {
 		s.notFound(w, r)
@@ -336,13 +360,13 @@ func (s *Server) siteShow(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	d := siteData{Site: site, Created: time.Unix(site.Created, 0).In(s.loc()).Format("02 Jan 2006 15:04")}
+	d := siteData{Site: site, Created: time.Unix(site.Created, 0).In(s.loc()).Format("02 Jan 2006 15:04"), Artisan: art}
 	if st, err := s.ag.Stack(ctx, id); err == nil {
 		d.Stack = s.stackOf(st)
 	} else {
 		d.Stack = stackView{Err: err.Error()}
 	}
-	if svc := r.URL.Query().Get("logs"); svc == "web" || svc == "db" || (svc == "php" && site.Server == "nginx") {
+	if svc := r.URL.Query().Get("logs"); siteService(site, svc) {
 		d.Service = svc
 		if out, err := s.ag.Logs(ctx, id, svc, 200); err == nil {
 			d.Logs = out
@@ -373,12 +397,28 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		err = s.ag.Action(ctx, id, act)
 	case "restart-service":
 		svc := r.PostForm.Get("service")
-		if svc != "web" && svc != "db" && !(svc == "php" && site.Server == "nginx") {
+		if !siteService(site, svc) {
 			http.Error(w, "bad request", 400)
 			return
 		}
 		err = s.ag.RestartService(ctx, id, svc)
 		act = "restart_" + svc
+	case "artisan":
+		op := r.PostForm.Get("op")
+		if !site.IsLaravel() || !slices.Contains(artisanOps, op) {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		out, err := s.ag.Artisan(ctx, id, op)
+		res := &artisanResult{Op: op, Output: out}
+		if err != nil {
+			res.Err = err.Error()
+			s.audit1(userOf(r), r, "site.artisan", id+" "+op+" failed: "+err.Error())
+		} else {
+			s.audit1(userOf(r), r, "site.artisan", id+" "+op)
+		}
+		s.showSite(w, r, res)
+		return
 	case "delete":
 		if strings.TrimSpace(strings.ToLower(r.PostForm.Get("confirm"))) != site.Domain {
 			http.Redirect(w, r, back+"?err="+url.QueryEscape(s.tr.T(s.lang(r), "sites.delete.mismatch")), http.StatusSeeOther)
@@ -415,4 +455,20 @@ func (s *Server) siteRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit1(userOf(r), r, "site.restore", entry)
 	http.Redirect(w, r, "/sites/"+id+"?done=restore", http.StatusSeeOther)
+}
+
+// siteService is true for a container the website has: web always, php behind Nginx, db with a database, and the
+// queue worker and scheduler of a Laravel website.
+func siteService(site agent.Site, svc string) bool {
+	switch svc {
+	case "web":
+		return true
+	case "php":
+		return site.Server == "nginx" && site.AppName() != "static"
+	case "db":
+		return site.HasDB()
+	case "queue", "scheduler":
+		return site.IsLaravel()
+	}
+	return false
 }
