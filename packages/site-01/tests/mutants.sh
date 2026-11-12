@@ -25,7 +25,7 @@ GO_MUTANTS=(
   'internal/sites/files.go|	if rel == "." {
 		return FileTrash{}|	if false {
 		return FileTrash{}'                                                                                                   # the website folder itself can be deleted
-  'internal/sites/db.go|const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -uwordpress "$@"`|const client = `exec "$0" -uwordpress -p"$(cat /run/secrets/db_password)" "$@"`'  # database password in process arguments
+  'internal/sites/db.go|const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -u"$MARIADB_USER" "$@"`|const client = `exec "$0" -u"$MARIADB_USER" -p"$(cat /run/secrets/db_password)" "$@"`'  # database password in process arguments
   'internal/sites/db.go|	backup, err := m.dump(ctx, id, "before-import")
 	if err != nil {|	backup, err := m.dump(ctx, id, "before-import")
 	if false {'                                                                                                               # import runs without a safety copy

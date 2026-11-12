@@ -11,7 +11,7 @@
     <td><a href="/sites/{{.ID}}">{{.Domain}}</a></td>
     <td>{{template "sitestatus" (dict3 $l .Status .Phase)}}</td>
     <td class="nowrap">{{if .Total}}<span class="ctr-dots" aria-label="{{t $l "stack.count" .Up .Total}}">{{t $l "stack.count" .Up .Total}}</span>{{else}}—{{end}}</td>
-    <td><span class="tag-srv {{if eq .Server "nginx"}}c-green{{else}}c-orange{{end}}">{{t $l (printf "sites.server.%s" .Server)}}</span></td>
+    <td><span class="tag-srv {{if eq .Server "nginx"}}c-green{{else}}c-orange{{end}}">{{if eq .AppName "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" .Server)}}{{end}}</span></td>
     <td><span class="tag-srv c-violet">PHP {{.PHP}}</span></td>
     <td><a href="{{.URL}}" rel="noopener noreferrer" target="_blank">{{.URL}}</a></td>
   </tr>{{end}}</tbody>

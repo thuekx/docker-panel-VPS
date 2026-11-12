@@ -366,6 +366,7 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .apps legend{grid-column:1/-1}
 .app-card{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
 .app-card:has(input:checked){border-color:rgba(var(--acc-rgb),.6);background:rgba(var(--acc-rgb),.08)}
+.app-card input{width:auto;flex:none;margin:3px 0 0}
 .app-card>span{display:flex;flex-direction:column;gap:2px}
 .app-card .muted{font-size:13px}
 .site-new:has(input[name=app][value=static]:checked) .for-php{display:none}

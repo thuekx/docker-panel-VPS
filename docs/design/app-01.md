@@ -1,7 +1,8 @@
 # APP-01 — One-click apps besides WordPress
 
-Status: [PROPOSED] 2026-11-12, roadmap slot after BAK-01. Owner asked: one-click for React, Next.js, Laravel, Go,
-plain PHP and other popular stacks, ready to use.
+Status: wave 1 BUILT 2026-11-12 (v1.8.0: plain PHP + static). Laravel moved to wave 2 (it needs its own image with
+`pdo_mysql` and Composer; the WordPress images have only `mysqli`). Owner asked: one-click for React, Next.js,
+Laravel, Go, plain PHP and other popular stacks, ready to use.
 
 ## Opinion
 
@@ -44,6 +45,25 @@ only on the edge network and their own back network; secrets never in git, argv,
 
 ## Proposed phasing
 
-- **APP-01** Static/React (Vite), plain PHP, Laravel (biggest demand, reuses the PHP + Nginx parts we have).
+- **APP-01 wave 1 (v1.8.0, built)** plain PHP (Apache or Nginx, PHP 8.1–8.5, optional MariaDB) and static site
+  (HTML or a built React/Vue/Svelte/Astro `dist/` uploaded through Files, SPA fallback to `index.html`).
+- **APP-01 wave 2** Laravel (own pinned PHP-FPM image with `pdo_mysql` + Composer, `.env` by the panel, queue worker,
+  scheduler, `artisan migrate` button) and React/Vite built from Git in a throwaway build container.
 - **APP-02** Node.js / Next.js, Go, Python, Git deploy webhook.
 - **APP-03** Ready-app catalogue (Ghost, n8n, Uptime Kuma, …).
+
+## Wave 1 as built (v1.8.0)
+
+- `site.json` gains `app` (`""` = WordPress, `php`, `static`) and `database` (php only). Old sites read as WordPress.
+- **Plain PHP** reuses the pinned WordPress images per PHP version with `entrypoint: ["docker-php-entrypoint"]`
+  and `apache2-foreground` / `php-fpm`, so WordPress is never copied in. The site folder `wp/` is the document root.
+  With a database: MariaDB 11.8 as for WordPress, database and user `app`; the app reads `DB_HOST`, `DB_NAME`,
+  `DB_USER` and `DB_PASSWORD_FILE=/run/secrets/db_password` (the password is never an environment value).
+  Nginx serves files directly and sends the rest to `index.php` (front controller).
+- **Static** runs only nginx 1.30-alpine with the folder mounted read-only, SPA fallback to `index.html`, hidden
+  files refused, healthcheck on `/.nostek-health`.
+- A starter page (`index.php` or `index.html`) is written at create time; the owner replaces it in Files.
+- The panel shows the WordPress tab only for WordPress and the Database tab only for sites with a database. Backup,
+  Files, Stack, Logs, PHP settings (PHP sites), domain and preview address work as for WordPress. Agent routes for
+  WordPress tools and databases refuse other apps with a plain 400.
+- Tests: unit tests in both modules, real-Docker harness section APP-01, 4 extra mutants.

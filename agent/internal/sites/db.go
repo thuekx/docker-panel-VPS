@@ -52,8 +52,9 @@ func (r ExecRunner) DockerTo(ctx context.Context, dir string, stdin io.Reader, w
 	return errb.Bytes(), err
 }
 
-// client is the shell snippet run inside the db container; "$@" are fixed arguments from this file only.
-const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -uwordpress "$@"`
+// client is the shell snippet run inside the db container; "$@" are fixed arguments from this file only. The user is
+// the site's own database user (MARIADB_USER of the db service: "wordpress" or "app"), set at create time.
+const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -u"$MARIADB_USER" "$@"`
 
 func (m *Manager) dbArgs(prog string, args ...string) []string {
 	return append([]string{"exec", "-T", "db", "sh", "-c", client, prog}, args...)

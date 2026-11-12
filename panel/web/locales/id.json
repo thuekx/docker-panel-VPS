@@ -95,6 +95,7 @@
   "sites.address": "Alamat",
   "sites.server.apache": "Apache",
   "sites.server.nginx": "Nginx + PHP-FPM",
+  "sites.server.static": "Nginx",
   "sites.st.creating": "Sedang dibuat",
   "sites.st.failed": "Gagal",
   "sites.st.running": "Berjalan",

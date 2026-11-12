@@ -95,6 +95,7 @@
   "sites.address": "Address",
   "sites.server.apache": "Apache",
   "sites.server.nginx": "Nginx + PHP-FPM",
+  "sites.server.static": "Nginx",
   "sites.st.creating": "Creating",
   "sites.st.failed": "Failed",
   "sites.st.running": "Running",

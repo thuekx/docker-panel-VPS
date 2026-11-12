@@ -241,6 +241,7 @@ WPD="$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/wp"
 ok "PHP starter page runs and reaches its database" 'site_get d-example-test d-example-test.$ZONE / > "$T/d.html"; grep -q "Situs D" "$T/d.html" && grep -q "PHP <code>8.4" "$T/d.html" && grep -q "Database: connected" "$T/d.html"'
 ok "WordPress was not copied into the PHP site" '[ ! -e "$WPD/wp-config.php" ] && [ ! -e "$WPD/wp-includes" ] && [ "$(ls "$WPD")" = index.php ]'
 printf '<?php echo "front:" . parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);\n' > "$T/index.php"; raw PUT '/v1/sites/d-example-test/files/content?path=/index.php&overwrite=1' "$T/index.php"
+sleep 3   # the PHP image re-reads changed scripts every 2 s (opcache.revalidate_freq)
 ok "routes go to index.php (front controller)" '[ "$(site_get d-example-test d-example-test.$ZONE /hello/world)" = "front:/hello/world" ]'
 DPW="$(cat "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/secrets/db_password")"
 ok "database password only as a file, never in the environment" '! docker inspect np-site-d-example-test-php-1 | grep -qF "$DPW" && docker inspect np-site-d-example-test-php-1 | grep -q "DB_PASSWORD_FILE=/run/secrets/db_password"'

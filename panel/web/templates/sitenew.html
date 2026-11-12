@@ -10,7 +10,7 @@
   <tbody>
 {{$k := $p.Server}}{{if eq $p.App "php"}}{{$k = printf "php-%s" $p.Server}}{{else if eq $p.App "static"}}{{$k = "static"}}{{end}}
     <tr><th>{{t $l "sites.app"}}</th><td>{{t $l (printf "sites.app.%s" $p.AppName)}}</td></tr>
-    <tr><th>{{t $l "sites.server"}}</th><td>{{t $l (printf "sites.server.%s" $p.Server)}}</td></tr>
+    <tr><th>{{t $l "sites.server"}}</th><td>{{if eq $f.App "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $p.Server)}}{{end}}</td></tr>
     {{if $p.PHP}}<tr><th>PHP</th><td>{{$p.PHP}}{{range $.Data.Catalog.PHP}}{{if eq .Version $p.PHP}}{{if .EOL}} <span class="pill s-bad">{{t $l "sites.php.eol"}}</span>{{end}}{{end}}{{end}}</td></tr>{{end}}
     <tr><th>{{if $p.IsWP}}{{t $l "sites.wpurl"}}{{else}}{{t $l "sites.url"}}{{end}}</th><td><code>{{$p.URL}}</code></td></tr>
     <tr><th>{{t $l "sites.hosts"}}</th><td>{{range $p.Hosts}}<div><code>{{.Name}}</code> {{if .Routed}}<span class="pill s-ok">{{t $l "sites.host.ready"}}</span>{{else}}<span class="pill s-warn">{{t $l "sites.host.dns"}}</span>{{end}}</div>{{end}}</td></tr>
