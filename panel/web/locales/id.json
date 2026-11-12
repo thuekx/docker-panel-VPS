@@ -82,7 +82,7 @@
   "settings.theme": "Tampilan",
   "settings.theme.help": "Terang, gelap, atau ikuti perangkat. Tersimpan di akun Anda.",
   "nav.sites": "Website",
-  "dash.sites.go": "Tambah dan kelola website WordPress.",
+  "dash.sites.go": "Tambah dan kelola website: WordPress, Laravel, PHP dan situs statis.",
   "dash.sites.open": "Buka website",
   "sites.new": "Tambah website",
   "sites.approve": "Periksa dan setujui",

@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$s := .Data.S}}
 {{if .Data.CodesLow}}<p class="banner warn" data-anim="card">{{t $l "dash.codeslow"}}</p>{{end}}
-<section class="grid">
+<section class="grid stats">
   <article class="card stat tone c-teal" data-anim="card">
     <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-server"}}</span>{{t $l "dash.server"}}</span></div>
     <div class="stat-big">{{$s.Hostname}}</div>
