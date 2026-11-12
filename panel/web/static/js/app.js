@@ -236,5 +236,20 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); });
+  // long WordPress actions: the button says it is working and cannot be pressed twice
+  function busy() {
+    document.addEventListener("submit", function (e) {
+      var b = e.submitter || (e.target.querySelector && e.target.querySelector("button[data-busy]"));
+      if (!b || !b.hasAttribute("data-busy") || e.defaultPrevented) return;
+      setTimeout(function () { b.disabled = true; b.classList.add("busy"); b.textContent = b.getAttribute("data-busy"); }, 0);
+    });
+  }
+
+  // the one-click login page opens wp-admin by itself (a link the browser follows, so form-action stays 'self')
+  function go() {
+    var a = document.querySelector("a[data-go]");
+    if (a) setTimeout(function () { window.location.replace(a.href); }, 300);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); busy(); go(); });
 })();

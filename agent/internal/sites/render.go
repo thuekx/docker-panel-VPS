@@ -28,7 +28,8 @@ type Site struct {
 	Hosts      []Host `json:"hosts"`
 	URL        string `json:"url"` // the WordPress address (https://<host>)
 	Created    int64  `json:"created"`
-	Phase      string `json:"phase"` // creating | ready | failed
+	Phase      string `json:"phase"`                 // creating | ready | failed
+	SystemCron bool   `json:"system_cron,omitempty"` // WP-01: the agent runs wp-cron.php every 5 minutes
 }
 
 // Project is the compose project name of a site.
@@ -213,17 +214,15 @@ services:
     secrets: [db_password]
     volumes:
       - ./wp:/var/www/html
-    networks: [back]
+    networks: [back, out]
 
 networks:
   back:
     internal: true
   nostek-edge:
     external: true
+  out: {}
 `, p.CLI, wpEnv)
-	if s.Server == "nginx" {
-		b.WriteString("  out: {}\n")
-	}
 	return b.String(), nil
 }
 

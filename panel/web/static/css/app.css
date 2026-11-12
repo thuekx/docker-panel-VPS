@@ -299,3 +299,36 @@ label.check input{width:auto;margin:0}
 @media (min-width:641px){.fm .table-wrap{overflow:visible}}
 .fm-table tr:nth-last-child(-n+3):not(:nth-child(-n+3)) .menu-pop{top:auto;bottom:calc(100% + 6px)}
 .card form+h2,.card ul+h2{margin-top:22px}
+/* WP-01 WordPress Tools */
+.wp-head{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:22px;align-items:start}
+@media (max-width:760px){.wp-head{grid-template-columns:1fr}}
+.wp-card{display:flex;flex-direction:column;gap:12px}
+.wp-shot{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;aspect-ratio:16/10;padding:14px;border-radius:14px;text-decoration:none;color:#fff;overflow:hidden;background:radial-gradient(120% 90% at 85% 10%,color-mix(in srgb,var(--c-teal) 70%,transparent),transparent 60%),linear-gradient(135deg,#0d3b3a,#082224 60%,#04161a);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.wp-mono{position:absolute;top:12px;left:14px;width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:24px;font-weight:800;text-transform:uppercase;background:rgba(255,255,255,.12)}
+.wp-shot-t{font-weight:700;font-size:16px}.wp-shot-u{font-size:12px;opacity:.75;word-break:break-all}
+.wp-shot:hover{box-shadow:inset 0 0 0 2px var(--c-teal)}
+.wp-card ul.plain li{display:flex;align-items:center;gap:8px}
+.wp-title{margin:0}
+.subtabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:8px 0 12px}
+.subtabs a{padding:8px 12px;text-decoration:none;color:var(--muted);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
+.subtabs a[aria-current=page]{color:inherit;border-color:var(--tone,var(--teal))}
+.badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;font-size:11px;line-height:18px;text-align:center;background:var(--c-amber);color:#1b1200}
+.quick{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 6px}
+.quick a{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.h-ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.sw-row{display:flex;align-items:flex-start;gap:12px;margin:10px 0}
+.sw-txt{display:flex;flex-direction:column;gap:2px;font-size:14px}.sw-txt .muted{font-size:12px}
+button.switch{flex:none;position:relative;width:44px;height:24px;padding:0;border-radius:12px;border:1px solid var(--line);background:var(--hover);cursor:pointer;transition:background .2s}
+button.switch i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s}
+button.switch.on{background:color-mix(in srgb,var(--c-teal) 55%,transparent);border-color:transparent}
+button.switch.on i{transform:translateX(20px);background:#fff}
+button.switch:focus-visible{outline:2px solid var(--c-teal);outline-offset:2px}
+.checks li{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wp-foot{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center}
+.wp-foot .sw-row{margin:0}
+.s-off{color:var(--muted);border-color:var(--line)}
+.wp-items td{vertical-align:middle}.wp-items .sw-row{margin:0}
+.cli-in{display:flex;align-items:center;gap:8px}.cli-in>span{font:600 14px ui-monospace,Menlo,monospace;color:var(--muted)}
+.cli-in input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+button[data-busy].busy{opacity:.7;cursor:progress}
+.wp-go{max-width:560px}
