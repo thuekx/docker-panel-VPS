@@ -26,6 +26,7 @@ cleanup() {
   docker network ls --format '{{.Name}}' | grep -E '^np-site-' | xargs -r docker network rm >/dev/null 2>&1
   docker network rm nostek-edge >/dev/null 2>&1
   sed -i "/$MARK\$/d" /etc/hosts
+  docker rm -f np-git-ssh >/dev/null 2>&1
   rm -rf "$TMP_ALL"
 }
 trap '[ "${HARNESS_KEEP:-0}" = 1 ] || cleanup' EXIT   # HARNESS_KEEP=1 leaves a failed run in place to look at
@@ -347,6 +348,29 @@ if [ -n "${HARNESS_NODE_GIT_BRANCH:-}" ]; then
   api GET /v1/sites/g-example-test/deploys; ok "history holds the commit of the branch" 'grep -q "\"commit\":\"[0-9a-f]\{40\}\"" <<<"$BODY" && ! grep -q "github.com" "$SITE01_TEST_ROOT/srv/nostek/sites/g-example-test/compose.yml"'
 fi
 
+# --- APP-02b private repository over SSH with the website's deploy key, against a throwaway Git server (needs
+# the internet for its openssh-server package, so it runs where the Git test runs)
+PRIVATE=skipped
+if [ -n "${HARNESS_NODE_GIT_BRANCH:-}" ]; then
+  PRIVATE=tested; KEPT=$((KEPT+1))
+  GOIMG="$(grep -o 'golang:1.27-trixie@sha256:[0-9a-f]*' "$REPO/agent/internal/catalog/catalog.go")"
+  api POST /v1/deploykeys; KID="$(grep -o '"id":"[0-9a-f]*"' <<<"$BODY" | cut -d'"' -f4)"; KPUB="$(grep -o '"public":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+  ok "a deploy key is made before the website, private half kept 0600 on the server" '[ "$CODE" = 200 ] && [ -n "$KID" ] && [ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/deploy-keys/$KID")" = 600 ] && ! grep -q "PRIVATE" <<<"$BODY"'
+  docker rm -f np-git-ssh >/dev/null 2>&1
+  docker run -d --name np-git-ssh -e "NP_PUB=$KPUB" -v "$HERE/go-private-app:/app-src:ro" -v "$HERE/git-ssh-server.sh:/git-ssh-server.sh:ro" "$GOIMG" sh /git-ssh-server.sh >/dev/null
+  for _ in $(seq 1 90); do docker logs np-git-ssh 2>&1 | grep -q "Server listening" && break; sleep 2; done
+  GIP="$(docker inspect -f '{{.NetworkSettings.IPAddress}}' np-git-ssh)"
+  printf '%s p-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" >> /etc/hosts
+  api POST /v1/sites "{\"app\":\"go\",\"domain\":\"p.example.test\",\"aliases\":[],\"primary\":\"domain\",\"server\":\"\",\"php\":\"\",\"admin_email\":\"\",\"title\":\"\",\"version\":\"1.27\",\"repo\":\"ssh://git@$GIP/srv/app.git\",\"branch\":\"main\",\"key_id\":\"$KID\"}"; JP="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+  SP="$SITE01_TEST_ROOT/srv/nostek/sites/p-example-test"
+  ok "Go site built from a private repository over SSH with its deploy key" '[ "$CODE" = 202 ] && [ "$(wait_job "$JP" 300)" = done ] && app_get p-example-test p-example-test.$ZONE / | grep -q "private-repo ok | port 3000" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/deploy-keys/$KID" ] && [ "$(stat -c %a "$SP/deploy/deploy_key")" = 600 ]'
+  api GET /v1/sites/p-example-test/deploykey; ok "the Overview gets the public key and the host key pinned on the first fetch, never the private key" '[ "$CODE" = 200 ] && grep -q "\"host_keys\":\[\"" <<<"$BODY" && ! grep -q "PRIVATE" <<<"$BODY" && [ -s "$SP/deploy/known_hosts" ] && ! grep -rq "PRIVATE KEY" "$SP/compose.yml" "$SP/wp/releases"'
+  docker exec np-git-ssh sh -c 'rm -f /etc/ssh/ssh_host_* && ssh-keygen -A >/dev/null && kill -HUP 1'; sleep 2
+  api POST /v1/sites/p-example-test/deploys; JP2="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+  ok "a changed repository host key stops the build, the live release keeps running" '[ "$(wait_job "$JP2" 200 2>/dev/null)" = failed ] && app_get p-example-test p-example-test.$ZONE / | grep -q "private-repo ok" && { api GET /v1/sites/p-example-test/deploys/2/log; grep -qi "host key" <<<"$BODY"; }'
+  docker rm -f np-git-ssh >/dev/null 2>&1
+fi
+
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again (update) passes, websites untouched" '[ $RC = 0 ] && has "already built" && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$CIDS" ]'
@@ -370,5 +394,5 @@ run VERIFY "${A[@]}"; ok "verify fails after revert" '[ $RC = 1 ]'
 
 cleanup; TMP_ALL="$(mktemp -d)"
 LEFT="$(docker ps -aq --filter name=np-site- | wc -l)"
-if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT SITE-01 HARNESS PASS tests=$TESTS laravel=$LARAVEL node_git=$NODEGIT sisa_uji=0"; exit 0; fi
-echo "RESULT SITE-01 HARNESS FAIL bad=$BAD/$TESTS laravel=$LARAVEL node_git=$NODEGIT sisa_uji=$LEFT"; exit 1
+if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT SITE-01 HARNESS PASS tests=$TESTS laravel=$LARAVEL node_git=$NODEGIT private_repo=$PRIVATE sisa_uji=0"; exit 0; fi
+echo "RESULT SITE-01 HARNESS FAIL bad=$BAD/$TESTS laravel=$LARAVEL node_git=$NODEGIT private_repo=$PRIVATE sisa_uji=$LEFT"; exit 1

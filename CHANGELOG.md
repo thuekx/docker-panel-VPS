@@ -3,6 +3,18 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.12.0] — 2026-11-13
+
+### Added
+- **Private Git repositories** for Node.js, Go and Python websites (APP-02b). Give the SSH address of the repository
+  (for example `git@github.com:owner/app.git`); the panel makes a **deploy key** for that website only and shows it
+  on the approve card, with the steps to add it on GitHub, GitLab or Bitbucket (read only). The first build then
+  reads the repository with it.
+  - The private half of the key never leaves the server: it is kept in a file only the website's build can read and
+    is mounted read only into the build container. The Overview shows the public key and its fingerprint.
+  - The repository's host key is pinned on the first fetch; if it ever changes, builds stop (the live release keeps
+    running) instead of fetching from an unknown server.
+
 ## [1.11.0] — 2026-11-12
 
 ### Added

@@ -70,4 +70,22 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
 - Environment values: `deploy/app.env` (0600, raw `KEY=VALUE`, read by compose with `format: raw`, so no quote or `$`
   handling), passed to the build too. Names only over the API and in the audit log; at most 100 keys, one line of
   at most 4096 characters each; reserved: PORT, HOST, HOSTNAME, HOME, PATH. Saving recreates the app container.
-- Still to do in APP-02b: private repositories (deploy keys) and a database for apps.
+- Next in APP-02b: private repositories (deploy keys, v1.12.0) and a database for apps.
+
+## APP-02b private repositories as built (v1.12.0)
+
+- Address: `git@host:owner/app.git` or `ssh://git@host[:port]/owner/app.git` (user `git` only, path cannot start with
+  `-`, no spaces). https addresses stay public-only.
+- Key: Ed25519, made by the agent (Go standard library, OpenSSH format) when the panel plans the website:
+  `POST /v1/deploykeys` keeps it 0600 in `/srv/nostek/deploy-keys/<id>` (folder 0700) and returns id, public key and
+  fingerprint only. The create request names it (`key_id`); the create job moves it to `deploy/deploy_key` (0600,
+  owned by www-data, the build user). Unused keys are removed after a day; at most 20 wait at a time.
+- Build: key mounted read only at `/run/nostek/deploy_key`, `deploy/known_hosts` at `/run/nostek/known_hosts`;
+  `GIT_SSH_COMMAND` = `ssh -i … -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new
+  -o UserKnownHostsFile=…`. First fetch pins the host key (trust on first use, shown with its fingerprint on the
+  Overview); a changed host key fails the build and the live release stays.
+- `GET /v1/sites/{id}/deploykey`: public key, fingerprint, pinned host key fingerprints. The private key is never
+  returned, logged or put in compose.
+- Harness (repo check, with internet): a throwaway SSH Git server (openssh-server on the Go image) that accepts only
+  the deploy key; build from it, then a changed host key must stop the next build.
+- Still to do in APP-02b: a database for apps.
