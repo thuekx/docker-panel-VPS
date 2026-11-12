@@ -100,6 +100,7 @@ func TestCreateApps(t *testing.T) {
 		func() Create { c := base; c.App = "static"; c.PHP = ""; c.Title = "Voltix"; return c }(),
 		func() Create { c := base; c.App = "php"; return c }(),
 		func() Create { c := base; c.App = "php"; c.Server = "apache"; c.Database = true; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.Title = "Shop"; return c }(),
 	}
 	for _, c := range ok {
 		if err := c.Check(nil); err != nil {
@@ -113,7 +114,11 @@ func TestCreateApps(t *testing.T) {
 		func() Create { c := base; c.App = "php"; c.PHP = "7.4"; return c }(),
 		func() Create { c := base; c.App = "php"; c.AdminEmail = "o@nostek.dev"; return c }(),
 		func() Create { c := base; c.App = "php"; c.Title = "x$(id)"; return c }(),
-		func() Create { c := base; c.App = "laravel"; return c }(),
+		func() Create { c := base; c.App = "rails"; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.Server = "apache"; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.PHP = ""; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.Database = true; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.AdminEmail = "o@nostek.dev"; return c }(),
 		func() Create {
 			c := base
 			c.App = "wordpress"

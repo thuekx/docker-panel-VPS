@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/thuekx/docker-panel-VPS/agent/internal/catalog"
 	"github.com/thuekx/docker-panel-VPS/agent/internal/spec"
 )
 
@@ -419,8 +420,14 @@ func (m *Manager) create(j *Job, s Site) {
 		fail("files", err, nil)
 		return
 	}
+	p, _ := catalog.PHP(s.PHP)
 	files := map[string]string{"compose.yml": cf}
 	switch {
+	case s.IsLaravel():
+		files["nginx.conf"] = NginxLaravelConf
+		files["laravel.ini"] = LaravelIni
+		files["laravel-env.php"] = LaravelPrepend
+		files[filepath.Join("build", "Dockerfile")] = catalog.LaravelDockerfile(p)
 	case s.AppName() == spec.AppStatic:
 		files["nginx.conf"] = NginxStaticConf
 	case s.IsWP() && s.Server == "nginx":
@@ -431,13 +438,24 @@ func (m *Manager) create(j *Job, s Site) {
 	if s.AppName() != spec.AppStatic {
 		files["php.ini"] = PHPIni
 	}
+	if s.IsLaravel() {
+		// composer runs as www-data and fills the empty website folder; the build context holds only the recipe
+		if err := os.MkdirAll(filepath.Join(dir, "build"), 0o755); err != nil {
+			fail("files", err, nil)
+			return
+		}
+		if err := os.Chown(filepath.Join(dir, "wp"), m.uid(), m.uid()); err != nil {
+			fail("files", err, nil)
+			return
+		}
+	}
 	for name, body := range files {
 		if err := writeFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
 			fail("files", err, nil)
 			return
 		}
 	}
-	if !s.IsWP() {
+	if !s.IsWP() && !s.IsLaravel() {
 		if err := m.writeStarter(s); err != nil {
 			fail("files", err, nil)
 			return
@@ -447,10 +465,24 @@ func (m *Manager) create(j *Job, s Site) {
 		fail("files", err, nil)
 		return
 	}
+	if s.IsLaravel() {
+		j.Step("build PHP image")
+		if out, err := m.compose(ctx, s.ID, nil, "build", "--quiet", "php"); err != nil {
+			fail("build PHP image", err, out)
+			return
+		}
+	}
 	j.Step("pull images")
-	if out, err := m.compose(ctx, s.ID, nil, "--profile", "tools", "pull", "--quiet", "--policy", "missing"); err != nil {
+	if out, err := m.compose(ctx, s.ID, nil, "--profile", "tools", "pull", "--quiet", "--policy", "missing", "--ignore-buildable"); err != nil {
 		fail("pull images", err, out)
 		return
+	}
+	if s.IsLaravel() {
+		j.Step("install Laravel")
+		if out, err := m.installLaravel(ctx, s); err != nil {
+			fail("install Laravel", err, out)
+			return
+		}
 	}
 	j.Step("start containers")
 	if out, err := m.compose(ctx, s.ID, nil, "up", "-d", "--wait", "--wait-timeout", "300"); err != nil {
@@ -686,6 +718,9 @@ func services(s Site) []string {
 	}
 	if s.HasDB() {
 		l = append(l, "db")
+	}
+	if s.IsLaravel() {
+		l = append(l, "queue", "scheduler")
 	}
 	return l
 }

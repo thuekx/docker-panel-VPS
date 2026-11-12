@@ -92,13 +92,14 @@ func Title(t string) error {
 // Apps a website can run (APP-01). WordPress is the default when none is given.
 const (
 	AppWordPress = "wordpress"
-	AppPHP       = "php"    // plain PHP, optional MariaDB
-	AppStatic    = "static" // HTML / built React, Vue, Svelte, Astro, served by Nginx
+	AppPHP       = "php"     // plain PHP, optional MariaDB
+	AppStatic    = "static"  // HTML / built React, Vue, Svelte, Astro, served by Nginx
+	AppLaravel   = "laravel" // Laravel on Nginx + PHP-FPM with MariaDB, a queue worker and the scheduler
 )
 
 // Create is the body of a create-site request.
 type Create struct {
-	App        string   `json:"app,omitempty"` // wordpress (default) | php | static
+	App        string   `json:"app,omitempty"` // wordpress (default) | php | laravel | static
 	Domain     string   `json:"domain"`
 	Aliases    []string `json:"aliases"`
 	Primary    string   `json:"primary"` // "domain" (bare) or "www"
@@ -160,15 +161,22 @@ func (c Create) Check(reserved map[string]bool) error {
 		if _, ok := catalog.PHP(c.PHP); !ok {
 			return fmt.Errorf("PHP %q is not offered", c.PHP)
 		}
+	case AppLaravel:
+		if c.Server != "nginx" {
+			return errors.New("a Laravel website runs on nginx")
+		}
+		if _, ok := catalog.PHP(c.PHP); !ok {
+			return fmt.Errorf("PHP %q is not offered", c.PHP)
+		}
 	case AppStatic:
 		if c.Server != "nginx" || c.PHP != "" {
 			return errors.New("a static site runs on nginx without PHP")
 		}
 	default:
-		return errors.New("app must be wordpress, php or static")
+		return errors.New("app must be wordpress, php, laravel or static")
 	}
 	if c.Database && app != AppPHP {
-		return errors.New("only a PHP app chooses its database (WordPress always has one, a static site none)")
+		return errors.New("only a PHP app chooses its database (WordPress and Laravel always have one, a static site none)")
 	}
 	if app != AppWordPress {
 		if c.AdminEmail != "" {
