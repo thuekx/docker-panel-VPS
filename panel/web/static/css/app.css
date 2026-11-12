@@ -91,7 +91,11 @@ button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:8p
 .top-right{display:flex;align-items:center;gap:14px}
 .clock{color:var(--muted);font-size:12px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;margin-bottom:16px}
-.grid.two{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+.grid.two{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.grid.stats{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media (max-width:1640px){.grid.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1000px){.grid.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.grid.stats{grid-template-columns:1fr}}
 .card h2{margin:0 0 6px;font-size:17px}
 .stat-head{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;margin-bottom:10px}
 .stat-big{font-size:30px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px;overflow-wrap:anywhere}
@@ -372,6 +376,7 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .site-new .for-php{display:flex;flex-direction:column;gap:14px}
 .site-new:has(input[name=app][value=static]:checked) .for-php{display:none}
 .site-new:has(input[name=app][value=laravel]:checked) .for-server{display:none}
+.site-new:not(:has(input[name=app][value=laravel]:checked)) .for-laravel{display:none}
 .site-new:not(:has(input[name=app][value=php]:checked)) .for-phpapp{display:none}
 .site-new:not(:has(input[name=app][value=wordpress]:checked)) .for-wp{display:none}
 .site-new:has(input[name=app][value=wordpress]:checked) .for-other{display:none}

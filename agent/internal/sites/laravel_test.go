@@ -128,7 +128,10 @@ func TestLaravelSite(t *testing.T) {
 		}
 	}
 	all := strings.Join(seen, "\n")
-	for _, want := range []string{"build --quiet php", "--ignore-buildable", "composer create-project", "key:generate", "package:discover", "storage:link", "migrate --force"} {
+	if got.Version != "13" {
+		t.Errorf("version %q", got.Version)
+	}
+	for _, want := range []string{"build --quiet php", "--ignore-buildable", "composer create-project", "laravel/laravel:^13.0", "key:generate", "package:discover", "storage:link", "migrate --force"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("create did not run %q:\n%s", want, all)
 		}
@@ -179,5 +182,21 @@ func TestLaravelEnvName(t *testing.T) {
 	s := Site{Domain: "voltix.id", URL: "https://voltix.id", Title: `Bad "name" $(x)`}
 	if e := string(laravelEnv([]byte(envExample), s)); !strings.Contains(e, `APP_NAME="voltix.id"`) || strings.Contains(e, "$(x)") {
 		t.Errorf("unsafe title reached .env:\n%s", e)
+	}
+}
+
+func TestLaravelVersionChoice(t *testing.T) {
+	for _, c := range []struct {
+		in   spec.Create
+		want string
+	}{
+		{spec.Create{App: "laravel"}, "13"},
+		{spec.Create{App: "laravel", Version: "12"}, "12"},
+		{spec.Create{App: "php", Version: "12"}, ""},
+		{spec.Create{}, ""},
+	} {
+		if got := laravelVersion(c.in); got != c.want {
+			t.Errorf("%+v: %q", c.in, got)
+		}
 	}
 }

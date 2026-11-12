@@ -101,6 +101,8 @@ func TestCreateApps(t *testing.T) {
 		func() Create { c := base; c.App = "php"; return c }(),
 		func() Create { c := base; c.App = "php"; c.Server = "apache"; c.Database = true; return c }(),
 		func() Create { c := base; c.App = "laravel"; c.Title = "Shop"; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.Version = "12"; c.PHP = "8.2"; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.Version = "13"; c.PHP = "8.3"; return c }(),
 	}
 	for _, c := range ok {
 		if err := c.Check(nil); err != nil {
@@ -115,6 +117,12 @@ func TestCreateApps(t *testing.T) {
 		func() Create { c := base; c.App = "php"; c.AdminEmail = "o@nostek.dev"; return c }(),
 		func() Create { c := base; c.App = "php"; c.Title = "x$(id)"; return c }(),
 		func() Create { c := base; c.App = "rails"; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.Version = "13"; c.PHP = "8.2"; return c }(), // too old PHP
+		func() Create { c := base; c.App = "laravel"; c.PHP = "8.1"; return c }(),                   // newest needs 8.3
+		func() Create { c := base; c.App = "laravel"; c.Version = "12"; c.PHP = "8.1"; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.Version = "10"; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.Version = "^13 || dev-master"; return c }(),
+		func() Create { c := base; c.App = "php"; c.Version = "13"; return c }(),
 		func() Create { c := base; c.App = "laravel"; c.Server = "apache"; return c }(),
 		func() Create { c := base; c.App = "laravel"; c.PHP = ""; return c }(),
 		func() Create { c := base; c.App = "laravel"; c.Database = true; return c }(),

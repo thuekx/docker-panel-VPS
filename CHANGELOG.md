@@ -3,6 +3,17 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.9.1] — 2026-11-12
+
+### Added
+- **Choose the Laravel version** when adding a Laravel website: Laravel 13 (newest, default) or Laravel 12. The panel
+  says which PHP version each one needs (13: PHP 8.3 or newer, 12: PHP 8.2 or newer) and refuses a combination that
+  cannot work. The Overview shows the version.
+
+### Fixed
+- Dashboard on wide screens: the six status cards now always fill the row (6 across on wide screens, 3, 2 or 1 on
+  smaller ones) instead of leaving an empty gap on the right. The Websites card names every app, not only WordPress.
+
 ## [1.9.0] — 2026-11-12
 
 Running at the owner's server since 20:34 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).

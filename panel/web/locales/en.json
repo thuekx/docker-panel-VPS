@@ -82,7 +82,7 @@
   "settings.theme": "Appearance",
   "settings.theme.help": "Light, dark, or follow your device. Saved on your account.",
   "nav.sites": "Websites",
-  "dash.sites.go": "Add and manage WordPress websites.",
+  "dash.sites.go": "Add and manage websites: WordPress, Laravel, PHP and static sites.",
   "dash.sites.open": "Open websites",
   "sites.new": "Add website",
   "sites.approve": "Check and approve",
@@ -507,5 +507,7 @@
   "lar.op.queue-restart": "Restart queue",
   "lar.out": "Output: %s",
   "lar.done": "Artisan command finished.",
-  "lar.env": "App settings are in the .env file (File Manager). The database password is not in it: the panel hands it over from a secret file."
+  "lar.env": "App settings are in the .env file (File Manager). The database password is not in it: the panel hands it over from a secret file.",
+  "sites.laravel.newest": "newest",
+  "sites.laravel.needs": "needs PHP %s or newer"
 }

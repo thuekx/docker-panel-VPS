@@ -108,6 +108,7 @@ type Create struct {
 	AdminEmail string   `json:"admin_email"`
 	Title      string   `json:"title"`
 	Database   bool     `json:"database,omitempty"` // php: give the app its own MariaDB
+	Version    string   `json:"version,omitempty"`  // laravel: major version ("" = newest)
 }
 
 // AppOf returns the app of a request, WordPress when none is given.
@@ -168,12 +169,26 @@ func (c Create) Check(reserved map[string]bool) error {
 		if _, ok := catalog.PHP(c.PHP); !ok {
 			return fmt.Errorf("PHP %q is not offered", c.PHP)
 		}
+		v := c.Version
+		if v == "" {
+			v = catalog.LaravelDefault
+		}
+		l, ok := catalog.Laravel(v)
+		if !ok {
+			return fmt.Errorf("Laravel %q is not offered", c.Version)
+		}
+		if phpLess(c.PHP, l.MinPHP) {
+			return fmt.Errorf("Laravel %s needs PHP %s or newer", l.Version, l.MinPHP)
+		}
 	case AppStatic:
 		if c.Server != "nginx" || c.PHP != "" {
 			return errors.New("a static site runs on nginx without PHP")
 		}
 	default:
 		return errors.New("app must be wordpress, php, laravel or static")
+	}
+	if c.Version != "" && app != AppLaravel {
+		return errors.New("only Laravel takes a version")
 	}
 	if c.Database && app != AppPHP {
 		return errors.New("only a PHP app chooses its database (WordPress and Laravel always have one, a static site none)")
@@ -201,4 +216,12 @@ func (c Create) Hosts() []string {
 		h = []string{www, bare}
 	}
 	return append(h, c.Aliases...)
+}
+
+// phpLess compares two PHP versions "major.minor".
+func phpLess(a, b string) bool {
+	var am, an, bm, bn int
+	fmt.Sscanf(a, "%d.%d", &am, &an)
+	fmt.Sscanf(b, "%d.%d", &bm, &bn)
+	return am < bm || (am == bm && an < bn)
 }

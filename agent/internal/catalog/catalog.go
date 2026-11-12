@@ -96,6 +96,30 @@ func LaravelDockerfile(p PHPVersion) string {
 		"ENV COMPOSER_HOME=/tmp/composer COMPOSER_NO_INTERACTION=1\n"
 }
 
+// LaravelVersion is one offered Laravel major version and the lowest PHP it runs on.
+type LaravelVersion struct {
+	Version string
+	MinPHP  string
+}
+
+// LaravelDefault is the Laravel version preselected in the panel (the newest).
+const LaravelDefault = "13"
+
+var laravel = []LaravelVersion{{Version: "13", MinPHP: "8.3"}, {Version: "12", MinPHP: "8.2"}}
+
+// Laravel returns the entry for a Laravel major version.
+func Laravel(v string) (LaravelVersion, bool) {
+	for _, l := range laravel {
+		if l.Version == v {
+			return l, true
+		}
+	}
+	return LaravelVersion{}, false
+}
+
+// LaravelAll returns the offered Laravel versions, newest first.
+func LaravelAll() []LaravelVersion { return append([]LaravelVersion(nil), laravel...) }
+
 // LaravelImage is the local tag of the built Laravel image. It names the PHP version and a hash of the recipe,
 // so a new recipe (a new pinned base image) gets a new tag and never reuses an old build.
 func LaravelImage(p PHPVersion) string {

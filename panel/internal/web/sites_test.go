@@ -42,6 +42,9 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		URL: "https://voltix-id.preview.nostek.dev", Phase: "ready", Status: "running",
 		Hosts: []agent.Host{{Name: "voltix.id", Role: "primary"}, {Name: "voltix-id.preview.nostek.dev", Role: "preview", Routed: true}}}
 	site.App, site.Database = f.app, f.appDB
+	if f.app == "laravel" {
+		site.Version = "13"
+	}
 	if f.app == "static" {
 		site.PHP, site.AdminUser = "", ""
 	}
@@ -60,7 +63,8 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case r.URL.Path == "/v1/catalog":
-		write(200, agent.Catalog{PHP: []agent.PHP{{Version: "8.1", EOL: true}, {Version: "8.4", Default: true, SecurityUntil: "2028-12-31"}}})
+		write(200, agent.Catalog{PHP: []agent.PHP{{Version: "8.1", EOL: true}, {Version: "8.4", Default: true, SecurityUntil: "2028-12-31"}},
+			Laravel: []agent.Laravel{{Version: "13", MinPHP: "8.3", Default: true}, {Version: "12", MinPHP: "8.2"}}})
 	case r.URL.Path == "/v1/sites" && r.Method == "GET":
 		write(200, map[string]any{"sites": []agent.Site{site}})
 	case r.URL.Path == "/v1/trash":

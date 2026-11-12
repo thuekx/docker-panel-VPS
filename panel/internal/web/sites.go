@@ -120,7 +120,7 @@ func formCreate(r *http.Request) (agent.Create, string) {
 	case "static":
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "nginx", "", ""
 	case "laravel": // always Nginx + PHP-FPM with its own MariaDB
-		c.App, c.Server, c.AdminEmail = app, "nginx", ""
+		c.App, c.Server, c.AdminEmail, c.Version = app, "nginx", "", strings.TrimSpace(f.Get("version"))
 	default: // php, or anything else for the agent to refuse
 		c.App, c.AdminEmail, c.Database = app, "", f.Get("database") == "1"
 	}

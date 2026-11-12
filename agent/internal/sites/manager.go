@@ -323,6 +323,7 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		ID: id, Domain: c.Domain, Primary: c.Primary, Server: c.Server, PHP: c.PHP,
 		AdminEmail: c.AdminEmail, Title: c.Title, Created: m.now().Unix(), Phase: "creating",
 		Database: c.Database,
+		Version:  laravelVersion(c),
 	}
 	if c.AppOf() != spec.AppWordPress {
 		s.App = c.AppOf()
