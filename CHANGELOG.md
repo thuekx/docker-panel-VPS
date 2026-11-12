@@ -3,7 +3,9 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
-## [1.6.0] — unreleased
+## [1.6.0] — 2026-11-12
+
+Running at the owner's server since 16:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
 
 ### Added
 - **WordPress Tools** per website (WP-01, like WP Toolkit), a new WordPress tab:
