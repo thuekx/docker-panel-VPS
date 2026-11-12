@@ -3,7 +3,31 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.11.0] — 2026-11-12
+
+### Added
+- **Go and Python websites** (APP-02, second part). "Add website" now offers Go (1.26, 1.27 default) and Python
+  (3.13, 3.14 default, 3.15) next to Node.js, on their official images pinned by digest. They use the same Deploy,
+  history, build log and rollback as Node.js apps.
+  - Go: `go mod download`, then `go build` to `./server` (or your build command), started with `./server`.
+  - Python: its own virtual environment `.venv` with the packages of `requirements.txt`, an optional build command
+    (for example `collectstatic`), and your start command (for example gunicorn or uvicorn on `$PORT`).
+  - A website built from its own files starts with a small starter app of its runtime.
+- **Environment values** for Node.js, Go and Python apps: a card on the Overview to add, change and delete values
+  (for example `DATABASE_URL` or API keys). The panel only ever shows the names, never the values; they are kept in a
+  file only root can read, outside the website folder, and the app restarts with them on save. `PORT`, `HOST`,
+  `HOSTNAME`, `HOME` and `PATH` stay set by the panel.
+- **Delete permanently** in the website trash: type the domain and the website's files and database are removed at
+  once, so the domain can be used again right away (before, it stayed reserved for 7 days). Adding a website whose
+  domain is still held by the trash now says so.
+
+### Fixed
+- The Websites page showed "restore failed" in green; failures now show as a warning.
+
 ## [1.10.0] — 2026-11-12
+
+Running at the owner's server since 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS), together
+with 1.9.1.
 
 ### Added
 - **Node.js websites** (APP-02, first part). "Add website" offers Node.js: Express, NestJS, Nuxt, SvelteKit, Next.js
@@ -21,6 +45,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   Node.js apps, and an auto-deploy webhook (APP-02 parts b and c).
 
 ## [1.9.1] — 2026-11-12
+
+Released to the owner's server with 1.10.0 (22:29 WIB).
 
 ### Added
 - **Choose the Laravel version** when adding a Laravel website: Laravel 13 (newest, default) or Laravel 12. The panel

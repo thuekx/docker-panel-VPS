@@ -268,8 +268,8 @@ func TestBusyStatusLogsTrashRestorePurge(t *testing.T) {
 		t.Fatalf("trash = %+v", tr)
 	}
 	// trashed hosts stay reserved
-	if _, err := m.Plan(context.Background(), req()); err == nil {
-		t.Error("domain of a trashed site accepted")
+	if _, err := m.Plan(context.Background(), req()); err == nil || !strings.Contains(err.Error(), "in the trash: delete it permanently") {
+		t.Errorf("domain of a trashed site: %v", err)
 	}
 	if _, err := m.Restore(context.Background(), "../../etc.123456789"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("bad entry: %v", err)
@@ -280,6 +280,32 @@ func TestBusyStatusLogsTrashRestorePurge(t *testing.T) {
 	if _, err := m.Get(s.ID); err != nil {
 		t.Fatal("restored site missing")
 	}
+
+	// remove for good: the domain is free again
+	entry, _ = m.Delete(context.Background(), s.ID)
+	if err := m.RemoveTrash("../../etc.123456789"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("bad entry removed: %v", err)
+	}
+	if err := m.RemoveTrash(s.ID + ".123456789"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing entry: %v", err)
+	}
+	if err := m.RemoveTrash(entry); err != nil {
+		t.Fatal(err)
+	}
+	if tr, _ := m.Trash(); len(tr) != 0 {
+		t.Fatalf("trash after remove = %+v", tr)
+	}
+	if _, err := m.Plan(context.Background(), req()); err != nil {
+		t.Errorf("domain not free after removing from the trash: %v", err)
+	}
+	if _, err := m.Restore(context.Background(), entry); !errors.Is(err, ErrNotFound) {
+		t.Errorf("removed entry restored: %v", err)
+	}
+	jr, _, err := m.Create(context.Background(), req())
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitJob(t, m, jr)
 
 	entry, _ = m.Delete(context.Background(), s.ID)
 	if gone, _ := m.Purge(); len(gone) != 0 {

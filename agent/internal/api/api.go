@@ -97,6 +97,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/wp/cli", s.wpCLI)
 	mux.HandleFunc("POST /v1/sites/{id}/laravel/artisan", s.artisan)
 	mux.HandleFunc("GET /v1/sites/{id}/deploys", s.deploys)
+	mux.HandleFunc("GET /v1/sites/{id}/env", s.envNames)
+	mux.HandleFunc("POST /v1/sites/{id}/env", s.envSet)
 	mux.HandleFunc("POST /v1/sites/{id}/deploys", s.deployStart)
 	mux.HandleFunc("GET /v1/sites/{id}/deploys/{n}/log", s.deployLog)
 	mux.HandleFunc("POST /v1/sites/{id}/deploys/{n}/rollback", s.rollback)
@@ -108,6 +110,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/backups/{name}/restore", s.backupRestore)
 	mux.HandleFunc("GET /v1/trash", s.trash)
 	mux.HandleFunc("POST /v1/trash/{entry}/restore", s.restore)
+	mux.HandleFunc("POST /v1/trash/{entry}/remove", s.removeTrash)
 	mux.HandleFunc("GET /v1/jobs/{id}", s.job)
 	mux.HandleFunc("POST /v1/jobs/{id}/secret", s.secret)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +194,15 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 	for _, n := range catalog.NodeAll() {
 		nv = append(nv, nodeView{n.Version, n.SecurityUntil, n.Version == catalog.NodeDefault})
 	}
-	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv, "node": nv})
+	rt := func(app string) []nodeView {
+		var v []nodeView
+		for _, r := range catalog.Runtimes(app) {
+			v = append(v, nodeView{r.Version, r.SecurityUntil, r.Default})
+		}
+		return v
+	}
+	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv, "node": nv,
+		"go": rt("go"), "python": rt("python")})
 }
 
 type siteView struct {
@@ -322,6 +333,12 @@ func (s *Server) restore(w http.ResponseWriter, r *http.Request) {
 	entry := r.PathValue("entry")
 	id, err := s.M.Restore(r.Context(), entry)
 	s.result(w, r, "restore", entry, err, map[string]any{"site": id})
+}
+
+func (s *Server) removeTrash(w http.ResponseWriter, r *http.Request) {
+	entry := r.PathValue("entry")
+	err := s.M.RemoveTrash(entry)
+	s.result(w, r, "remove-trash", entry, err, map[string]any{"ok": true})
 }
 
 func (s *Server) trash(w http.ResponseWriter, r *http.Request) {

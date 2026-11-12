@@ -8,7 +8,7 @@
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "sites.status"}}</span>{{template "sitestatus" (dict3 $l $s.Status $s.Phase)}}</div>
   <div class="table-wrap"><table><tbody>
     <tr><th>{{t $l "sites.app"}}</th><td><span class="tag-srv c-teal">{{t $l (printf "sites.app.%s" $s.AppName)}}{{if and $s.Version (not $s.IsNode)}} {{$s.Version}}{{end}}</span>{{if $s.HasDB}} <span class="tag-srv c-blue">MariaDB</span>{{end}}</td></tr>
-    {{if $s.IsNode}}<tr><th>{{t $l "deploy.runtime"}}</th><td><span class="tag-srv c-green">Node.js {{$s.Version}}</span></td></tr>
+    {{if $s.IsNode}}<tr><th>{{t $l "deploy.runtime"}}</th><td><span class="tag-srv c-green">{{t $l (printf "sites.app.%s" $s.AppName)}} {{$s.Version}}</span></td></tr>
     {{else}}<tr><th>{{t $l "sites.server"}}</th><td><span class="tag-srv {{if eq $s.Server "nginx"}}c-green{{else}}c-orange{{end}}">{{if eq $s.AppName "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $s.Server)}}{{end}}</span></td></tr>{{end}}
     {{if $s.PHP}}<tr><th>PHP</th><td><span class="tag-srv c-violet">PHP {{$s.PHP}}</span></td></tr>{{end}}
     {{if $s.IsWP}}<tr><th>{{t $l "sites.wpurl"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a> · <a href="{{$s.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></td></tr>
@@ -46,8 +46,8 @@
     {{else}}<dt>{{t $l "node.repo"}}</dt><dd><code>{{$s.Repo}}</code></dd>
     <dt>{{t $l "node.branch"}}</dt><dd><code>{{$s.Branch}}</code></dd>{{end}}
     {{if $s.Dir}}<dt>{{t $l "node.dir"}}</dt><dd><code>{{$s.Dir}}</code></dd>{{end}}
-    <dt>{{t $l "node.build"}}</dt><dd><code>{{if $s.Build}}{{$s.Build}}{{else}}npm run build --if-present{{end}}</code></dd>
-    <dt>{{t $l "node.start"}}</dt><dd><code>{{if $s.Start}}{{$s.Start}}{{else}}npm start{{end}}</code></dd>
+    <dt>{{t $l "node.build"}}</dt><dd><code>{{if $s.Build}}{{$s.Build}}{{else}}{{t $l (printf "rt.build.%s" $s.AppName)}}{{end}}</code></dd>
+    <dt>{{t $l "node.start"}}</dt><dd><code>{{if $s.Start}}{{$s.Start}}{{else}}{{t $l (printf "rt.start.%s" $s.AppName)}}{{end}}</code></dd>
     <dt>{{t $l "deploy.live"}}</dt><dd>{{if $s.Release}}{{t $l "deploy.release" $s.Release}}{{else}}—{{end}}</dd>
   </dl>
   <p class="muted">{{t $l "deploy.help"}}</p>
@@ -60,6 +60,19 @@
       <td class="nowrap"><span class="pill {{if eq .Result "live"}}s-ok{{else if eq .Result "failed"}}s-bad{{else if eq .Result "running"}}s-warn{{else}}s-unknown{{end}}">{{t $l (printf "deploy.res.%s" .Result)}}</span>{{if .Rollback}} <span class="muted">{{t $l "deploy.rolledback"}}</span>{{end}}</td>
       <td><div class="row"><a class="ghost btn" href="/sites/{{$s.ID}}/deploys/{{.Release}}/log">{{t $l "deploy.log"}}</a>{{if and .Kept (ne .Result "live")}}<form method="post" action="/sites/{{$s.ID}}#deploy" class="form row"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="release" value="{{.Release}}"><button class="secondary" name="action" value="rollback" type="submit">{{t $l "deploy.rollback"}}</button></form>{{end}}</div></td></tr>{{end}}
     </tbody></table></div>{{end}}
+</section>
+<section class="card wide tone c-violet" data-anim="card" id="env">
+  <h2>{{t $l "env.title"}}</h2>
+  <p class="muted">{{t $l "env.help"}}</p>
+  {{if .Data.Env}}<div class="table-wrap"><table><tbody>{{range .Data.Env}}
+    <tr><td><code>{{.}}</code></td><td class="muted">••••••</td><td><form method="post" action="/sites/{{$s.ID}}#env" class="form row"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="name" value="{{.}}"><button class="ghost" name="action" value="env-delete" type="submit">{{t $l "env.delete"}}</button></form></td></tr>{{end}}
+  </tbody></table></div>{{else}}<p class="muted">{{t $l "env.none"}}</p>{{end}}
+  <form method="post" action="/sites/{{$s.ID}}#env" class="form env-form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="env-set">
+    <label>{{t $l "env.name"}}<input name="name" required pattern="[A-Za-z_][A-Za-z0-9_]{0,63}" placeholder="DATABASE_URL" autocapitalize="characters" spellcheck="false" autocomplete="off"></label>
+    <label>{{t $l "env.value"}}<input name="value" type="password" autocomplete="new-password" spellcheck="false"></label>
+    <button class="secondary" type="submit">{{t $l "env.save"}}</button>
+  </form>
 </section>
 {{end}}
 {{if $s.IsLaravel}}

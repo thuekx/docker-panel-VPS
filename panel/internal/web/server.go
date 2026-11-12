@@ -170,6 +170,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /sites/{id}/deploys/{n}/log", s.need(true, s.buildLog))
 	mux.HandleFunc("POST /sites/{id}", s.need(true, s.siteAction))
 	mux.HandleFunc("POST /trash/{entry}/restore", s.need(true, s.siteRestore))
+	mux.HandleFunc("POST /trash/{entry}/remove", s.need(true, s.trashRemove))
 	mux.HandleFunc("GET /sites/job/{job}/status", s.need(true, s.siteJobStatus))
 	mux.HandleFunc("GET /files/{id}", s.need(true, s.filesPage))
 	mux.HandleFunc("POST /files/{id}", s.need(true, s.filesAction))

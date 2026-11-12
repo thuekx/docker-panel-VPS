@@ -122,9 +122,9 @@ func formCreate(r *http.Request) (agent.Create, string) {
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "nginx", "", ""
 	case "laravel": // always Nginx + PHP-FPM with its own MariaDB
 		c.App, c.Server, c.AdminEmail, c.Version = app, "nginx", "", strings.TrimSpace(f.Get("version"))
-	case "node": // APP-02: built from Git, no web server or PHP choice
+	case "node", "go", "python": // APP-02: built from Git or own files, no web server or PHP choice
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "", "", ""
-		c.Version = strings.TrimSpace(f.Get("node"))
+		c.Version = strings.TrimSpace(f.Get(app + "_version"))
 		c.Repo, c.Branch = strings.TrimSpace(f.Get("repo")), strings.TrimSpace(f.Get("branch"))
 		c.Build, c.Start = strings.TrimSpace(f.Get("build")), strings.TrimSpace(f.Get("start"))
 		c.Dir = strings.Trim(strings.TrimSpace(f.Get("dir")), "/")
@@ -352,6 +352,7 @@ type siteData struct {
 	Artisan *artisanResult // the artisan command just run (Laravel)
 	Deploys []deployRow    // APP-02: deploy history of a Node.js website
 	NoHist  string         // why the history could not be read
+	Env     []string       // names of the app's environment values
 }
 
 // deployRow is one deploy as the Overview shows it.
@@ -416,6 +417,7 @@ func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanRe
 		} else {
 			d.NoHist = err.Error()
 		}
+		d.Env, _ = s.ag.EnvNames(ctx, id)
 	}
 	if svc := r.URL.Query().Get("logs"); siteService(site, svc) {
 		d.Service = svc
@@ -493,6 +495,25 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		}
 		err = s.ag.Rollback(ctx, id, n)
 		act = "rollback"
+	case "env-set", "env-delete":
+		if !site.IsNode() {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		name := strings.TrimSpace(r.PostForm.Get("name"))
+		if act == "env-set" {
+			err = s.ag.SetEnv(ctx, id, map[string]string{name: r.PostForm.Get("value")}, nil)
+		} else {
+			err = s.ag.SetEnv(ctx, id, nil, []string{name})
+		}
+		if err != nil {
+			s.audit1(userOf(r), r, "site."+act, id+" "+name+" failed: "+err.Error())
+			http.Redirect(w, r, back+"?err="+url.QueryEscape(err.Error())+"#env", http.StatusSeeOther)
+			return
+		}
+		s.audit1(userOf(r), r, "site."+act, id+" "+name)
+		http.Redirect(w, r, back+"?done="+act+"#env", http.StatusSeeOther)
+		return
 	case "delete":
 		if strings.TrimSpace(strings.ToLower(r.PostForm.Get("confirm"))) != site.Domain {
 			http.Redirect(w, r, back+"?err="+url.QueryEscape(s.tr.T(s.lang(r), "sites.delete.mismatch")), http.StatusSeeOther)
@@ -529,6 +550,43 @@ func (s *Server) siteRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit1(userOf(r), r, "site.restore", entry)
 	http.Redirect(w, r, "/sites/"+id+"?done=restore", http.StatusSeeOther)
+}
+
+// trashRemove deletes a website from the trash for good once its domain is typed, so the domain can be used again.
+func (s *Server) trashRemove(w http.ResponseWriter, r *http.Request) {
+	entry := r.PathValue("entry")
+	if !entryRe.MatchString(entry) {
+		s.notFound(w, r)
+		return
+	}
+	ctx, cancel := s.agentCtx(r, 2*time.Minute)
+	defer cancel()
+	tr, err := s.ag.Trash(ctx)
+	if err != nil {
+		http.Redirect(w, r, "/sites?done=remove_failed", http.StatusSeeOther)
+		return
+	}
+	domain := ""
+	for _, t := range tr {
+		if t.Entry == entry {
+			domain = t.Domain
+		}
+	}
+	if domain == "" {
+		s.notFound(w, r)
+		return
+	}
+	if !strings.EqualFold(strings.TrimSpace(r.PostFormValue("confirm")), domain) {
+		http.Redirect(w, r, "/sites?done=remove_confirm#trash", http.StatusSeeOther)
+		return
+	}
+	if err := s.ag.RemoveTrash(ctx, entry); err != nil {
+		s.audit1(userOf(r), r, "site.remove", entry+" "+domain+" failed: "+err.Error())
+		http.Redirect(w, r, "/sites?done=remove_failed", http.StatusSeeOther)
+		return
+	}
+	s.audit1(userOf(r), r, "site.remove", entry+" "+domain)
+	http.Redirect(w, r, "/sites?done=removed", http.StatusSeeOther)
 }
 
 // siteService is true for a container the website has: web always, php behind Nginx, db with a database, and the

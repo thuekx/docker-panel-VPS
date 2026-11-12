@@ -95,7 +95,9 @@ const (
 	AppPHP       = "php"     // plain PHP, optional MariaDB
 	AppStatic    = "static"  // HTML / built React, Vue, Svelte, Astro, served by Nginx
 	AppLaravel   = "laravel" // Laravel on Nginx + PHP-FPM with MariaDB, a queue worker and the scheduler
-	AppNode      = "node"    // Node.js / Next.js app built from a Git repository (APP-02)
+	AppNode      = "node"    // Node.js / Next.js app built from Git or its own files (APP-02)
+	AppGo        = "go"      // Go app built from Git or its own files (APP-02b)
+	AppPython    = "python"  // Python app (Django, FastAPI, Flask …) built from Git or its own files (APP-02b)
 )
 
 // Limits of the Node.js deploy settings.
@@ -192,6 +194,20 @@ const (
 	NodeStart   = "npm start"
 )
 
+// IsRuntimeApp is true for an app built from source by the agent: node, go or python.
+func IsRuntimeApp(app string) bool { return app == AppNode || app == AppGo || app == AppPython }
+
+// Commands of a runtime app: install (fixed), build and start (defaults, the owner may change them).
+var (
+	InstallCmd = map[string]string{
+		AppNode:   NodeInstall,
+		AppGo:     "if [ -f go.mod ]; then go mod download; fi",
+		AppPython: "python -m venv .venv && if [ -f requirements.txt ]; then .venv/bin/pip install --no-cache-dir -r requirements.txt; fi",
+	}
+	DefaultBuild = map[string]string{AppNode: NodeBuild, AppGo: "CGO_ENABLED=0 go build -trimpath -o server .", AppPython: "true"}
+	DefaultStart = map[string]string{AppNode: NodeStart, AppGo: "./server", AppPython: ".venv/bin/python app.py"}
+)
+
 // AppOf returns the app of a request, WordPress when none is given.
 func (c Create) AppOf() string {
 	if c.App == "" {
@@ -265,12 +281,12 @@ func (c Create) Check(reserved map[string]bool) error {
 		if c.Server != "nginx" || c.PHP != "" {
 			return errors.New("a static site runs on nginx without PHP")
 		}
-	case AppNode:
+	case AppNode, AppGo, AppPython:
 		if c.PHP != "" || c.Server != "" {
-			return errors.New("a Node.js app runs without a web server choice or PHP")
+			return errors.New("an app built from source runs without a web server choice or PHP")
 		}
-		if _, ok := catalog.Node(c.Version); !ok {
-			return fmt.Errorf("Node.js %q is not offered", c.Version)
+		if _, ok := catalog.RuntimeOf(app, c.Version); !ok {
+			return fmt.Errorf("%s %q is not offered", app, c.Version)
 		}
 		switch c.Source {
 		case "", SourceGit:
@@ -299,13 +315,13 @@ func (c Create) Check(reserved map[string]bool) error {
 			}
 		}
 	default:
-		return errors.New("app must be wordpress, php, laravel, static or node")
+		return errors.New("app must be wordpress, php, laravel, static, node, go or python")
 	}
-	if c.Version != "" && app != AppLaravel && app != AppNode {
-		return errors.New("only Laravel and Node.js take a version")
+	if c.Version != "" && app != AppLaravel && !IsRuntimeApp(app) {
+		return errors.New("only Laravel, Node.js, Go and Python take a version")
 	}
-	if app != AppNode && (c.Repo != "" || c.Branch != "" || c.Build != "" || c.Start != "" || c.Source != "" || c.Dir != "") {
-		return errors.New("only a Node.js app takes a repository and commands")
+	if !IsRuntimeApp(app) && (c.Repo != "" || c.Branch != "" || c.Build != "" || c.Start != "" || c.Source != "" || c.Dir != "") {
+		return errors.New("only an app built from source takes a repository and commands")
 	}
 	if c.Database && app != AppPHP {
 		return errors.New("only a PHP app chooses its database (WordPress and Laravel always have one, a static site none)")

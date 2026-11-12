@@ -141,8 +141,8 @@ type Site struct {
 // FromFiles is true when a Node.js app is built from the website's source/ folder.
 func (s Site) FromFiles() bool { return s.Source == "files" }
 
-// IsNode is true for a Node.js app (APP-02).
-func (s Site) IsNode() bool { return s.App == "node" }
+// IsNode is true for an app built from source by the agent: Node.js, Go or Python (APP-02).
+func (s Site) IsNode() bool { return s.App == "node" || s.App == "go" || s.App == "python" }
 
 // AppName is the app the site runs: wordpress, php or static.
 func (s Site) AppName() string {
@@ -204,6 +204,8 @@ type Catalog struct {
 	Servers []string  `json:"servers"`
 	Laravel []Laravel `json:"laravel"`
 	Node    []Node    `json:"node"`
+	Go      []Node    `json:"go"`
+	Python  []Node    `json:"python"`
 }
 
 // Node is one offered Node.js version (APP-02).
@@ -245,6 +247,25 @@ func (c *Client) BuildLog(ctx context.Context, id string, n int) (string, error)
 		Log string `json:"log"`
 	}
 	return v.Log, c.call(ctx, "GET", fmt.Sprintf("/v1/sites/%s/deploys/%d/log", url.PathEscape(id), n), nil, &v)
+}
+
+// EnvNames lists the names of a Node.js app's environment values (the agent never returns values).
+func (c *Client) EnvNames(ctx context.Context, id string) ([]string, error) {
+	var v struct {
+		Names []string `json:"names"`
+	}
+	return v.Names, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/env", nil, &v)
+}
+
+// SetEnv sets and deletes environment values and restarts the app.
+func (c *Client) SetEnv(ctx context.Context, id string, set map[string]string, del []string) error {
+	if set == nil {
+		set = map[string]string{}
+	}
+	if del == nil {
+		del = []string{}
+	}
+	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/env", map[string]any{"set": set, "delete": del}, nil)
 }
 
 // Rollback puts a kept release live again.
@@ -397,6 +418,11 @@ func (c *Client) Restore(ctx context.Context, entry string) (string, error) {
 		Site string `json:"site"`
 	}
 	return v.Site, c.call(ctx, "POST", "/v1/trash/"+url.PathEscape(entry)+"/restore", nil, &v)
+}
+
+// RemoveTrash deletes a trash entry for good, so its domain is free again.
+func (c *Client) RemoveTrash(ctx context.Context, entry string) error {
+	return c.call(ctx, "POST", "/v1/trash/"+url.PathEscape(entry)+"/remove", nil, nil)
 }
 
 // Logs returns the last lines of one service.

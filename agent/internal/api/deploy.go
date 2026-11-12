@@ -5,8 +5,12 @@ package api
 import (
 	"errors"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/thuekx/docker-panel-VPS/agent/internal/sites"
 )
 
 func release(r *http.Request) (int, error) {
@@ -65,4 +69,39 @@ func (s *Server) rollback(w http.ResponseWriter, r *http.Request) {
 	}
 	s.note(r, "rollback", id, "ok", "release "+strconv.Itoa(n))
 	writeJSON(w, 200, map[string]any{"ok": true, "release": n})
+}
+
+// envNames lists the names of a Node.js app's environment values (never the values).
+func (s *Server) envNames(w http.ResponseWriter, r *http.Request) {
+	n, err := s.M.EnvNames(r.PathValue("id"))
+	if err != nil {
+		s.fail(w, r, "", "", err)
+		return
+	}
+	writeJSON(w, 200, map[string][]string{"names": n})
+}
+
+// envSet sets and deletes environment values; the audit names the keys, never a value.
+func (s *Server) envSet(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var c sites.EnvChange
+	if err := decodeN(r, &c, 512<<10); err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	long(w, 5*time.Minute)
+	if err := s.M.SetEnv(r.Context(), id, c); err != nil {
+		s.fail(w, r, "env", id, err)
+		return
+	}
+	keys := make([]string, 0, len(c.Set)+len(c.Delete))
+	for k := range c.Set {
+		keys = append(keys, "set "+k)
+	}
+	for _, k := range c.Delete {
+		keys = append(keys, "delete "+k)
+	}
+	sort.Strings(keys)
+	s.note(r, "env", id, "ok", strings.Join(keys, ", "))
+	writeJSON(w, 200, map[string]bool{"ok": true})
 }

@@ -32,6 +32,8 @@ type fakeAgent struct {
 	bakJob    agent.Job
 	app       string // APP-01: app of the fake site (empty = WordPress)
 	appDB     bool
+	trash     []agent.Trashed
+	removed   []string
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +49,9 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if f.app == "static" {
 		site.PHP, site.AdminUser = "", ""
+	}
+	if f.app == "go" || f.app == "python" {
+		site.PHP, site.Server, site.AdminUser, site.Version, site.Source, site.Release = "", "", "", "1.27", "files", 1
 	}
 	if f.app == "node" {
 		site.PHP, site.Server, site.AdminUser, site.Version = "", "", "", "24"
@@ -69,16 +74,25 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/v1/catalog":
 		write(200, agent.Catalog{PHP: []agent.PHP{{Version: "8.1", EOL: true}, {Version: "8.4", Default: true, SecurityUntil: "2028-12-31"}},
 			Laravel: []agent.Laravel{{Version: "13", MinPHP: "8.3", Default: true}, {Version: "12", MinPHP: "8.2"}},
-			Node:    []agent.Node{{Version: "26", SecurityUntil: "2029-04-30"}, {Version: "24", SecurityUntil: "2028-04-30", Default: true}}})
+			Node:    []agent.Node{{Version: "26", SecurityUntil: "2029-04-30"}, {Version: "24", SecurityUntil: "2028-04-30", Default: true}},
+			Go:      []agent.Node{{Version: "1.27", SecurityUntil: "2027-08-31", Default: true}},
+			Python:  []agent.Node{{Version: "3.14", SecurityUntil: "2030-10-31", Default: true}}})
 	case r.URL.Path == "/v1/sites" && r.Method == "GET":
 		write(200, map[string]any{"sites": []agent.Site{site}})
 	case r.URL.Path == "/v1/trash":
-		write(200, map[string]any{"trash": []agent.Trashed{}})
+		t := f.trash
+		if t == nil {
+			t = []agent.Trashed{}
+		}
+		write(200, map[string]any{"trash": t})
+	case strings.HasPrefix(r.URL.Path, "/v1/trash/") && strings.HasSuffix(r.URL.Path, "/remove"):
+		f.removed = append(f.removed, strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/trash/"), "/remove"))
+		write(200, map[string]any{"ok": true})
 	case r.URL.Path == "/v1/sites/plan", r.URL.Path == "/v1/sites" && r.Method == "POST":
 		var c agent.Create
 		b, _ := io.ReadAll(r.Body)
 		json.Unmarshal(b, &c)
-		if c.Server != "apache" && c.Server != "nginx" && c.App != "node" {
+		if c.Server != "apache" && c.Server != "nginx" && c.App != "node" && c.App != "go" && c.App != "python" {
 			write(422, map[string]string{"error": "web server must be apache or nginx"})
 			return
 		}
@@ -122,6 +136,12 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		write(202, map[string]string{"job": "j0123456789abcdef"})
 	case r.URL.Path == "/v1/sites/voltix-id/deploys/2/log":
 		write(200, map[string]string{"log": "npm ERR! missing script: build <script>"})
+	case r.URL.Path == "/v1/sites/voltix-id/env" && r.Method == "GET":
+		write(200, map[string][]string{"names": {"API_KEY", "DATABASE_URL"}})
+	case r.URL.Path == "/v1/sites/voltix-id/env" && r.Method == "POST":
+		b, _ := io.ReadAll(r.Body)
+		f.actions = append(f.actions, "env "+string(b))
+		write(200, map[string]bool{"ok": true})
 	case r.URL.Path == "/v1/sites/voltix-id/laravel/artisan":
 		b, _ := io.ReadAll(r.Body)
 		f.actions = append(f.actions, "artisan "+string(b))

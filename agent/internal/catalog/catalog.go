@@ -160,3 +160,51 @@ func Node(v string) (NodeVersion, bool) {
 
 // NodeAll returns the offered Node.js versions, newest first.
 func NodeAll() []NodeVersion { return append([]NodeVersion(nil), node...) }
+
+// Runtime is one offered version of a language runtime for apps built from source (APP-02): node, go, python.
+// The official full Debian image of that version builds and runs the app (it carries git and curl).
+type Runtime struct {
+	Version       string
+	Image         string
+	SecurityUntil string
+	Default       bool
+}
+
+var runtimes = map[string][]Runtime{
+	"go": {
+		{Version: "1.27", SecurityUntil: "2027-08-31", Default: true,
+			Image: "golang:1.27-trixie@sha256:c47c3fda018d13d43a6bf5ebac3e5bba8a23a35782aa4faf531afaf47c64c39f"},
+		{Version: "1.26", SecurityUntil: "2027-02-28",
+			Image: "golang:1.26-trixie@sha256:19ce7a1fdc59527aa568805ea100c380900d059d251e914fb86e11fd0ce68952"},
+	},
+	"python": {
+		{Version: "3.15", SecurityUntil: "2031-10-31",
+			Image: "python:3.15-trixie@sha256:ce323fb792e0c3c6de88daab1a714542c6be2d4b14177aae410d0294c50b3d90"},
+		{Version: "3.14", SecurityUntil: "2030-10-31", Default: true,
+			Image: "python:3.14-trixie@sha256:1cef1664561971647b94fedf437145415991d4feeda09c81df12acfad8829cde"},
+		{Version: "3.13", SecurityUntil: "2029-10-31",
+			Image: "python:3.13-trixie@sha256:ecbe213fb818d557fd19db4078244339e2e2e52874f9c81052d3094ea114d797"},
+	},
+}
+
+// RuntimeOf returns the entry for an app (node, go, python) and version.
+func RuntimeOf(app, v string) (Runtime, bool) {
+	for _, r := range Runtimes(app) {
+		if r.Version == v {
+			return r, true
+		}
+	}
+	return Runtime{}, false
+}
+
+// Runtimes returns the offered versions of an app's runtime, newest first.
+func Runtimes(app string) []Runtime {
+	if app == "node" {
+		out := make([]Runtime, 0, len(node))
+		for _, n := range node {
+			out = append(out, Runtime{Version: n.Version, Image: n.Image, SecurityUntil: n.SecurityUntil, Default: n.Version == NodeDefault})
+		}
+		return out
+	}
+	return append([]Runtime(nil), runtimes[app]...)
+}

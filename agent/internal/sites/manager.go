@@ -316,6 +316,15 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		return Site{}, err
 	}
 	if err := c.Check(res); err != nil {
+		if tr, _ := m.Trash(); strings.HasSuffix(err.Error(), "already in use on this server") {
+			for _, t := range tr {
+				for _, h := range t.Hosts {
+					if strings.HasPrefix(err.Error(), h.Name+" ") {
+						return Site{}, fmt.Errorf("%w (by a deleted website in the trash: delete it permanently there to use the domain again)", err)
+					}
+				}
+			}
+		}
 		return Site{}, err
 	}
 	id := m.newID(c.Domain)
@@ -325,7 +334,7 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		Database: c.Database,
 		Version:  laravelVersion(c),
 	}
-	if c.AppOf() == spec.AppNode {
+	if spec.IsRuntimeApp(c.AppOf()) {
 		s.Version, s.Repo, s.Branch, s.Build, s.Start, s.Dir = c.Version, c.Repo, c.Branch, c.Build, c.Start, c.Dir
 		if c.Source == spec.SourceFiles {
 			s.Source = spec.SourceFiles
@@ -401,7 +410,7 @@ func (m *Manager) create(j *Job, s Site) {
 		s.Phase = "failed"
 		_ = writeSite(dir, s)
 	}
-	if s.IsNode() {
+	if s.IsRuntime() {
 		m.createNode(ctx, j, s, fail)
 		return
 	}
@@ -673,6 +682,26 @@ func (m *Manager) Restore(ctx context.Context, entry string) (string, error) {
 	return id, nil
 }
 
+// RemoveTrash deletes one trash entry for good (files and database), so its domain can be used again.
+func (m *Manager) RemoveTrash(entry string) error {
+	mm := trashRe.FindStringSubmatch(entry)
+	if mm == nil || spec.ID(mm[1]) != nil {
+		return ErrNotFound
+	}
+	if !m.mu.TryLock() {
+		return ErrBusy
+	}
+	defer m.mu.Unlock()
+	p := filepath.Join(m.trashDir(), entry)
+	if filepath.Dir(p) != m.trashDir() {
+		return ErrNotFound
+	}
+	if _, err := os.Stat(filepath.Join(p, "site.json")); err != nil {
+		return ErrNotFound
+	}
+	return os.RemoveAll(p)
+}
+
 // Purge removes trash entries older than TrashDays and returns their names.
 func (m *Manager) Purge() ([]string, error) {
 	m.mu.Lock()
@@ -723,7 +752,7 @@ type Stack struct {
 
 // services lists the services a site may have; anything else in the project is ignored.
 func services(s Site) []string {
-	if s.IsNode() {
+	if s.IsRuntime() {
 		return []string{"app"}
 	}
 	l := []string{"web"}
