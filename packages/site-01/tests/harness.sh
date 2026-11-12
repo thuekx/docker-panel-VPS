@@ -224,6 +224,30 @@ ok "daily backup switched on" '[ "$CODE" = 200 ] && grep -q "\"backup_daily\": *
 api POST /v1/sites/b-example-test/backups/manual-20200101-000000.tar.gz/delete; ok "delete a backup" '[ "$CODE" = 200 ] && [ ! -e "$BKD/manual-20200101-000000.tar.gz" ]'
 api GET "/v1/sites/b-example-test/backups/..%2Fsite.json"; ok "backup names outside the list refused" '[ "$CODE" = 400 ]'
 
+# --- APP-01 static and plain PHP websites (real images; WordPress must never be copied in)
+printf '%s c-example-test.%s d-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
+api POST /v1/sites '{"app":"static","domain":"c.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"Situs C"}'; JC="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "static site created" '[ "$CODE" = 202 ] && [ "$(wait_job "$JC")" = done ]'
+WPC="$SITE01_TEST_ROOT/srv/nostek/sites/c-example-test/wp"
+ok "static site serves its starter page and falls back to index.html" 'grep -q "Situs C" <<<"$(site_get c-example-test c-example-test.$ZONE /)" && grep -q "Situs C" <<<"$(site_get c-example-test c-example-test.$ZONE /app/route)" && [ "$(web c-example-test c-example-test.$ZONE /.env)" = 403 ]'
+printf 'built app\n' > "$T/app.txt"; raw PUT '/v1/sites/c-example-test/files/content?path=/app.txt' "$T/app.txt"
+ok "uploaded file served, site folder read-only for nginx" '[ "$(site_get c-example-test c-example-test.$ZONE /app.txt)" = "built app" ] && ! docker exec np-site-c-example-test-web-1 sh -c "touch /var/www/html/x" 2>/dev/null'
+ok "static site runs one container, no database" '[ "$(docker ps -q --filter name=np-site-c-example-test | wc -l)" = 1 ] && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/sites/c-example-test/db" ]'
+api GET /v1/sites/c-example-test/db; C1="$CODE"; api GET /v1/sites/c-example-test/wp
+ok "no Database or WordPress tools on a static site" '[ "$C1" = 400 ] && [ "$CODE" = 400 ]'
+api POST /v1/sites '{"app":"php","database":true,"domain":"d.example.test","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"","title":"Situs D"}'; JD="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "PHP site with database created" '[ "$CODE" = 202 ] && [ "$(wait_job "$JD")" = done ]'
+WPD="$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/wp"
+ok "PHP starter page runs and reaches its database" 'site_get d-example-test d-example-test.$ZONE / > "$T/d.html"; grep -q "Situs D" "$T/d.html" && grep -q "PHP <code>8.4" "$T/d.html" && grep -q "Database: connected" "$T/d.html"'
+ok "WordPress was not copied into the PHP site" '[ ! -e "$WPD/wp-config.php" ] && [ ! -e "$WPD/wp-includes" ] && [ "$(ls "$WPD")" = index.php ]'
+printf '<?php echo "front:" . parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);\n' > "$T/index.php"; raw PUT '/v1/sites/d-example-test/files/content?path=/index.php&overwrite=1' "$T/index.php"
+ok "routes go to index.php (front controller)" '[ "$(site_get d-example-test d-example-test.$ZONE /hello/world)" = "front:/hello/world" ]'
+DPW="$(cat "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/secrets/db_password")"
+ok "database password only as a file, never in the environment" '! docker inspect np-site-d-example-test-php-1 | grep -qF "$DPW" && docker inspect np-site-d-example-test-php-1 | grep -q "DB_PASSWORD_FILE=/run/secrets/db_password"'
+api GET /v1/sites/d-example-test/db; ok "Database tab works with its own database name" '[ "$CODE" = 200 ] && grep -q "\"name\":\"app\"" <<<"$BODY"'
+api POST /v1/sites/d-example-test/backups; JB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "PHP site backup holds its database" '[ "$(wait_job "$JB")" = done ] && f="$(ls "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/backups/"manual-*)" && tar -xzOf "$f" database.sql > "$T/d.sql" 2>/dev/null; grep -q "Database: app" "$T/d.sql"'
+
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again (update) passes, websites untouched" '[ $RC = 0 ] && has "already built" && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$CIDS" ]'
@@ -234,7 +258,7 @@ ok "trashed domain stays reserved" '[ "$CODE" = 422 ]'
 api POST "/v1/trash/$ENTRY/restore"; ok "restore brings the site back with its data" '[ "$CODE" = 200 ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
 
 # --- revert keeps websites running
-run REVERT "${A[@]}"; ok "revert stops the agent, websites keep running" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -e "$SITE01_TEST_ROOT/usr/local/sbin/nostek-agent" ] && [ "$(web a-example-test a-example-test.$ZONE /)" = 200 ] && has "sites_kept=2"'
+run REVERT "${A[@]}"; ok "revert stops the agent, websites keep running" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -e "$SITE01_TEST_ROOT/usr/local/sbin/nostek-agent" ] && [ "$(web a-example-test a-example-test.$ZONE /)" = 200 ] && has "sites_kept=4"'
 run VERIFY "${A[@]}"; ok "verify fails after revert" '[ $RC = 1 ]'
 
 cleanup; TMP_ALL="$(mktemp -d)"
