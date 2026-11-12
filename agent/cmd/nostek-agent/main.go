@@ -160,6 +160,7 @@ func serve(cfg Config, m *sites.Manager) error {
 		defer cancel()
 		_ = srv.Shutdown(sh)
 	}()
+	go m.CronLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
 	fmt.Println("nostek-agent", Version, "listening on", cfg.Socket)
 	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err

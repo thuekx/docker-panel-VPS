@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -79,6 +80,9 @@ type Manager struct {
 	now     func() time.Time
 	mu      sync.Mutex // serialises changes
 	jobs    *Jobs
+	// tlsAddr and tlsRoots let tests point the certificate check at their own server (default: the local edge).
+	tlsAddr  string
+	tlsRoots *x509.CertPool
 }
 
 // New returns a manager.

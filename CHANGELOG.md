@@ -3,6 +3,30 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.6.0] — unreleased
+
+### Added
+- **WordPress Tools** per website (WP-01, like WP Toolkit), a new WordPress tab:
+  - Site card with the address, admin account and **one-click login to wp-admin**. The link works once, for
+    60 seconds; WordPress keeps only its SHA-256 and the link is never written to a log.
+  - **Dashboard**: WordPress version and updates for core, plugins and themes ("Update everything" in one go);
+    HTTPS certificate status with expiry date; security measures in place; integrity check of WordPress core
+    and wordpress.org plugins against their official checksums.
+  - Switches: **debugging** (PHP errors go to the website's Logs, never to visitors or a public debug.log),
+    **search engine indexing**, **system cron** (the server runs wp-cron.php every 5 minutes instead of on
+    visits) and **maintenance mode** (visitors get a 503 page, logged-in admins still see the site).
+  - **Plugins** and **Themes** tabs: activate, deactivate, update, delete, auto-update on/off, install from
+    wordpress.org by slug.
+  - **WP-CLI** console: one command at a time in the website's own WP-CLI container, as www-data, without a
+    shell; interactive commands and `--ssh`, `--http`, `--path` are refused. Only the command name goes to the
+    audit log, never its arguments.
+- nostek-agent: `/v1/sites/{id}/wp…` routes; a small must-use plugin `nostek-panel.php` in each website for the
+  login link and maintenance mode.
+
+### Changed
+- The WP-CLI container of each website can reach the internet (for updates and checksums). The agent rewrites
+  a website's compose file the first time WordPress Tools open it; running containers are not restarted.
+
 ## [1.5.0] — 2026-11-12
 
 Running at the owner's server since 15:37 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).

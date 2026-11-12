@@ -1,0 +1,10 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}
+<section class="card tone c-teal wp-go" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "wp.login.title"}}</h2>
+  <p>{{t $l "wp.login.as" (index $d "User") (index $d "Domain")}}</p>
+  <p><a class="primary btn" href="{{index $d "URL"}}" rel="noopener noreferrer" data-go>{{t $l "wp.login.go"}}</a></p>
+  <p class="muted">{{t $l "wp.login.help"}}</p>
+  <p><a href="/wp/{{index $d "Site"}}">{{t $l "wp.back"}}</a></p>
+</section>
+{{end}}

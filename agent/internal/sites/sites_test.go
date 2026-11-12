@@ -25,6 +25,7 @@ type fakeRunner struct {
 	stats  string            // docker stats answer
 	answer map[string]string // answer for any call containing the key
 	dumped string            // what DockerTo writes (export)
+	hook   func(args []string) ([]byte, error, bool)
 }
 
 func (f *fakeRunner) DockerTo(ctx context.Context, dir string, stdin io.Reader, w io.Writer, args ...string) ([]byte, error) {
@@ -45,6 +46,11 @@ func (f *fakeRunner) Docker(ctx context.Context, dir string, stdin io.Reader, ar
 		f.stdin = append(f.stdin, string(b))
 	}
 	j := strings.Join(args, " ")
+	if f.hook != nil {
+		if out, err, ok := f.hook(args); ok {
+			return out, err
+		}
+	}
 	if f.fail != "" && strings.Contains(j, f.fail) {
 		return []byte("boom"), errors.New("exit 1")
 	}

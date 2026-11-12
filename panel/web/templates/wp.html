@@ -1,0 +1,124 @@
+{{define "wpswitch"}}<form method="post" action="/wp/{{.S}}" class="sw-row"><input type="hidden" name="csrf" value="{{.C}}"><input type="hidden" name="op" value="set"><input type="hidden" name="key" value="{{.K}}"><input type="hidden" name="on" value="{{if .On}}0{{else}}1{{end}}">
+  <button type="submit" class="switch{{if .On}} on{{end}}" role="switch" aria-checked="{{if .On}}true{{else}}false{{end}}" aria-label="{{t .L (printf "wp.set.%s" .K)}}"><i></i></button>
+  <span class="sw-txt"><b>{{t .L (printf "wp.set.%s" .K)}}</b><span class="muted">{{t .L (printf "wp.set.%s.help" .K)}}</span></span></form>{{end}}
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$w := $d.WP}}{{$csrf := .CSRF}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "wp.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if $d.OutputErr}}<p class="err" role="alert" data-anim="shake">{{$d.OutputErr}}</p>{{end}}
+{{template "sitetabs" (dict3 $l $s.ID "wp")}}
+<section class="card wide tone c-teal wp-head" data-anim="card">
+  <div class="wp-card">
+    <a class="wp-shot" href="{{$s.URL}}" target="_blank" rel="noopener noreferrer" aria-label="{{t $l "wp.open"}}: {{$s.Domain}}">
+      <span class="wp-mono" aria-hidden="true">{{if $w.Title}}{{slice $w.Title 0 1}}{{else}}W{{end}}</span>
+      <span class="wp-shot-t">{{if $w.Title}}{{$w.Title}}{{else}}{{$s.Domain}}{{end}}</span>
+      <span class="wp-shot-u">{{$s.URL}}</span>
+    </a>
+    <form method="post" action="/wp/{{$s.ID}}" target="_blank" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="login">
+      <button class="primary" type="submit"{{if $d.Err}} disabled{{end}}><span class="ico" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "wp.login"}}</button>
+      <a class="ghost btn" href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{t $l "wp.open"}}</a></form>
+    <ul class="plain muted">
+      <li><span class="ico" aria-hidden="true">{{template "ico-user"}}</span><code>{{$s.AdminUser}}</code>{{if gt (len $w.Admins) 1}} <span class="muted">{{t $l "wp.admins.more" (len $w.Admins)}}</span>{{end}}</li>
+      <li><span class="ico" aria-hidden="true">{{template "ico-globe"}}</span>{{$s.Domain}}</li>
+    </ul>
+  </div>
+  <div class="wp-main">
+    <div class="stat-head"><h2 class="wp-title">{{if $w.Title}}{{$w.Title}}{{else}}{{$s.Domain}}{{end}}</h2>{{if $w.Maintenance}}<span class="pill s-warn">{{t $l "wp.maint.on"}}</span>{{end}}</div>
+    {{if not $d.Err}}<p class="facts"><span>WordPress <b>{{$w.Version}}</b></span><span>PHP <b>{{$w.PHP}}</b></span><span>{{if $w.TLS.OK}}<span class="pill s-ok">HTTPS ✓</span>{{else}}<span class="pill s-warn">HTTPS !</span>{{end}}</span>{{if or $w.CoreUpdate $w.PluginUpdates $w.ThemeUpdates}}<span class="pill s-warn">{{t $l "wp.updates.n" (add3 (len1 $w.CoreUpdate) $w.PluginUpdates $w.ThemeUpdates)}}</span>{{end}}</p>{{end}}
+    <nav class="subtabs" aria-label="WordPress">{{range $x := list3 "dashboard" "plugins" "themes"}}<a href="/wp/{{$s.ID}}?tab={{$x}}"{{if eq $d.Tab $x}} aria-current="page"{{end}}>{{t $l (printf "wp.tab.%s" $x)}}{{if and (eq $x "plugins") $w.PluginUpdates}} <span class="badge">{{$w.PluginUpdates}}</span>{{end}}{{if and (eq $x "themes") $w.ThemeUpdates}} <span class="badge">{{$w.ThemeUpdates}}</span>{{end}}</a>{{end}}<a href="/wp/{{$s.ID}}?tab=cli"{{if eq $d.Tab "cli"}} aria-current="page"{{end}}>WP-CLI</a><a href="/db/{{$s.ID}}">{{t $l "db.title"}}</a></nav>
+    <p class="quick"><a href="/files/{{$s.ID}}"><span class="ico" aria-hidden="true">{{template "ico-folder"}}</span>{{t $l "files.title"}}</a><a href="/db/{{$s.ID}}"><span class="ico" aria-hidden="true">{{template "ico-disk"}}</span>{{t $l "db.title"}}</a><a href="/sites/{{$s.ID}}?logs=web#logs"><span class="ico" aria-hidden="true">{{template "ico-list"}}</span>{{t $l "sites.logs"}}</a><a href="/wp/{{$s.ID}}?tab=cli"><span class="ico" aria-hidden="true">{{template "ico-term"}}</span>WP-CLI</a></p>
+    {{if $d.Err}}<p class="banner warn">{{t $l "wp.err.read"}} <code>{{$d.Err}}</code></p>{{end}}
+    {{range $w.Warnings}}<p class="banner warn">{{t $l "wp.warn"}} <code>{{.}}</code></p>{{end}}
+  </div>
+</section>
+{{if $d.Output}}<section class="card wide tone c-green" data-anim="card"><h2>{{t $l "wp.output"}}</h2><pre class="logs">{{$d.Output}}</pre></section>{{end}}
+{{if not $d.Err}}
+{{if eq $d.Tab "dashboard"}}
+{{if $d.Check}}<section class="card wide tone {{if and $d.Check.CoreOK $d.Check.PluginsOK}}c-green{{else}}c-rose{{end}}" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "wp.check.title"}}</h2>
+  <p>{{if $d.Check.CoreOK}}<span class="pill s-ok">{{t $l "wp.check.core.ok"}}</span>{{else}}<span class="pill s-bad">{{t $l "wp.check.core.bad"}}</span>{{end}}
+     {{if $d.Check.PluginsOK}}<span class="pill s-ok">{{t $l "wp.check.plugins.ok"}}</span>{{else}}<span class="pill s-warn">{{t $l "wp.check.plugins.bad"}}</span>{{end}}</p>
+  <details><summary>{{t $l "wp.check.details"}}</summary><pre class="logs">{{$d.Check.Core}}
+
+{{$d.Check.Plugins}}</pre></details>
+  <p class="muted">{{t $l "wp.check.help"}}</p>
+</section>{{end}}
+<section class="grid pair">
+<article class="card tone c-blue" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-cloud"}}</span>{{t $l "wp.updates"}}</h2>
+  <div class="table-wrap"><table class="upd-table"><tbody>
+    <tr><th>WordPress</th><td><b>{{$w.Version}}</b> {{if $w.CoreUpdate}}<span class="pill s-warn">{{t $l "wp.update.to" $w.CoreUpdate}}</span>{{else}}<span class="pill s-ok">{{t $l "wp.uptodate"}}</span>{{end}}
+      {{if $w.CoreUpdate}}<form method="post" action="/wp/{{$s.ID}}" class="upd"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="core"><input type="hidden" name="do" value="update"><button class="secondary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.update"}}</button></form>{{end}}</td></tr>
+    <tr><th>{{t $l "wp.tab.plugins"}}</th><td>{{if $w.PluginUpdates}}<a href="/wp/{{$s.ID}}?tab=plugins"><span class="pill s-warn">{{t $l "wp.updates.n" $w.PluginUpdates}}</span></a>{{else}}<span class="pill s-ok">{{t $l "wp.uptodate"}}</span>{{end}}
+      {{if $w.PluginUpdates}}<form method="post" action="/wp/{{$s.ID}}" class="upd"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="plugin"><input type="hidden" name="do" value="update"><input type="hidden" name="all" value="1"><button class="secondary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.update.all"}}</button></form>{{end}}</td></tr>
+    <tr><th>{{t $l "wp.tab.themes"}}</th><td>{{if $w.ThemeUpdates}}<a href="/wp/{{$s.ID}}?tab=themes"><span class="pill s-warn">{{t $l "wp.updates.n" $w.ThemeUpdates}}</span></a>{{else}}<span class="pill s-ok">{{t $l "wp.uptodate"}}</span>{{end}}
+      {{if $w.ThemeUpdates}}<form method="post" action="/wp/{{$s.ID}}" class="upd"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="theme"><input type="hidden" name="do" value="update"><input type="hidden" name="all" value="1"><button class="secondary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.update.all"}}</button></form>{{end}}</td></tr>
+  </tbody></table></div>
+</article>
+<article class="card tone c-violet" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-gear"}}</span>{{t $l "wp.tools"}}</h2>
+  <p>PHP <span class="tag-srv c-violet">PHP {{$w.PHP}}</span> <span class="tag-srv {{if eq $w.Server "nginx"}}c-green{{else}}c-orange{{end}}">{{t $l (printf "sites.server.%s" $w.Server)}}</span></p>
+  {{template "wpswitch" (dict "L" $l "S" $s.ID "C" $csrf "K" "debug" "On" $w.Debug)}}
+</article>
+<article class="card tone c-green" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "wp.security"}}</h2>
+  <ul class="plain checks">
+    <li class="tls">{{if $w.TLS.OK}}<span class="pill s-ok">{{t $l "wp.tls.ok"}}</span> <span class="muted">{{t $l "wp.tls.until" $d.TLSUntil $d.TLSDays}}{{if $w.TLS.Issuer}} · {{$w.TLS.Issuer}}{{end}}</span>{{else}}<span class="pill s-warn">{{t $l "wp.tls.bad"}}</span> <span class="muted"><code>{{$w.TLS.Host}}</code> {{$w.TLS.Error}}</span>{{end}}</li>
+    <li><span class="mk {{if $w.SSLAdmin}}ok{{else}}warn{{end}}" aria-hidden="true">{{if $w.SSLAdmin}}✓{{else}}!{{end}}</span><span>{{t $l "wp.sec.ssladmin"}}</span></li>
+    <li><span class="mk {{if $w.FileEditOff}}ok{{else}}warn{{end}}" aria-hidden="true">{{if $w.FileEditOff}}✓{{else}}!{{end}}</span><span>{{t $l "wp.sec.fileedit"}}</span></li>
+    <li><span class="mk ok" aria-hidden="true">✓</span><span>{{t $l "wp.sec.isolated"}}</span></li>
+  </ul>
+  <form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="check"><button class="secondary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.check"}}</button></form>
+</article>
+<article class="card tone c-amber" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-pulse"}}</span>{{t $l "wp.performance"}}</h2>
+  {{template "wpswitch" (dict "L" $l "S" $s.ID "C" $csrf "K" "indexing" "On" $w.Indexing)}}
+  {{template "wpswitch" (dict "L" $l "S" $s.ID "C" $csrf "K" "system_cron" "On" $w.SystemCron)}}
+</article>
+</section>
+<section class="card wide tone c-rose wp-foot" data-anim="card">
+  {{if or $w.CoreUpdate $w.PluginUpdates $w.ThemeUpdates}}<form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="core"><input type="hidden" name="do" value="all"><button class="primary" type="submit" data-busy="{{t $l "wp.busy"}}" data-confirm="{{t $l "wp.update.everything.ask"}}">{{t $l "wp.update.everything"}}</button></form>{{end}}
+  {{template "wpswitch" (dict "L" $l "S" $s.ID "C" $csrf "K" "maintenance" "On" $w.Maintenance)}}
+</section>
+{{else if or (eq $d.Tab "plugins") (eq $d.Tab "themes")}}
+{{$kind := "plugin"}}{{$items := $w.Plugins}}{{$n := $w.PluginUpdates}}{{if eq $d.Tab "themes"}}{{$kind = "theme"}}{{$items = $w.Themes}}{{$n = $w.ThemeUpdates}}{{end}}
+<section class="card wide tone {{if eq $kind "plugin"}}c-blue{{else}}c-violet{{end}} fm" data-anim="card">
+  <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{if eq $kind "plugin"}}{{template "ico-plug"}}{{else}}{{template "ico-palette"}}{{end}}</span>{{t $l (printf "wp.tab.%s" $d.Tab)}} <code class="proj">{{len $items}}</code></span>
+    <span class="row">{{if $n}}<form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{$kind}}"><input type="hidden" name="do" value="update"><input type="hidden" name="all" value="1"><button class="primary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.update.alln" $n}}</button></form>{{end}}</span></div>
+  <div class="table-wrap"><table class="fm-table wp-items">
+    <thead><tr><th>{{t $l "wp.item.name"}}</th><th>{{t $l "wp.item.version"}}</th><th>{{t $l "wp.item.status"}}</th><th>{{t $l "wp.item.auto"}}</th><th><span class="sr">{{t $l "files.actions"}}</span></th></tr></thead>
+    <tbody>{{range $items}}{{$fixed := or (eq .Status "must-use") (eq .Status "dropin")}}<tr data-anim="item">
+      <td><b>{{if .Title}}{{.Title}}{{else}}{{.Name}}{{end}}</b><br><code class="muted">{{.Name}}</code></td>
+      <td>{{.Version}}{{if eq .Update "available"}} <span class="pill s-warn">→ {{.UpdateVersion}}</span>{{end}}</td>
+      <td><span class="pill {{if eq .Status "active"}}s-ok{{else if eq .Status "parent"}}s-info{{else if $fixed}}s-unknown{{else}}s-off{{end}}">{{t $l (printf "wp.st.%s" .Status)}}</span></td>
+      <td>{{if not $fixed}}<form method="post" action="/wp/{{$s.ID}}" class="sw-row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{$kind}}"><input type="hidden" name="name" value="{{.Name}}"><input type="hidden" name="do" value="{{if eq .AutoUpdate "on"}}auto-off{{else}}auto-on{{end}}"><button type="submit" class="switch{{if eq .AutoUpdate "on"}} on{{end}}" role="switch" aria-checked="{{if eq .AutoUpdate "on"}}true{{else}}false{{end}}" aria-label="{{t $l "wp.item.auto"}}: {{.Name}}"><i></i></button></form>{{end}}</td>
+      <td class="fm-act">{{if not $fixed}}<details class="menu"><summary class="ghost btn" aria-label="{{t $l "files.actions"}}: {{.Name}}">⋯</summary><div class="menu-pop">
+        {{if eq .Update "available"}}<form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{$kind}}"><input type="hidden" name="name" value="{{.Name}}"><input type="hidden" name="do" value="update"><button class="primary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.update.to" .UpdateVersion}}</button></form>{{end}}
+        {{if ne .Status "active"}}<form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{$kind}}"><input type="hidden" name="name" value="{{.Name}}"><input type="hidden" name="do" value="activate"><button class="secondary" type="submit">{{t $l "wp.activate"}}</button></form>
+        {{else if eq $kind "plugin"}}<form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="plugin"><input type="hidden" name="name" value="{{.Name}}"><input type="hidden" name="do" value="deactivate"><button class="secondary" type="submit">{{t $l "wp.deactivate"}}</button></form>{{end}}
+        {{if or (eq $kind "plugin") (eq .Status "inactive")}}<form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{$kind}}"><input type="hidden" name="name" value="{{.Name}}"><input type="hidden" name="do" value="delete"><button class="danger" type="submit" data-confirm="{{t $l (printf "wp.delete.%s.ask" $kind) .Name}}">{{t $l "files.delete"}}</button></form>{{end}}
+      </div></details>{{else}}<span class="muted">{{t $l "wp.fixed"}}</span>{{end}}</td>
+    </tr>{{else}}<tr><td colspan="5" class="muted">{{t $l "wp.none"}}</td></tr>{{end}}</tbody></table></div>
+</section>
+<section class="card wide tone c-green" data-anim="card">
+  <h2>{{t $l (printf "wp.install.%s" $kind)}}</h2>
+  <p class="muted">{{t $l "wp.install.help"}}</p>
+  <form method="post" action="/wp/{{$s.ID}}" class="form row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{$kind}}"><input type="hidden" name="do" value="install">
+    <label class="grow">{{t $l "wp.install.slug"}}<input name="name" autocomplete="off" autocapitalize="none" spellcheck="false" required pattern="[a-z0-9][a-z0-9\-]{0,99}" placeholder="{{if eq $kind "plugin"}}wordfence{{else}}astra{{end}}"></label>
+    <label class="check"><input type="checkbox" name="activate" value="1"> {{t $l "wp.install.activate"}}</label>
+    <button class="secondary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.install.go"}}</button></form>
+</section>
+{{else if eq $d.Tab "cli"}}
+<section class="card wide tone c-blue" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-term"}}</span>WP-CLI</h2>
+  <p class="muted">{{t $l "wp.cli.help"}}</p>
+  <form method="post" action="/wp/{{$s.ID}}" class="form row cli-form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="cli">
+    <label class="grow">{{t $l "wp.cli.line"}}<span class="cli-in"><span aria-hidden="true">wp</span><input name="line" value="{{$d.Line}}" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="2000" placeholder="plugin list --status=active"></span></label>
+    <button class="primary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.cli.go"}}</button></form>
+  <p class="muted">{{t $l "wp.cli.examples"}} <code>core version</code> · <code>plugin list</code> · <code>user list</code> · <code>cache flush</code> · <code>rewrite flush</code> · <code>search-replace http://old https://new --dry-run</code></p>
+  {{if $d.CLI}}<div class="stat-head"><span>{{t $l "wp.output"}}</span>{{if eq $d.CLI.Code 0}}<span class="pill s-ok">exit 0</span>{{else}}<span class="pill s-bad">exit {{$d.CLI.Code}}</span>{{end}}</div><pre class="logs">{{$d.CLI.Output}}</pre>{{end}}
+</section>
+{{end}}
+{{end}}
+<p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
+{{end}}
