@@ -3,7 +3,22 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.14.0] — 2026-11-13
+
+### Added
+- **Auto-deploy on push** for Node.js, Go and Python websites built from Git (APP-02c). A new card **Auto-deploy** on
+  the Overview turns it on and shows, once, the webhook address (`https://<panel>/hooks/<website>`) and a secret to
+  paste into the repository's webhook settings (GitHub, Gitea or GitLab; the steps are on the card).
+  - Every push to the website's branch then builds and starts a new release, with the same checks as Deploy: a
+    failing build leaves the live release running. Pushes to other branches, deleted branches and other events are
+    ignored. A push that arrives while another job runs waits for it and starts after it.
+  - Each delivery must be signed with the website's secret (HMAC-SHA256, or GitLab's token); the secret stays on the
+    server, readable by root only, and is never shown again (make a new one if it is lost; the old one stops at once).
+  - The card lists the last deliveries and what happened; the deploy history marks releases started by a push.
+
 ## [1.13.0] — 2026-11-13
+
+Running at the owner's server since 21:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **A database for Node.js, Go and Python websites** (APP-02b). "Add website" asks for one: no database, **MariaDB**

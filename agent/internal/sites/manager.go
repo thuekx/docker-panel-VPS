@@ -84,6 +84,10 @@ type Manager struct {
 	// tlsAddr and tlsRoots let tests point the certificate check at their own server (default: the local edge).
 	tlsAddr  string
 	tlsRoots *x509.CertPool
+	// APP-02c: deploys asked by a webhook while another job runs wait here, one per website
+	hookMu    sync.Mutex
+	hookWait  map[string]bool
+	hookRetry time.Duration
 }
 
 // New returns a manager.
@@ -91,7 +95,7 @@ func New(cfg Config, run Runner, resolve Resolver) *Manager {
 	if resolve == nil {
 		resolve = net.DefaultResolver.LookupHost
 	}
-	return &Manager{cfg: cfg, run: run, resolve: resolve, now: time.Now, jobs: NewJobs()}
+	return &Manager{cfg: cfg, run: run, resolve: resolve, now: time.Now, jobs: NewJobs(), hookWait: map[string]bool{}, hookRetry: 5 * time.Second}
 }
 
 // Jobs exposes the job table.

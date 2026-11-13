@@ -37,6 +37,9 @@ type fakeAgent struct {
 	keys      int
 	repo      string // APP-02b: repository of the fake runtime site
 	dbEngine  string // APP-02b: engine of the fake site database
+	hookOn    bool   // APP-02c
+	hooks     []agent.Hook
+	hookCalls []string
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -94,6 +97,28 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/v1/deploykeys" && r.Method == "POST":
 		f.keys++
 		write(200, agent.DeployKey{ID: "0123456789abcdef", Public: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey nostek-panel-deploy-0123456789abcdef", Fingerprint: "SHA256:testfp"})
+	case r.URL.Path == "/v1/sites/voltix-id/webhook":
+		write(200, agent.Webhook{On: f.hookOn, Branch: "main", Deliveries: []agent.Delivery{{At: 1700000000, Event: "push", Result: "deploy", Commit: "0123456789abcdef0123456789abcdef01234567", Job: "j0123456789abcdef"}}})
+	case r.URL.Path == "/v1/sites/voltix-id/webhook/secret":
+		f.hookOn = true
+		f.hookCalls = append(f.hookCalls, "secret")
+		write(200, map[string]string{"secret": "5ec2e75ec2e75ec2e75ec2e75ec2e75ec2e75ec2e75ec2e75ec2e75ec2e75ec2"})
+	case r.URL.Path == "/v1/sites/voltix-id/webhook/remove":
+		f.hookOn = false
+		f.hookCalls = append(f.hookCalls, "remove")
+		write(200, map[string]any{"ok": true})
+	case r.URL.Path == "/v1/sites/voltix-id/webhook/deliver":
+		var h agent.Hook
+		b, _ := io.ReadAll(r.Body)
+		json.Unmarshal(b, &h)
+		f.hooks = append(f.hooks, h)
+		if h.Signature == "sha256=bad" {
+			write(401, map[string]string{"error": "the delivery is not signed with this website's secret"})
+			return
+		}
+		write(200, agent.Delivery{Event: h.Event, Result: "deploy", Job: "j0123456789abcdef"})
+	case strings.HasPrefix(r.URL.Path, "/v1/sites/") && strings.HasSuffix(r.URL.Path, "/webhook/deliver"):
+		write(404, map[string]string{"error": "auto-deploy is off for this website"})
 	case r.URL.Path == "/v1/sites/voltix-id/deploykey":
 		write(200, agent.DeployKey{Public: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey nostek-panel-deploy-0123456789abcdef", Fingerprint: "SHA256:testfp", HostKeys: []string{"ssh-ed25519 SHA256:hostfp"}})
 	case strings.HasPrefix(r.URL.Path, "/v1/trash/") && strings.HasSuffix(r.URL.Path, "/remove"):

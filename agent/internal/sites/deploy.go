@@ -47,6 +47,7 @@ type Deploy struct {
 	Result   string `json:"result"`            // running | live | ok (was live, still on disk) | failed | removed
 	Error    string `json:"error,omitempty"`
 	Rollback bool   `json:"rollback,omitempty"` // this entry went live again by a rollback
+	Trigger  string `json:"trigger,omitempty"`  // webhook = started by a push (APP-02c); empty = from the panel
 }
 
 func (m *Manager) deployDir(id string) string { return filepath.Join(m.dir(id), "deploy") }
@@ -120,7 +121,9 @@ func (m *Manager) BuildLog(id string, n int) (string, error) {
 }
 
 // StartDeploy builds the branch again into a new release and switches the website to it.
-func (m *Manager) StartDeploy(id string) (string, error) {
+func (m *Manager) StartDeploy(id string) (string, error) { return m.startDeploy(id, "") }
+
+func (m *Manager) startDeploy(id, trigger string) (string, error) {
 	if !m.mu.TryLock() {
 		return "", ErrBusy
 	}
@@ -142,7 +145,7 @@ func (m *Manager) StartDeploy(id string) (string, error) {
 		defer m.mu.Unlock()
 		ctx, cancel := context.WithTimeout(context.Background(), BuildTimeout+5*time.Minute)
 		defer cancel()
-		if err := m.deploy(ctx, j, s); err != nil {
+		if err := m.deploy(ctx, j, s, trigger); err != nil {
 			j.Fail(err.Error())
 			return
 		}
@@ -236,7 +239,7 @@ var appFileCheck = map[string]string{
 var commitRe = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 // deploy builds a new release and makes it live. The steps go to the job; the build output to the log file.
-func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
+func (m *Manager) deploy(ctx context.Context, j *Job, s Site, trigger string) error {
 	n, _ := catalog.RuntimeOf(s.AppName(), s.Version)
 	h, err := m.readHistory(s.ID)
 	if err != nil {
@@ -248,7 +251,7 @@ func (m *Manager) deploy(ctx context.Context, j *Job, s Site) error {
 			next = d.Release + 1
 		}
 	}
-	d := Deploy{Release: next, Started: m.now().Unix(), Result: "running"}
+	d := Deploy{Release: next, Started: m.now().Unix(), Result: "running", Trigger: trigger}
 	h = append(h, d)
 	if err := m.writeHistory(s.ID, h); err != nil {
 		return err
@@ -462,7 +465,7 @@ func (m *Manager) createNode(ctx context.Context, j *Job, s Site, fail func(stri
 			return
 		}
 	}
-	if err := m.deploy(ctx, j, s); err != nil {
+	if err := m.deploy(ctx, j, s, ""); err != nil {
 		fail("deploy", err, nil)
 		return
 	}

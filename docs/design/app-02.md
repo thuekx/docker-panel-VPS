@@ -107,3 +107,20 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
 - Fix found on the way: a files restore stopped `web`, which runtime apps do not have; it now stops `app`.
 - Harness (repo check): Python + PostgreSQL and Node.js + MariaDB sites: values in the app env, the app reaches `db`,
   console, overview, export, import, backup and full restore.
+
+## APP-02c auto-deploy webhook as built (v1.14.0)
+
+- Public route `POST https://<panel>/hooks/{site}`: the only panel route without a session. It reads at most 1 MB,
+  limits 60 deliveries a minute per address, and passes the raw body with `X-Hub-Signature-256`, `X-Gitlab-Token` and
+  the event header (`X-GitHub-Event`, `X-Gitea-Event`, `X-Gogs-Event`, `X-Gitlab-Event`) to the agent
+  (`POST /v1/sites/{id}/webhook/deliver`). The panel holds no secret and decides nothing.
+- Agent: secret = 32 random bytes (hex) in `deploy/webhook_secret` (0600, root, not mounted). Check in constant time:
+  HMAC-SHA256 of the body (GitHub, Gitea, Forgejo) or the GitLab token (only when no signature header is sent).
+  Answers: 404 off or unknown website (same answer), 401 bad signature, 200 with the result.
+- `ping` → recorded. `push`/`Push Hook` to `refs/heads/<branch>` with a live commit → deploy (history entry
+  `trigger: webhook`); other refs, deleted branches and other events → ignored. While another job holds the agent,
+  one deploy per website waits (retry every 5 s, up to 20 minutes); further pushes while it waits are folded into it.
+- The last 10 deliveries are kept in `deploy/webhook.json` for the Overview. Bitbucket is not supported (it signs
+  differently); websites built from their own files have no webhook.
+- Harness (with the Git test): signed push deploys release 2 marked `webhook`; other branch ignored; wrong secret 401;
+  off → 404.
