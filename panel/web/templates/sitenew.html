@@ -16,8 +16,8 @@
     {{if $p.PHP}}<tr><th>PHP</th><td>{{$p.PHP}}{{range $.Data.Catalog.PHP}}{{if eq .Version $p.PHP}}{{if .EOL}} <span class="pill s-bad">{{t $l "sites.php.eol"}}</span>{{end}}{{end}}{{end}}</td></tr>{{end}}
     <tr><th>{{if $p.IsWP}}{{t $l "sites.wpurl"}}{{else}}{{t $l "sites.url"}}{{end}}</th><td><code>{{$p.URL}}</code></td></tr>
     <tr><th>{{t $l "sites.hosts"}}</th><td>{{range $p.Hosts}}<div><code>{{.Name}}</code> {{if .Routed}}<span class="pill s-ok">{{t $l "sites.host.ready"}}</span>{{else}}<span class="pill s-warn">{{t $l "sites.host.dns"}}</span>{{end}}</div>{{end}}</td></tr>
-    <tr><th>{{t $l "sites.creates"}}</th><td>{{t $l (printf "sites.creates.%s" $k)}}{{if $p.HasDB}}{{if $p.IsNode}} {{t $l (printf "sites.creates.db.%s" $p.DBEngineName)}}{{else if eq $p.App "php"}} {{t $l "sites.creates.db"}}{{end}}{{end}}</td></tr>
-    <tr><th>{{t $l "sites.resources"}}</th><td>{{t $l (printf "sites.resources.%s" $k)}}{{if $p.HasDB}}{{if $p.IsNode}} {{t $l (printf "sites.resources.db.%s" $p.DBEngineName)}}{{else if eq $p.App "php"}} {{t $l "sites.resources.db"}}{{end}}{{end}}</td></tr>
+    <tr><th>{{t $l "sites.creates"}}</th><td>{{t $l (printf "sites.creates.%s" $k)}}{{if $p.HasDB}}{{if or $p.IsNode (eq $p.App "php")}} {{t $l (printf "sites.creates.db.%s" $p.DBEngineName)}}{{else if and $p.IsLaravel $p.IsPostgres}} {{t $l "sites.creates.laravel.pg"}}{{end}}{{end}}</td></tr>
+    <tr><th>{{t $l "sites.resources"}}</th><td>{{t $l (printf "sites.resources.%s" $k)}}{{if $p.HasDB}}{{if or $p.IsNode (eq $p.App "php")}} {{t $l (printf "sites.resources.db.%s" $p.DBEngineName)}}{{end}}{{end}}</td></tr>
     <tr><th>{{t $l "sites.undo"}}</th><td>{{t $l "sites.undo.text"}}</td></tr>
   </tbody></table></div>
   {{with .Data.Key}}<div class="deploykey" id="deploykey">
@@ -32,7 +32,7 @@
     <input type="hidden" name="domain" value="{{$f.Domain}}"><input type="hidden" name="aliases" value="{{.Data.Aliases}}">
     <input type="hidden" name="primary" value="{{$f.Primary}}"><input type="hidden" name="server" value="{{$f.Server}}">
     <input type="hidden" name="php" value="{{$f.PHP}}"><input type="hidden" name="admin_email" value="{{$f.AdminEmail}}">
-    <input type="hidden" name="title" value="{{$f.Title}}"><input type="hidden" name="app" value="{{$f.App}}"><input type="hidden" name="version" value="{{$f.Version}}">{{if or (eq $f.App "node") (eq $f.App "go") (eq $f.App "python")}}<input type="hidden" name="{{$f.App}}_version" value="{{$f.Version}}"><input type="hidden" name="repo" value="{{$f.Repo}}"><input type="hidden" name="source" value="{{$f.Source}}"><input type="hidden" name="dir" value="{{$f.Dir}}"><input type="hidden" name="branch" value="{{$f.Branch}}"><input type="hidden" name="build" value="{{$f.Build}}"><input type="hidden" name="start" value="{{$f.Start}}">{{with .Data.Key}}<input type="hidden" name="key_id" value="{{.ID}}">{{end}}{{if $f.Database}}<input type="hidden" name="db_engine" value="{{$f.DBEngine}}">{{end}}{{else if $f.Database}}<input type="hidden" name="database" value="1">{{end}}
+    <input type="hidden" name="title" value="{{$f.Title}}"><input type="hidden" name="app" value="{{$f.App}}"><input type="hidden" name="version" value="{{$f.Version}}">{{if or (eq $f.App "node") (eq $f.App "go") (eq $f.App "python")}}<input type="hidden" name="{{$f.App}}_version" value="{{$f.Version}}"><input type="hidden" name="repo" value="{{$f.Repo}}"><input type="hidden" name="source" value="{{$f.Source}}"><input type="hidden" name="dir" value="{{$f.Dir}}"><input type="hidden" name="branch" value="{{$f.Branch}}"><input type="hidden" name="build" value="{{$f.Build}}"><input type="hidden" name="start" value="{{$f.Start}}">{{with .Data.Key}}<input type="hidden" name="key_id" value="{{.ID}}">{{end}}{{end}}{{if eq $f.App "laravel"}}<input type="hidden" name="laravel_db" value="{{if $f.DBEngine}}{{$f.DBEngine}}{{else}}mariadb{{end}}">{{else if $f.Database}}<input type="hidden" name="db_engine" value="{{if $f.DBEngine}}{{$f.DBEngine}}{{else}}mariadb{{end}}">{{end}}
     <button class="primary" type="submit">{{t $l "sites.approve.go"}}</button>
     <a class="ghost btn" href="/sites/new">{{t $l "sites.back"}}</a>
   </form>
@@ -57,7 +57,6 @@
     </fieldset>
     <label>PHP<select name="php">{{range .Data.Catalog.PHP}}<option value="{{.Version}}" {{if eq .Version $f.PHP}}selected{{end}}>PHP {{.Version}}{{if .Default}} · {{t $l "sites.php.default"}}{{end}}{{if .EOL}} · {{t $l "sites.php.eol"}}{{else}} · {{t $l "sites.php.until" .SecurityUntil}}{{end}}</option>{{end}}</select></label>
     <label class="for-laravel">Laravel<select name="version">{{range .Data.Catalog.Laravel}}<option value="{{.Version}}" {{if or (eq .Version $f.Version) (and .Default (eq $f.Version ""))}}selected{{end}}>Laravel {{.Version}}{{if .Default}} · {{t $l "sites.laravel.newest"}}{{end}} · {{t $l "sites.laravel.needs" .MinPHP}}</option>{{end}}</select></label>
-    <label class="check for-phpapp"><input type="checkbox" name="database" value="1"{{if $f.Database}} checked{{end}}> {{t $l "sites.app.db"}}</label>
     </div>
     <div class="for-node">
     <fieldset class="choice"><legend>{{t $l "node.source"}}</legend>
@@ -77,14 +76,19 @@
     <label>{{t $l "node.build"}}<input name="build" value="{{$f.Build}}" placeholder="{{t $l "node.build.ph"}}" autocapitalize="none" spellcheck="false"></label>
     <label>{{t $l "node.start"}}<input name="start" value="{{$f.Start}}" placeholder="{{t $l "node.start.ph"}}" autocapitalize="none" spellcheck="false"></label>
     </div>
-    <fieldset class="choice"><legend>{{t $l "rt.db"}}</legend>
-      <label><input type="radio" name="db_engine" value="none" {{if not $f.Database}}checked{{end}}> {{t $l "rt.db.none"}}</label>
-      <label><input type="radio" name="db_engine" value="mariadb" {{if and $f.Database (ne $f.DBEngine "postgres")}}checked{{end}}> MariaDB</label>
-      <label><input type="radio" name="db_engine" value="postgres" {{if and $f.Database (eq $f.DBEngine "postgres")}}checked{{end}}> PostgreSQL</label>
-    </fieldset>
-    <span class="muted">{{t $l "rt.db.help"}}</span>
     <span class="muted for-rt rt-node">{{t $l "node.help"}}</span><span class="muted for-rt rt-go">{{t $l "go.help"}}</span><span class="muted for-rt rt-python">{{t $l "python.help"}}</span>
     </div>
+    <fieldset class="choice for-dbchoice"><legend>{{t $l "rt.db"}}</legend>
+      <label><input type="radio" name="db_engine" value="none" {{if not $f.Database}}checked{{end}}> {{t $l "rt.db.none"}}</label>
+      <label><input type="radio" name="db_engine" value="mariadb" {{if and $f.Database (ne $f.DBEngine "postgres")}}checked{{end}}> MariaDB</label>
+      <label><input type="radio" name="db_engine" value="postgres" {{if and $f.Database (eq $f.DBEngine "postgres")}}checked{{end}}> PostgreSQL 18</label>
+    </fieldset>
+    <span class="muted for-dbchoice for-rtdb">{{t $l "rt.db.help"}}</span><span class="muted for-dbchoice for-phpdb">{{t $l "php.db.help"}}</span>
+    <fieldset class="choice for-laravel"><legend>{{t $l "rt.db"}}</legend>
+      <label><input type="radio" name="laravel_db" value="mariadb" {{if ne $f.DBEngine "postgres"}}checked{{end}}> MariaDB</label>
+      <label><input type="radio" name="laravel_db" value="postgres" {{if eq $f.DBEngine "postgres"}}checked{{end}}> PostgreSQL 18</label>
+    </fieldset>
+    <p class="muted for-wp">{{t $l "wp.db.only"}}</p>
     <label>{{t $l "sites.aliases"}}<textarea name="aliases" rows="2" placeholder="voltix.co.id" autocapitalize="none" spellcheck="false">{{.Data.Aliases}}</textarea><span class="muted">{{t $l "sites.aliases.help"}}</span></label>
     <label>{{t $l "sites.title"}}<input name="title" value="{{$f.Title}}" maxlength="80"><span class="muted for-other">{{t $l "sites.title.optional"}}</span></label>
     <label class="for-wp">{{t $l "sites.email"}}<input type="email" name="admin_email" value="{{$f.AdminEmail}}"></label>

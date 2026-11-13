@@ -133,7 +133,8 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.URL.Path == "/v1/sites/plan" {
-			if site.IsNode() {
+			site.App = c.App
+			if site.IsNode() || c.App == "php" || c.App == "laravel" {
 				site.Database, site.DBEngine = c.Database, c.DBEngine
 			}
 			write(200, site)

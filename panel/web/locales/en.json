@@ -603,8 +603,8 @@
   "rt.db": "Database",
   "rt.db.none": "No database",
   "rt.db.help": "The app gets its own database on the private network, with DATABASE_URL and DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD in its environment. Backups and the Database page cover it.",
-  "sites.creates.db.mariadb": "Plus its own MariaDB database on the private network; DATABASE_URL is set for the app.",
-  "sites.creates.db.postgres": "Plus its own PostgreSQL 18 database on the private network; DATABASE_URL is set for the app.",
+  "sites.creates.db.mariadb": "Plus its own MariaDB database on the private network.",
+  "sites.creates.db.postgres": "Plus its own PostgreSQL 18 database on the private network.",
   "sites.resources.db.mariadb": "The database adds up to 512 MB.",
   "sites.resources.db.postgres": "The database adds up to 512 MB.",
   "db.rows.help.pg": "Row counts are PostgreSQL estimates, updated by autovacuum and ANALYZE.",
@@ -629,5 +629,8 @@
   "hook.res.queued": "waits",
   "hook.res.ignored": "ignored",
   "hook.by": "by push",
-  "sites.done.webhook-off": "Auto-deploy turned off. Deliveries are refused from now on; you can delete the webhook at the repository."
+  "sites.done.webhook-off": "Auto-deploy turned off. Deliveries are refused from now on; you can delete the webhook at the repository.",
+  "php.db.help": "The database runs on the website's private network. Your code finds it in the environment values DB_HOST, DB_NAME and DB_USER (with PostgreSQL also DB_PORT and DB_ENGINE); the password is in the file named by DB_PASSWORD_FILE. PostgreSQL adds the pgsql and pdo_pgsql extensions to PHP.",
+  "wp.db.only": "Database: MariaDB (WordPress supports MySQL and MariaDB only).",
+  "sites.creates.laravel.pg": "Database: PostgreSQL 18 instead of MariaDB; the PHP image also gets the PostgreSQL extensions."
 }
