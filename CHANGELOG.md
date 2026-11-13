@@ -18,6 +18,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ## [1.13.0] — 2026-11-13
 
+Running at the owner's server since 21:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+
 ### Added
 - **A database for Node.js, Go and Python websites** (APP-02b). "Add website" asks for one: no database, **MariaDB**
   or **PostgreSQL 18**, each on its official image pinned by digest, on the website's own private network.
