@@ -438,15 +438,29 @@ func (m *Manager) createNode(ctx context.Context, j *Job, s Site, fail func(stri
 			return
 		}
 	}
+	if s.HasDB() {
+		if err := m.appDatabase(s); err != nil {
+			fail("files", err, nil)
+			return
+		}
+	}
 	if err := writeSite(dir, s); err != nil {
 		fail("files", err, nil)
 		return
 	}
 	n, _ := catalog.RuntimeOf(s.AppName(), s.Version)
 	j.Step("pull images")
-	if out, err := m.run.Docker(ctx, dir, nil, "pull", "--quiet", n.Image); err != nil {
-		fail("pull images", err, out)
-		return
+	images := []string{n.Image}
+	if s.IsPostgres() {
+		images = append(images, catalog.Postgres)
+	} else if s.HasDB() {
+		images = append(images, catalog.MariaDB)
+	}
+	for _, img := range images {
+		if out, err := m.run.Docker(ctx, dir, nil, "pull", "--quiet", img); err != nil {
+			fail("pull images", err, out)
+			return
+		}
 	}
 	if err := m.deploy(ctx, j, s); err != nil {
 		fail("deploy", err, nil)
@@ -463,4 +477,34 @@ func (m *Manager) createNode(ctx context.Context, j *Job, s Site, fail func(stri
 		return
 	}
 	j.Done("")
+}
+
+// appDatabase prepares the MariaDB of a Node.js, Go or Python app (APP-02b): the data folder, the password file
+// the database container reads, and the connection values in the app's environment file (0600, outside the
+// website folder), where the Overview lists their names and the owner can change them.
+func (m *Manager) appDatabase(s Site) error {
+	dir := m.dir(s.ID)
+	if err := os.MkdirAll(filepath.Join(dir, "db"), 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "secrets"), 0o700); err != nil {
+		return err
+	}
+	pw := Password()
+	// read by the mariadb container (uid 999) only through its own mount; the folder above is 0700
+	if err := writeFile(filepath.Join(dir, "secrets", "db_password"), []byte(pw), 0o444); err != nil {
+		return err
+	}
+	name, scheme, port := s.DBName(), "mysql", "3306"
+	if s.IsPostgres() {
+		scheme, port = "postgres", "5432"
+	}
+	return m.writeEnv(s.ID, map[string]string{
+		"DATABASE_URL": scheme + "://" + name + ":" + pw + "@db:" + port + "/" + name,
+		"DB_HOST":      "db",
+		"DB_PORT":      port,
+		"DB_NAME":      name,
+		"DB_USER":      name,
+		"DB_PASSWORD":  pw,
+	})
 }

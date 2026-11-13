@@ -332,6 +332,7 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		ID: id, Domain: c.Domain, Primary: c.Primary, Server: c.Server, PHP: c.PHP,
 		AdminEmail: c.AdminEmail, Title: c.Title, Created: m.now().Unix(), Phase: "creating",
 		Database: c.Database,
+		DBEngine: dbEngine(c),
 		Version:  laravelVersion(c),
 	}
 	if spec.IsRuntimeApp(c.AppOf()) {
@@ -760,6 +761,9 @@ type Stack struct {
 // services lists the services a site may have; anything else in the project is ignored.
 func services(s Site) []string {
 	if s.IsRuntime() {
+		if s.HasDB() {
+			return []string{"app", "db"}
+		}
 		return []string{"app"}
 	}
 	l := []string{"web"}
@@ -960,4 +964,12 @@ func (m *Manager) RestartService(ctx context.Context, id, svc string) error {
 		return fmt.Errorf("restart %s failed: %s", svc, tail(out))
 	}
 	return nil
+}
+
+// dbEngine keeps "postgres" for a PostgreSQL database; MariaDB stays the empty default, as on older sites.
+func dbEngine(c spec.Create) string {
+	if c.Database && c.DBEngine == spec.DBPostgres {
+		return spec.DBPostgres
+	}
+	return ""
 }

@@ -59,7 +59,9 @@ var php = []PHPVersion{
 const (
 	CLI     = "wordpress:cli-php8.4@sha256:37b7e3ed9b537788756f9b5c6dd8ec7c3f3053ee707abc67c776e453ba8f9e55"
 	MariaDB = "mariadb:11.8@sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd"
-	Nginx   = "nginx:1.30-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+	// Postgres is the PostgreSQL a Node.js, Go or Python app may choose instead of MariaDB (APP-02b).
+	Postgres = "postgres:18-trixie@sha256:b9f6b8ff03b62f3cfd9d9ba3fe56226a9991c79d3fb46fd46536263bf02be553"
+	Nginx    = "nginx:1.30-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
 )
 
 // PHP returns the entry for a version.
