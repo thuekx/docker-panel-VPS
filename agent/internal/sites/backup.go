@@ -306,12 +306,11 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 		bw := bufio.NewWriterSize(sqlf, 1<<20)
 		sdir := m.dir(s.ID)
 		args := append([]string{"compose", "--project-directory", sdir, "-p", Project(s.ID), "-f", filepath.Join(sdir, "compose.yml")},
-			m.dbArgs("mariadb-dump", "--single-transaction", "--quick", "--no-tablespaces", "--default-character-set=utf8mb4",
-				"--add-drop-table", "--routines", "--events", s.DBName())...)
+			m.dumpArgs(s, true)...)
 		errOut, err := st.DockerTo(ctx, sdir, nil, bw, args...)
 		if err = errors.Join(err, bw.Flush()); err != nil {
 			if len(errOut) > 0 {
-				return "", fmt.Errorf("database copy failed: %w", dbErr(errOut))
+				return "", fmt.Errorf("database copy failed: %w", sqlErr(s, errOut))
 			}
 			return "", fmt.Errorf("database copy failed: %w", err)
 		}
@@ -615,12 +614,13 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 			}
 			j.Step("restore database")
 			// start from an empty database, so tables made after the backup do not stay behind
-			if out, err := m.compose(ctx, s.ID, strings.NewReader(resetSQL(s.DBName())), m.dbArgs("mariadb", "--batch")...); err != nil {
-				return fmt.Errorf("database restore failed: %w", dbErr(out))
+			reset, rargs := m.resetArgs(s)
+			if out, err := m.compose(ctx, s.ID, strings.NewReader(reset), rargs...); err != nil {
+				return fmt.Errorf("database restore failed: %w", sqlErr(s, out))
 			}
-			out, err := m.compose(ctx, s.ID, tr, m.dbArgs("mariadb", "--batch", "--default-character-set=utf8mb4", s.DBName())...)
+			out, err := m.compose(ctx, s.ID, tr, m.loadArgs(s)...)
 			if err != nil {
-				return fmt.Errorf("database restore failed: %w", dbErr(out))
+				return fmt.Errorf("database restore failed: %w", sqlErr(s, out))
 			}
 			continue
 		}
@@ -659,13 +659,15 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	}
 	// swap the folders: the running containers keep the old folder mounted, so they are recreated on the new one
 	j.Step("switch files")
-	if out, err := m.compose(ctx, s.ID, nil, "stop", "web"); err != nil {
-		return fmt.Errorf("stop failed: %s", tail(out))
+	stop := []string{"stop", "web"} // the containers that mount the website folder
+	switch {
+	case s.IsRuntime(): // Node.js, Go, Python: one app container, no web server
+		stop = []string{"stop", "app"}
+	case s.Server == "nginx":
+		stop = append(stop, "php")
 	}
-	if s.Server == "nginx" {
-		if out, err := m.compose(ctx, s.ID, nil, "stop", "php"); err != nil {
-			return fmt.Errorf("stop failed: %s", tail(out))
-		}
+	if out, err := m.compose(ctx, s.ID, nil, stop...); err != nil {
+		return fmt.Errorf("stop failed: %s", tail(out))
 	}
 	old := filepath.Join(sdir, "wp.old-"+randHex(4))
 	wp := m.wpDir(s.ID)

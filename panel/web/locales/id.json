@@ -599,5 +599,13 @@
   "dkey.fp": "Sidik jari",
   "dkey.private": "Bagian privatnya tidak pernah keluar dari server ini; hanya dipakai oleh build website ini.",
   "dkey.hostkeys": "Host key repository yang dikunci saat pengambilan pertama:",
-  "dkey.nohost": "Host key repository dikunci saat pengambilan pertama; host key yang berubah menghentikan build berikutnya."
+  "dkey.nohost": "Host key repository dikunci saat pengambilan pertama; host key yang berubah menghentikan build berikutnya.",
+  "rt.db": "Database",
+  "rt.db.none": "Tanpa database",
+  "rt.db.help": "Aplikasi mendapat database sendiri di jaringan privat, dengan DATABASE_URL serta DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD di environment-nya. Backup dan halaman Database ikut mencakupnya.",
+  "sites.creates.db.mariadb": "Ditambah database MariaDB sendiri di jaringan privat; DATABASE_URL diisi untuk aplikasi.",
+  "sites.creates.db.postgres": "Ditambah database PostgreSQL 18 sendiri di jaringan privat; DATABASE_URL diisi untuk aplikasi.",
+  "sites.resources.db.mariadb": "Database menambah hingga 512 MB.",
+  "sites.resources.db.postgres": "Database menambah hingga 512 MB.",
+  "db.rows.help.pg": "Jumlah baris adalah perkiraan PostgreSQL, diperbarui oleh autovacuum dan ANALYZE."
 }

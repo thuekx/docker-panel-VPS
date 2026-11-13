@@ -44,11 +44,11 @@ GO_MUTANTS=(
 	ctx, cancel := context.WithTimeout(ctx, d)|	ctx, cancel := context.WithTimeout(ctx, d)'                                                                           # two changes run at once
   'internal/sites/backup.go|		if part == ".." {|		if false && part == ".." {'                                                         # BAK-01: archive path leaves the website
   'internal/sites/backup.go|		safe, err := m.backup(ctx, j, s, "before-restore")|		safe, err := "", error(nil)'                       # BAK-01: restore without a safety copy
-  'internal/sites/backup.go|strings.NewReader(resetSQL(s.DBName()))|strings.NewReader("")'                                                       # BAK-01: tables made after the backup stay behind
+  'internal/sites/dbengine.go|return resetSQL(s.DBName()), |return "", '                                                       # BAK-01: tables made after the backup stay behind
   'internal/sites/backup.go|	if man.Site != id {|	if false {'                                                                        # BAK-01: another website's backup restored here
   'internal/sites/backup.go|	if !backupRe.MatchString(name) {|	if name == "" {'                                                          # BAK-01: any file name served or restored
   'internal/sites/backup.go|		if x.Kind != kind {|		if false {'                                                                     # BAK-01: daily keep prunes manual backups
-  'internal/sites/backup.go|"mariadb-dump", "--single-transaction", |"mariadb-dump", '                                                    # BAK-01: inconsistent database copy
+  'internal/sites/dbengine.go|args := []string{"--single-transaction", |args := []string{'                                                    # BAK-01: inconsistent database copy
   'internal/sites/wp.go|	if err == nil && !s.IsWP() {|	if false {'                                                                # APP-01: WordPress tools run on another app
   'internal/sites/db.go|	if !s.HasDB() {|	if false {'                                                                             # APP-01: database tools on a site without database
   'internal/spec/spec.go| c.PHP != "" {| false {'                                       # APP-01: PHP on a static site
@@ -68,6 +68,12 @@ GO_MUTANTS=(
   'internal/sites/deploy.go|":"+buildKeyPath+":ro"|":"+buildKeyPath'   # APP-02b: build can change the deploy key
   'internal/sites/deploy.go|-o StrictHostKeyChecking=accept-new|-o StrictHostKeyChecking=no'   # APP-02b: a changed repository host key is accepted
   'internal/spec/spec.go|(/[A-Za-z0-9._~-]+)*/?$`)|(/[A-Za-z0-9._~ =-]+)*/?$`)'   # APP-02b: SSH address with spaces (ssh options)
+  'internal/sites/dbengine.go|PGPASSWORD="$(cat /run/secrets/db_password)" exec|exec'   # APP-02b: PostgreSQL tools without the password file
+  'internal/sites/dbengine.go|` class="np-` + mark + `">`|` class="np-` + `">`'   # APP-02b: query output parsed without its random marker
+  'internal/sites/deploy.go|"secrets"), 0o700)|"secrets"), 0o755)'   # APP-02b: app database password folder open to every host user
+  'internal/sites/render.go|nets, dep = "[nostek-edge, out, back]",|nets, dep = "[nostek-edge, out]",'   # APP-02b: app cut off from its database
+  'internal/sites/backup.go|stop = []string{"stop", "app"}|stop = []string{"stop", "web"}'   # APP-02b: restoring an app's files stops a service it does not have
+  'internal/spec/spec.go|if c.Database && app != AppPHP && !IsRuntimeApp(app) {|if false && c.Database {'   # APP-02b: database on a static or WordPress site
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

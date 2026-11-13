@@ -127,16 +127,17 @@ type Site struct {
 	Status     string `json:"status"`
 	Up         int    `json:"containers_up"`
 	Total      int    `json:"containers_total"`
-	App        string `json:"app"`      // APP-01: wordpress (empty) | php | laravel | static
-	Database   bool   `json:"database"` // php: own MariaDB
-	Version    string `json:"version"`  // laravel: major version; node: Node.js version
-	Source     string `json:"source"`   // node: git (empty) | files
-	Dir        string `json:"dir"`      // node: app folder
-	Repo       string `json:"repo"`     // node: Git repository
-	Branch     string `json:"branch"`   // node: branch
-	Build      string `json:"build"`    // node: build command ("" = default)
-	Start      string `json:"start"`    // node: start command ("" = default)
-	Release    int    `json:"release"`  // node: live release
+	App        string `json:"app"`       // APP-01: wordpress (empty) | php | laravel | static
+	Database   bool   `json:"database"`  // php, node, go, python: own database
+	DBEngine   string `json:"db_engine"` // mariadb (empty) | postgres
+	Version    string `json:"version"`   // laravel: major version; node: Node.js version
+	Source     string `json:"source"`    // node: git (empty) | files
+	Dir        string `json:"dir"`       // node: app folder
+	Repo       string `json:"repo"`      // node: Git repository
+	Branch     string `json:"branch"`    // node: branch
+	Build      string `json:"build"`     // node: build command ("" = default)
+	Start      string `json:"start"`     // node: start command ("" = default)
+	Release    int    `json:"release"`   // node: live release
 }
 
 // FromFiles is true when a Node.js app is built from the website's source/ folder.
@@ -171,7 +172,28 @@ func (s Site) AppName() string {
 func (s Site) IsWP() bool { return s.AppName() == "wordpress" }
 
 // HasDB is true when the site has its own database.
-func (s Site) HasDB() bool { return s.IsWP() || s.IsLaravel() || (s.App == "php" && s.Database) }
+func (s Site) HasDB() bool {
+	return s.IsWP() || s.IsLaravel() || ((s.App == "php" || s.IsNode()) && s.Database)
+}
+
+// IsPostgres is true when the site database is PostgreSQL instead of MariaDB.
+func (s Site) IsPostgres() bool { return s.HasDB() && s.DBEngine == "postgres" }
+
+// DBEngineName is mariadb or postgres: the engine of the site database, for locale keys.
+func (s Site) DBEngineName() string {
+	if s.IsPostgres() {
+		return "postgres"
+	}
+	return "mariadb"
+}
+
+// DBName is the database server the site runs, as the panel shows it.
+func (s Site) DBName() string {
+	if s.IsPostgres() {
+		return "PostgreSQL"
+	}
+	return "MariaDB"
+}
 
 // IsLaravel is true for a Laravel site.
 func (s Site) IsLaravel() bool { return s.App == "laravel" }
@@ -311,14 +333,15 @@ type Laravel struct {
 type Create struct {
 	App        string   `json:"app,omitempty"` // empty = WordPress
 	Database   bool     `json:"database,omitempty"`
-	Version    string   `json:"version,omitempty"` // laravel: major version; node: Node.js version
-	Source     string   `json:"source,omitempty"`  // node: git | files
-	Dir        string   `json:"dir,omitempty"`     // node: app folder
-	Repo       string   `json:"repo,omitempty"`    // node
-	Branch     string   `json:"branch,omitempty"`  // node
-	Build      string   `json:"build,omitempty"`   // node ("" = default)
-	Start      string   `json:"start,omitempty"`   // node ("" = default)
-	KeyID      string   `json:"key_id,omitempty"`  // private repository: deploy key made before the website
+	DBEngine   string   `json:"db_engine,omitempty"` // node, go, python: mariadb | postgres
+	Version    string   `json:"version,omitempty"`   // laravel: major version; node: Node.js version
+	Source     string   `json:"source,omitempty"`    // node: git | files
+	Dir        string   `json:"dir,omitempty"`       // node: app folder
+	Repo       string   `json:"repo,omitempty"`      // node
+	Branch     string   `json:"branch,omitempty"`    // node
+	Build      string   `json:"build,omitempty"`     // node ("" = default)
+	Start      string   `json:"start,omitempty"`     // node ("" = default)
+	KeyID      string   `json:"key_id,omitempty"`    // private repository: deploy key made before the website
 	Domain     string   `json:"domain"`
 	Aliases    []string `json:"aliases"`
 	Primary    string   `json:"primary"`

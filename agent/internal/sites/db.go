@@ -138,6 +138,9 @@ func (m *Manager) Database(ctx context.Context, id string) (DB, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+	if site.IsPostgres() {
+		return m.pgDatabase(ctx, site)
+	}
 	out, err := m.compose(ctx, id, strings.NewReader(overviewSQL), m.dbArgs("mariadb", "--batch", "--skip-column-names", site.DBName())...)
 	if err != nil {
 		return DB{}, dbErr(out)
@@ -260,7 +263,8 @@ func parseXML(out []byte) ([]Result, error) {
 
 // Query runs SQL typed in the console. SELECTs return at most QueryRows rows each.
 func (m *Manager) Query(ctx context.Context, id, sql string) (QueryAnswer, error) {
-	if _, err := m.dbSite(id); err != nil {
+	site, err := m.dbSite(id)
+	if err != nil {
 		return QueryAnswer{}, err
 	}
 	sql = strings.TrimSpace(sql)
@@ -272,8 +276,15 @@ func (m *Manager) Query(ctx context.Context, id, sql string) (QueryAnswer, error
 	}
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
-	in := fmt.Sprintf("SET SESSION sql_select_limit=%d;\n%s\n", QueryRows, sql)
 	start := m.now()
+	if site.IsPostgres() {
+		res, err := m.pgQuery(ctx, site, sql)
+		if err != nil {
+			return QueryAnswer{}, err
+		}
+		return QueryAnswer{Results: res, Millis: m.now().Sub(start).Milliseconds()}, nil
+	}
+	in := fmt.Sprintf("SET SESSION sql_select_limit=%d;\n%s\n", QueryRows, sql)
 	out, err := m.compose(ctx, id, strings.NewReader(in), m.dbArgs("mariadb", "--xml", m.dbName(id))...)
 	ms := m.now().Sub(start).Milliseconds()
 	if err != nil {
@@ -326,15 +337,15 @@ func (m *Manager) dump(ctx context.Context, id, kind string) (string, error) {
 	gz := gzip.NewWriter(f)
 	bw := bufio.NewWriterSize(gz, 1<<20)
 	dir := m.dir(id)
+	site, _ := m.Get(id)
 	args := append([]string{"compose", "--project-directory", dir, "-p", Project(id), "-f", filepath.Join(dir, "compose.yml")},
-		m.dbArgs("mariadb-dump", "--single-transaction", "--quick", "--no-tablespaces", "--default-character-set=utf8mb4",
-			"--add-drop-table", m.dbName(id))...)
+		m.dumpArgs(site, false)...)
 	errOut, err := st.DockerTo(ctx, dir, nil, bw, args...)
 	err = errors.Join(err, bw.Flush(), gz.Close(), f.Close())
 	if err != nil {
 		os.Remove(p + ".part")
 		if len(errOut) > 0 {
-			return "", dbErr(errOut)
+			return "", sqlErr(site, errOut)
 		}
 		return "", err
 	}
@@ -384,7 +395,8 @@ func (m *Manager) OpenDump(id, name string) (*os.File, os.FileInfo, error) {
 // Import replaces tables with the ones in an uploaded .sql or .sql.gz file. A copy of the current database is
 // taken first and kept (the newest keepDumps), so an import can always be undone by importing that copy.
 func (m *Manager) Import(ctx context.Context, id string, body io.Reader) (string, error) {
-	if _, err := m.dbSite(id); err != nil {
+	site, err := m.dbSite(id)
+	if err != nil {
 		return "", err
 	}
 	if !m.mu.TryLock() {
@@ -433,9 +445,9 @@ func (m *Manager) Import(ctx context.Context, id string, body io.Reader) (string
 		return "", fmt.Errorf("the safety copy before import failed, nothing was changed: %w", err)
 	}
 	m.pruneDumps(id)
-	out, err := m.compose(ctx, id, in, m.dbArgs("mariadb", "--batch", "--default-character-set=utf8mb4", m.dbName(id))...)
+	out, err := m.compose(ctx, id, in, m.loadArgs(site)...)
 	if err != nil {
-		return filepath.Base(backup), dbErr(out)
+		return filepath.Base(backup), sqlErr(site, out)
 	}
 	return filepath.Base(backup), nil
 }

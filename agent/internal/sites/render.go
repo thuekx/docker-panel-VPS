@@ -36,8 +36,9 @@ type Site struct {
 	BackupKeep  int  `json:"backup_keep,omitempty"`
 	// APP-01: what the website runs; empty = WordPress (every site made before v1.8.0)
 	App      string `json:"app,omitempty"`
-	Database bool   `json:"database,omitempty"` // php: the app has its own MariaDB
-	Version  string `json:"version,omitempty"`  // laravel: major version installed at create time; node: Node.js
+	Database bool   `json:"database,omitempty"`  // php, node, go, python: the app has its own database
+	DBEngine string `json:"db_engine,omitempty"` // "" = MariaDB, postgres = PostgreSQL (APP-02b)
+	Version  string `json:"version,omitempty"`   // laravel: major version installed at create time; node: Node.js
 	// APP-02 (node): where the source comes from, how it is built and started, and the live release
 	Source  string `json:"source,omitempty"` // git (empty) | files
 	Dir     string `json:"dir,omitempty"`    // app folder inside the repository or source folder
@@ -89,9 +90,12 @@ func (s Site) IsWP() bool { return s.AppName() == spec.AppWordPress }
 // IsLaravel is true for a Laravel site.
 func (s Site) IsLaravel() bool { return s.AppName() == spec.AppLaravel }
 
-// HasDB is true when the site has its own MariaDB.
+// IsPostgres is true when the site's own database is PostgreSQL instead of MariaDB.
+func (s Site) IsPostgres() bool { return s.HasDB() && s.DBEngine == spec.DBPostgres }
+
+// HasDB is true when the site has its own database (MariaDB, or PostgreSQL for an app built from source).
 func (s Site) HasDB() bool {
-	return s.IsWP() || s.IsLaravel() || (s.AppName() == spec.AppPHP && s.Database)
+	return s.IsWP() || s.IsLaravel() || ((s.AppName() == spec.AppPHP || s.IsRuntime()) && s.Database)
 }
 
 // DBName is the database (and its user) of the site.
@@ -228,7 +232,29 @@ secrets:
 `)
 	}
 	b.WriteString("\nservices:\n")
-	if s.HasDB() {
+	if s.IsPostgres() {
+		fmt.Fprintf(&b, `  db:
+    <<: *site
+    image: %s
+    mem_limit: 512m
+    shm_size: 128m
+    environment:
+      POSTGRES_DB: %s
+      POSTGRES_USER: %s
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes:
+      - ./db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -h 127.0.0.1 -U %s -d %s"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks: [back]
+
+`, catalog.Postgres, s.DBName(), s.DBName(), s.DBName(), s.DBName())
+	} else if s.HasDB() {
 		fmt.Fprintf(&b, `  db:
     <<: *site
     image: %s
@@ -661,6 +687,10 @@ func (s Site) nodeServices(b *strings.Builder) {
 		env = "      PYTHONUNBUFFERED: \"1\"\n      GIN_MODE: release\n"
 		health = fmt.Sprintf(`["CMD-SHELL", "c=$$(curl -s -o /dev/null -w '%%{http_code}' --max-time 3 http://127.0.0.1:%d/); [ $${c:-0} -gt 0 ] && [ $${c:-0} -lt 500 ]"]`, NodePort)
 	}
+	nets, dep := "[nostek-edge, out]", ""
+	if s.HasDB() {
+		nets, dep = "[nostek-edge, out, back]", "    depends_on:\n      db: { condition: service_healthy }\n"
+	}
 	fmt.Fprintf(b, `  app:
     <<: *site
     image: %s
@@ -668,7 +698,7 @@ func (s Site) nodeServices(b *strings.Builder) {
     working_dir: /app
     command: ["sh", "-c", %s]
     mem_limit: 768m
-    environment:
+%s    environment:
 %s      PORT: "%d"
       HOST: 0.0.0.0
       HOSTNAME: 0.0.0.0
@@ -687,8 +717,8 @@ func (s Site) nodeServices(b *strings.Builder) {
       start_period: 120s
     labels:
 %s
-    networks: [nostek-edge, out]
-`, rt.Image, wwwData, wwwData, yamlQuote("exec "+s.StartCmd()), env, NodePort, s.Release, health, indent(s.labels(), 6))
+    networks: %s
+`, rt.Image, wwwData, wwwData, yamlQuote("exec "+s.StartCmd()), dep, env, NodePort, s.Release, health, indent(s.labels(), 6), nets)
 }
 
 // yamlQuote writes a string as a YAML double-quoted scalar; `$` is doubled so compose does not expand it.

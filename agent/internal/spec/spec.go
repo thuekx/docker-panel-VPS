@@ -193,16 +193,23 @@ type Create struct {
 	PHP        string   `json:"php"`     // from catalog (static: empty)
 	AdminEmail string   `json:"admin_email"`
 	Title      string   `json:"title"`
-	Database   bool     `json:"database,omitempty"` // php: give the app its own MariaDB
-	Version    string   `json:"version,omitempty"`  // laravel: major version ("" = newest); node: Node.js version
-	Source     string   `json:"source,omitempty"`   // node: git (default) | files
-	Dir        string   `json:"dir,omitempty"`      // node: app folder inside the repository or source folder
-	Repo       string   `json:"repo,omitempty"`     // node: public https Git repository
-	Branch     string   `json:"branch,omitempty"`   // node: branch to deploy
-	Build      string   `json:"build,omitempty"`    // node: build command ("" = default)
-	Start      string   `json:"start,omitempty"`    // node: start command ("" = default)
-	KeyID      string   `json:"key_id,omitempty"`   // SSH repository: the deploy key made for it (POST /v1/deploykeys)
+	Database   bool     `json:"database,omitempty"`  // php: give the app its own MariaDB
+	Version    string   `json:"version,omitempty"`   // laravel: major version ("" = newest); node: Node.js version
+	Source     string   `json:"source,omitempty"`    // node: git (default) | files
+	Dir        string   `json:"dir,omitempty"`       // node: app folder inside the repository or source folder
+	Repo       string   `json:"repo,omitempty"`      // node: public https Git repository
+	Branch     string   `json:"branch,omitempty"`    // node: branch to deploy
+	Build      string   `json:"build,omitempty"`     // node: build command ("" = default)
+	Start      string   `json:"start,omitempty"`     // node: start command ("" = default)
+	KeyID      string   `json:"key_id,omitempty"`    // SSH repository: the deploy key made for it (POST /v1/deploykeys)
+	DBEngine   string   `json:"db_engine,omitempty"` // with database: mariadb (default) | postgres (Node.js, Go, Python only)
 }
+
+// Database engines of a website's own database.
+const (
+	DBMariaDB  = "mariadb"
+	DBPostgres = "postgres"
+)
 
 // Default commands of a Node.js app. Install uses the lock file when there is one.
 const (
@@ -347,8 +354,20 @@ func (c Create) Check(reserved map[string]bool) error {
 	if !IsRuntimeApp(app) && (c.Repo != "" || c.Branch != "" || c.Build != "" || c.Start != "" || c.Source != "" || c.Dir != "" || c.KeyID != "") {
 		return errors.New("only an app built from source takes a repository and commands")
 	}
-	if c.Database && app != AppPHP {
-		return errors.New("only a PHP app chooses its database (WordPress and Laravel always have one, a static site none)")
+	if c.Database && app != AppPHP && !IsRuntimeApp(app) {
+		return errors.New("only a PHP, Node.js, Go or Python app chooses its database (WordPress and Laravel always have one, a static site none)")
+	}
+	switch c.DBEngine {
+	case "", DBMariaDB:
+	case DBPostgres:
+		if !c.Database || !IsRuntimeApp(app) {
+			return errors.New("PostgreSQL is offered for the database of a Node.js, Go or Python app")
+		}
+	default:
+		return errors.New("database must be mariadb or postgres")
+	}
+	if c.DBEngine != "" && !c.Database {
+		return errors.New("a database engine is chosen only together with a database")
 	}
 	if app != AppWordPress {
 		if c.AdminEmail != "" {

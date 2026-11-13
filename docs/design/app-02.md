@@ -88,4 +88,22 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
   returned, logged or put in compose.
 - Harness (repo check, with internet): a throwaway SSH Git server (openssh-server on the Go image) that accepts only
   the deploy key; build from it, then a changed host key must stop the next build.
-- Still to do in APP-02b: a database for apps.
+
+## APP-02b database for apps as built (v1.13.0)
+
+- Owner decision 2026-11-13: both engines, chosen when the website is made (`database: true`, `db_engine`: `mariadb`
+  (default) or `postgres`). The engine cannot be changed later; a move is export and import.
+- Compose: service `db` on the `back` network only (MariaDB as for PHP sites, or `postgres:18-trixie` by digest,
+  data `./db:/var/lib/postgresql`, `POSTGRES_PASSWORD_FILE`, `pg_isready` health check, 512 MB). The app joins `back`
+  and waits for a healthy `db`.
+- Password: `secrets/db_password` (0444 inside a 0700 folder, mounted as a compose secret). Connection values go into
+  `deploy/app.env` (0600) like any environment value: `DATABASE_URL`, `DB_HOST=db`, `DB_PORT` (3306 or 5432),
+  `DB_NAME=app`, `DB_USER=app`, `DB_PASSWORD`. The owner may edit or delete them on the Overview.
+- PostgreSQL tools run in the `db` container through a small wrapper that reads the password file
+  (`PGPASSWORD="$(cat /run/secrets/db_password)"`), never from argv: overview (`SHOW server_version`, tables of the
+  `public` schema from `pg_class`), console (`psql` HTML output with a random table class and NULL marker, so typed
+  text cannot fake a cell or a NULL), export (`pg_dump --no-owner --no-acl --clean --if-exists`), import (`psql
+  ON_ERROR_STOP`), restore (`DROP SCHEMA public CASCADE; CREATE SCHEMA public` then the dump).
+- Fix found on the way: a files restore stopped `web`, which runtime apps do not have; it now stops `app`.
+- Harness (repo check): Python + PostgreSQL and Node.js + MariaDB sites: values in the app env, the app reaches `db`,
+  console, overview, export, import, backup and full restore.

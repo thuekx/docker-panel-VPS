@@ -122,6 +122,20 @@ func (m *Manager) SetEnv(ctx context.Context, id string, c EnvChange) error {
 	if len(env) > MaxEnvKeys {
 		return fmt.Errorf("%w: at most %d values", ErrBadInput, MaxEnvKeys)
 	}
+	if err := m.writeEnv(id, env); err != nil {
+		return err
+	}
+	if s.Release < 1 {
+		return nil
+	}
+	if out, err := m.compose(ctx, id, nil, "up", "-d", "--wait", "--wait-timeout", fmt.Sprint(StartTimeout), "app"); err != nil {
+		return fmt.Errorf("values saved, but the app did not start again: %v %s", err, tail(out))
+	}
+	return nil
+}
+
+// writeEnv writes the app's environment file (raw KEY=VALUE lines, sorted, 0600, outside the website folder).
+func (m *Manager) writeEnv(id string, env map[string]string) error {
 	names := make([]string, 0, len(env))
 	for k := range env {
 		names = append(names, k)
@@ -134,14 +148,5 @@ func (m *Manager) SetEnv(ctx context.Context, id string, c EnvChange) error {
 	if err := os.MkdirAll(m.deployDir(id), 0o755); err != nil {
 		return err
 	}
-	if err := writeFile(m.envPath(id), []byte(b.String()), 0o600); err != nil {
-		return err
-	}
-	if s.Release < 1 {
-		return nil
-	}
-	if out, err := m.compose(ctx, id, nil, "up", "-d", "--wait", "--wait-timeout", fmt.Sprint(StartTimeout), "app"); err != nil {
-		return fmt.Errorf("values saved, but the app did not start again: %v %s", err, tail(out))
-	}
-	return nil
+	return writeFile(m.envPath(id), []byte(b.String()), 0o600)
 }

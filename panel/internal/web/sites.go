@@ -135,6 +135,9 @@ func formCreate(r *http.Request) (agent.Create, string) {
 		if agent.IsSSHRepo(c.Repo) {
 			c.KeyID = strings.TrimSpace(f.Get("key_id"))
 		}
+		if e := low("db_engine"); e != "" && e != "none" { // APP-02b: none | mariadb | postgres
+			c.Database, c.DBEngine = true, e
+		}
 	default: // php, or anything else for the agent to refuse
 		c.App, c.AdminEmail, c.Database = app, "", f.Get("database") == "1"
 	}
