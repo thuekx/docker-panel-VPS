@@ -74,6 +74,11 @@ GO_MUTANTS=(
   'internal/sites/render.go|nets, dep = "[nostek-edge, out, back]",|nets, dep = "[nostek-edge, out]",'   # APP-02b: app cut off from its database
   'internal/sites/backup.go|stop = []string{"stop", "app"}|stop = []string{"stop", "web"}'   # APP-02b: restoring an app's files stops a service it does not have
   'internal/spec/spec.go|if c.Database && app != AppPHP && !IsRuntimeApp(app) {|if false && c.Database {'   # APP-02b: database on a static or WordPress site
+  'internal/sites/webhook.go|return hmac.Equal(got, mac.Sum(nil))|return len(got) > 0'   # APP-02c: any signature deploys
+  'internal/sites/webhook.go|if h.Signature == "" && h.Token != "" {|if h.Token != "" {'   # APP-02c: a bad signature passes with a token next to it
+  'internal/sites/webhook.go|case p.Ref != "refs/heads/"+s.Branch:|case false:'   # APP-02c: a push to any branch deploys
+  'internal/sites/webhook.go|[]byte(sec), 0o600)|[]byte(sec), 0o644)'   # APP-02c: webhook secret readable by every host user
+  'internal/sites/webhook.go|	if m.hookWait[id] {|	if false {'   # APP-02c: every push while busy builds again
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

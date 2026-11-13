@@ -49,6 +49,7 @@ func TestWebhookDeploy(t *testing.T) {
 		{Event: "Push Hook", Token: "nope", Body: []byte(main)},
 		{Event: "push", Body: []byte(main)},
 		{Event: "push", Signature: sign("wrong", main), Token: sec, Body: []byte(main)},
+		{Event: "push", Signature: "sha1=0123", Token: sec, Body: []byte(main)},
 	} {
 		if _, err := m.Deliver(s.ID, h); !errors.Is(err, ErrSignature) {
 			t.Errorf("accepted %+v: %v", h, err)

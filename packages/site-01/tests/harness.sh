@@ -380,6 +380,22 @@ if [ -n "${HARNESS_NODE_GIT_BRANCH:-}" ]; then
   api POST /v1/sites "{\"app\":\"node\",\"domain\":\"g.example.test\",\"aliases\":[],\"primary\":\"domain\",\"server\":\"\",\"php\":\"\",\"admin_email\":\"\",\"title\":\"\",\"version\":\"22\",\"repo\":\"https://github.com/thuekx/docker-panel-VPS.git\",\"branch\":\"$HARNESS_NODE_GIT_BRANCH\",\"dir\":\"packages/site-01/tests/node-app\"}"; JG="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
   ok "Node.js site built from Git (subfolder) with its build step" '[ "$CODE" = 202 ] && [ "$(wait_job "$JG" 200)" = done ] && app_get g-example-test g-example-test.$ZONE / | grep -q "node-app ok | built by npm run build | uid 33 | port 3000"'
   api GET /v1/sites/g-example-test/deploys; ok "history holds the commit of the branch" 'grep -q "\"commit\":\"[0-9a-f]\{40\}\"" <<<"$BODY" && ! grep -q "github.com" "$SITE01_TEST_ROOT/srv/nostek/sites/g-example-test/compose.yml"'
+  # APP-02c auto-deploy: a signed push to the branch deploys, anything else does not
+  api POST /v1/sites/g-example-test/webhook/secret; HSEC="$(grep -o '"secret":"[0-9a-f]*"' <<<"$BODY" | cut -d'"' -f4)"
+  SG="$SITE01_TEST_ROOT/srv/nostek/sites/g-example-test"
+  ok "auto-deploy secret made, kept 0600 outside the app and its compose file" '[ "$CODE" = 200 ] && [ ${#HSEC} = 64 ] && [ "$(stat -c %a "$SG/deploy/webhook_secret")" = 600 ] && ! grep -rqF "$HSEC" "$SG/compose.yml" "$SG/wp" "$SITE01_TEST_ROOT/var/log/nostek-agent/"'
+  hook() { # BODY-JSON SECRET EVENT -> agent answer
+    local b64 sig; b64="$(printf '%s' "$1" | base64 -w0)"; sig="$(printf '%s' "$1" | openssl dgst -sha256 -hmac "$2" -r | cut -d' ' -f1)"
+    api POST /v1/sites/g-example-test/webhook/deliver "{\"event\":\"$3\",\"signature\":\"sha256=$sig\",\"body\":\"$b64\"}"
+  }
+  hook "{\"ref\":\"refs/heads/$HARNESS_NODE_GIT_BRANCH\",\"after\":\"$(printf 'a%.0s' $(seq 40))\"}" "wrong-secret" push
+  ok "a push signed with another secret is refused" '[ "$CODE" = 401 ]'
+  hook '{"ref":"refs/heads/some-other-branch","after":"0123456789abcdef0123456789abcdef01234567"}' "$HSEC" push
+  ok "a push to another branch is ignored" '[ "$CODE" = 200 ] && grep -q "\"result\":\"ignored\"" <<<"$BODY"'
+  hook "{\"ref\":\"refs/heads/$HARNESS_NODE_GIT_BRANCH\",\"after\":\"0123456789abcdef0123456789abcdef01234567\"}" "$HSEC" push; JW="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+  ok "a signed push to the branch deploys a new release, marked as started by the webhook" '[ "$CODE" = 200 ] && [ -n "$JW" ] && [ "$(wait_job "$JW" 200)" = done ] && app_get g-example-test g-example-test.$ZONE / | grep -q "node-app ok" && { api GET /v1/sites/g-example-test/deploys; grep -q "\"release\":2,[^}]*\"result\":\"live\",[^}]*\"trigger\":\"webhook\"" <<<"$BODY"; }'
+  api POST /v1/sites/g-example-test/webhook/remove; hook '{"zen":"x"}' "$HSEC" ping
+  ok "after turning auto-deploy off, deliveries are refused" '[ "$CODE" = 404 ] && [ ! -e "$SG/deploy/webhook_secret" ]'
 fi
 
 # --- APP-02b private repository over SSH with the website's deploy key, against a throwaway Git server (needs
