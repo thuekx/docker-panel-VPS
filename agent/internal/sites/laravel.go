@@ -67,6 +67,10 @@ func laravelEnv(example []byte, s Site) []byte {
 		}
 		b.WriteString(line + "\n")
 	}
+	engine, conn, port := "MariaDB", "mysql", "3306"
+	if s.IsPostgres() {
+		engine, conn, port = "PostgreSQL", "pgsql", "5432"
+	}
 	name := s.Domain
 	if plainName.MatchString(s.Title) {
 		name = s.Title
@@ -78,14 +82,14 @@ APP_ENV=production
 APP_DEBUG=false
 APP_URL=%s
 
-# The database is the website's own MariaDB. These values are also set by the panel and win over this file.
+# The database is the website's own %s. These values are also set by the panel and win over this file.
 # DB_PASSWORD is not here on purpose: the panel hands it to Laravel from a secret file (DB_PASSWORD_FILE).
-DB_CONNECTION=mysql
+DB_CONNECTION=%s
 DB_HOST=db
-DB_PORT=3306
+DB_PORT=%s
 DB_DATABASE=app
 DB_USERNAME=app
-`, time.Now().UTC().Format("2006-01-02"), name, s.URL)
+`, time.Now().UTC().Format("2006-01-02"), name, s.URL, engine, conn, port)
 	return b.Bytes()
 }
 

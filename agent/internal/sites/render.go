@@ -399,9 +399,19 @@ const phpHealth = `    healthcheck:
 func (s Site) phpServices(b *strings.Builder, p catalog.PHPVersion) {
 	env, dep, sec := "", "", ""
 	if s.HasDB() {
-		env = "    environment:\n" + indent([]string{"DB_HOST: db", "DB_NAME: app", "DB_USER: app", "DB_PASSWORD_FILE: /run/secrets/db_password"}, 6) + "\n"
+		vars := []string{"DB_HOST: db", "DB_NAME: app", "DB_USER: app", "DB_PASSWORD_FILE: /run/secrets/db_password"}
+		if s.IsPostgres() {
+			vars = append(vars, `DB_PORT: "5432"`, "DB_ENGINE: postgres")
+		}
+		env = "    environment:\n" + indent(vars, 6) + "\n"
 		dep = "    depends_on:\n      db: { condition: service_healthy }\n"
 		sec = "    secrets: [db_password]\n"
+	}
+	img := func(base string) string { return base }
+	if s.IsPostgres() { // the official image plus the PostgreSQL extensions, built on the server (DB-FLEX)
+		img = func(string) string {
+			return catalog.PHPPostgresImage(p, s.Server) + "\n    build:\n      context: ./build\n    pull_policy: never"
+		}
 	}
 	if s.Server == "apache" {
 		fmt.Fprintf(b, `  web:
@@ -416,7 +426,7 @@ func (s Site) phpServices(b *strings.Builder, p catalog.PHPVersion) {
 %s    labels:
 %s
     networks: [back, nostek-edge]
-`, p.Apache, dep, env, sec, phpHealth, indent(s.labels(), 6))
+`, img(p.Apache), dep, env, sec, phpHealth, indent(s.labels(), 6))
 		return
 	}
 	fmt.Fprintf(b, `  php:
@@ -442,7 +452,7 @@ func (s Site) phpServices(b *strings.Builder, p catalog.PHPVersion) {
     labels:
 %s
     networks: [back, nostek-edge]
-`, p.FPM, dep, env, sec, phpHealth, catalog.Nginx, indent(s.labels(), 6))
+`, img(p.FPM), dep, env, sec, phpHealth, catalog.Nginx, indent(s.labels(), 6))
 }
 
 // laravelServices runs Laravel: PHP-FPM on the Laravel image built from official images (catalog.LaravelDockerfile),
@@ -450,8 +460,12 @@ func (s Site) phpServices(b *strings.Builder, p catalog.PHPVersion) {
 // settings are environment values that win over .env; the password is a file (DB_PASSWORD_FILE) that the prepend
 // file LaravelPrepend hands to Laravel, never an environment value or a line in .env.
 func (s Site) laravelServices(b *strings.Builder, p catalog.PHPVersion) {
+	conn, port, img := "mysql", "3306", catalog.LaravelImage(p)
+	if s.IsPostgres() {
+		conn, port, img = "pgsql", "5432", catalog.LaravelPostgresImage(p)
+	}
 	env := indent([]string{
-		"DB_CONNECTION: mysql", "DB_HOST: db", `DB_PORT: "3306"`, "DB_DATABASE: app", "DB_USERNAME: app",
+		"DB_CONNECTION: " + conn, "DB_HOST: db", `DB_PORT: "` + port + `"`, "DB_DATABASE: app", "DB_USERNAME: app",
 		"DB_PASSWORD_FILE: /run/secrets/db_password",
 	}, 6)
 	vols := `    volumes:
@@ -460,7 +474,6 @@ func (s Site) laravelServices(b *strings.Builder, p catalog.PHPVersion) {
       - ./laravel.ini:/usr/local/etc/php/conf.d/zz-nostek-laravel.ini:ro
       - ./laravel-env.php:/usr/local/etc/php/nostek-env.php:ro
 `
-	img := catalog.LaravelImage(p)
 	fmt.Fprintf(b, `  php:
     <<: *site
     image: %s

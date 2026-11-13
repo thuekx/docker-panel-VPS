@@ -459,6 +459,9 @@ func (m *Manager) create(j *Job, s Site) {
 		files["laravel.ini"] = LaravelIni
 		files["laravel-env.php"] = LaravelPrepend
 		files[filepath.Join("build", "Dockerfile")] = catalog.LaravelDockerfile(p)
+		if s.IsPostgres() {
+			files[filepath.Join("build", "Dockerfile")] = catalog.LaravelPostgresDockerfile(p)
+		}
 	case s.AppName() == spec.AppStatic:
 		files["nginx.conf"] = NginxStaticConf
 	case s.IsWP() && s.Server == "nginx":
@@ -469,12 +472,17 @@ func (m *Manager) create(j *Job, s Site) {
 	if s.AppName() != spec.AppStatic {
 		files["php.ini"] = PHPIni
 	}
-	if s.IsLaravel() {
-		// composer runs as www-data and fills the empty website folder; the build context holds only the recipe
+	if s.AppName() == spec.AppPHP && s.IsPostgres() {
+		files[filepath.Join("build", "Dockerfile")] = catalog.PHPPostgresDockerfile(catalog.PHPPostgresBase(p, s.Server))
+	}
+	if buildService(s) != "" { // the build context holds only the recipe
 		if err := os.MkdirAll(filepath.Join(dir, "build"), 0o755); err != nil {
 			fail("files", err, nil)
 			return
 		}
+	}
+	if s.IsLaravel() {
+		// composer runs as www-data and fills the empty website folder
 		if err := os.Chown(filepath.Join(dir, "wp"), m.uid(), m.uid()); err != nil {
 			fail("files", err, nil)
 			return
@@ -496,9 +504,9 @@ func (m *Manager) create(j *Job, s Site) {
 		fail("files", err, nil)
 		return
 	}
-	if s.IsLaravel() {
+	if svc := buildService(s); svc != "" {
 		j.Step("build PHP image")
-		if out, err := m.compose(ctx, s.ID, nil, "build", "--quiet", "php"); err != nil {
+		if out, err := m.compose(ctx, s.ID, nil, "build", "--quiet", svc); err != nil {
 			fail("build PHP image", err, out)
 			return
 		}
@@ -971,8 +979,22 @@ func (m *Manager) RestartService(ctx context.Context, id, svc string) error {
 }
 
 // dbEngine keeps "postgres" for a PostgreSQL database; MariaDB stays the empty default, as on older sites.
+// buildService is the compose service whose image is built on the server: Laravel's php, or the PHP container of
+// a plain PHP website on PostgreSQL ("web" under Apache, "php" under Nginx); "" when every image is pulled.
+func buildService(s Site) string {
+	switch {
+	case s.IsLaravel():
+		return "php"
+	case s.AppName() == spec.AppPHP && s.IsPostgres() && s.Server == "apache":
+		return "web"
+	case s.AppName() == spec.AppPHP && s.IsPostgres():
+		return "php"
+	}
+	return ""
+}
+
 func dbEngine(c spec.Create) string {
-	if c.Database && c.DBEngine == spec.DBPostgres {
+	if c.DBEngine == spec.DBPostgres && (c.Database || c.AppOf() == spec.AppLaravel) {
 		return spec.DBPostgres
 	}
 	return ""

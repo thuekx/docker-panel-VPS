@@ -103,6 +103,17 @@ func TestCreateApps(t *testing.T) {
 		func() Create { c := base; c.App = "laravel"; c.Title = "Shop"; return c }(),
 		func() Create { c := base; c.App = "laravel"; c.Version = "12"; c.PHP = "8.2"; return c }(),
 		func() Create { c := base; c.App = "laravel"; c.Version = "13"; c.PHP = "8.3"; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.DBEngine = DBPostgres; return c }(),
+		func() Create { c := base; c.App = "laravel"; c.DBEngine = DBMariaDB; return c }(),
+		func() Create { c := base; c.App = "php"; c.Database = true; c.DBEngine = DBPostgres; return c }(),
+		func() Create {
+			c := base
+			c.App = "php"
+			c.Server = "apache"
+			c.Database = true
+			c.DBEngine = DBPostgres
+			return c
+		}(),
 	}
 	for _, c := range ok {
 		if err := c.Check(nil); err != nil {
@@ -135,7 +146,24 @@ func TestCreateApps(t *testing.T) {
 			c.Title = "V"
 			return c
 		}(),
-		func() Create { c := base; return c }(), // WordPress needs e-mail and title
+		func() Create { c := base; return c }(),                                                        // WordPress needs e-mail and title
+		func() Create { c := base; c.App = "php"; c.DBEngine = DBPostgres; return c }(),                // engine without database
+		func() Create { c := base; c.App = "static"; c.PHP = ""; c.DBEngine = DBPostgres; return c }(), // static
+		func() Create { c := base; c.App = "laravel"; c.DBEngine = "sqlite"; return c }(),              // unknown engine
+		func() Create {
+			c := base
+			c.AdminEmail = "o@nostek.dev"
+			c.Title = "V"
+			c.DBEngine = DBPostgres
+			return c
+		}(), // WordPress on PostgreSQL
+		func() Create {
+			c := base
+			c.AdminEmail = "o@nostek.dev"
+			c.Title = "V"
+			c.DBEngine = DBMariaDB
+			return c
+		}(), // WordPress picks nothing
 	}
 	for _, c := range bad {
 		if err := c.Check(nil); err == nil {
