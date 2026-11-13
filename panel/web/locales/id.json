@@ -515,7 +515,7 @@
   "sites.creates.node": "Satu container: aplikasi Anda di image resmi Node.js, di-build dari branch pilihan Anda. Setiap deploy membuat rilis baru; rilis yang aktif tetap jalan sampai rilis baru menjawab.",
   "sites.resources.node": "Memori maksimal 768 MB saat berjalan (build boleh memakai sampai 1,5 GB dan 2 CPU, paling lama 15 menit); disk bertambah sesuai isi website dan 3 rilis yang disimpan.",
   "node.repo": "Repository Git",
-  "node.repo.help": "Alamat https publik, misalnya https://github.com/owner/app.git. Repository privat menyusul di update berikutnya.",
+  "node.repo.help": "Alamat https publik, misalnya https://github.com/owner/app.git, atau untuk repository privat alamat SSH seperti git@github.com:owner/app.git (panel lalu membuat deploy key untuknya).",
   "node.branch": "Branch",
   "node.build": "Perintah build",
   "node.start": "Perintah start",
@@ -590,5 +590,14 @@
   "sites.trash.remove.help": "Hapus permanen langsung menghapus file dan database, dan domainnya bisa dipakai lagi. Tidak bisa dibatalkan.",
   "sites.done.removed": "Website dihapus permanen. Domainnya bisa dipakai lagi.",
   "sites.done.remove_failed": "Website tidak bisa dihapus. Lihat log aktivitas.",
-  "sites.done.remove_confirm": "Ketik domain website persis sama untuk menghapus permanen."
+  "sites.done.remove_confirm": "Ketik domain website persis sama untuk menghapus permanen.",
+  "dkey.title": "Deploy key",
+  "dkey.add": "Repository ini privat, jadi panel membuat kunci khusus untuk website ini. Tambahkan ke repository sebelum menyetujui, supaya build pertama bisa membacanya:",
+  "dkey.step.github": "GitHub: buka repository → Settings → Deploy keys → Add deploy key. Tempel kuncinya, biarkan \"Allow write access\" tidak dicentang.",
+  "dkey.step.gitlab": "GitLab: buka project → Settings → Repository → Deploy keys. Tempel kuncinya, biarkan \"Grant write permissions\" tidak dicentang. Bitbucket: Repository settings → Access keys.",
+  "dkey.step.then": "Lalu tekan Setujui dan buat di sini.",
+  "dkey.fp": "Sidik jari",
+  "dkey.private": "Bagian privatnya tidak pernah keluar dari server ini; hanya dipakai oleh build website ini.",
+  "dkey.hostkeys": "Host key repository yang dikunci saat pengambilan pertama:",
+  "dkey.nohost": "Host key repository dikunci saat pengambilan pertama; host key yang berubah menghentikan build berikutnya."
 }

@@ -515,7 +515,7 @@
   "sites.creates.node": "One container: your app on the official Node.js image, built from the branch you choose. Each deploy builds a new release; the live one keeps running until the new one answers.",
   "sites.resources.node": "Up to 768 MB memory while running (the build may use up to 1.5 GB and 2 CPUs for at most 15 minutes); disk grows with the website and the 3 kept releases.",
   "node.repo": "Git repository",
-  "node.repo.help": "A public https address, for example https://github.com/owner/app.git. Private repositories come in the next update.",
+  "node.repo.help": "A public https address, for example https://github.com/owner/app.git, or for a private repository an SSH address such as git@github.com:owner/app.git (the panel then makes a deploy key for it).",
   "node.branch": "Branch",
   "node.build": "Build command",
   "node.start": "Start command",
@@ -590,5 +590,14 @@
   "sites.trash.remove.help": "Delete permanently removes the files and the database now, and the domain can be used again. This cannot be undone.",
   "sites.done.removed": "Website deleted permanently. Its domain can be used again.",
   "sites.done.remove_failed": "The website could not be deleted. See the activity log.",
-  "sites.done.remove_confirm": "Type the domain of the website exactly to delete it permanently."
+  "sites.done.remove_confirm": "Type the domain of the website exactly to delete it permanently.",
+  "dkey.title": "Deploy key",
+  "dkey.add": "This repository is private, so the panel made a key for this website only. Add it to the repository before you approve, so the first build can read it:",
+  "dkey.step.github": "GitHub: the repository → Settings → Deploy keys → Add deploy key. Paste the key, leave \"Allow write access\" off.",
+  "dkey.step.gitlab": "GitLab: the project → Settings → Repository → Deploy keys. Paste the key, leave \"Grant write permissions\" off. Bitbucket: Repository settings → Access keys.",
+  "dkey.step.then": "Then press Approve and create here.",
+  "dkey.fp": "Fingerprint",
+  "dkey.private": "The private half never leaves this server; it is used only by this website's build.",
+  "dkey.hostkeys": "Repository host key pinned on the first fetch:",
+  "dkey.nohost": "The repository host key is pinned on the first fetch; a changed host key stops later builds."
 }

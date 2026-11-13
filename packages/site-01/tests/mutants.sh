@@ -64,6 +64,10 @@ GO_MUTANTS=(
   'internal/sites/env.go|strings.ContainsAny(v, "\n\r\x00") {|false {'   # APP-02b: a value with a newline adds a second variable
   'internal/sites/env.go|		if reservedEnv[k] {|		if false && reservedEnv[k] {'   # APP-02b: PORT or PATH can be overridden
   'internal/sites/manager.go|	return os.RemoveAll(p)|	return nil'   # delete permanently leaves the website on disk
+  'internal/sites/deploykey.go|	if err := writeFile(p, priv, 0o600); err != nil {|	if err := writeFile(p, priv, 0o644); err != nil {'   # APP-02b: private deploy key readable by every host user
+  'internal/sites/deploy.go|":"+buildKeyPath+":ro"|":"+buildKeyPath'   # APP-02b: build can change the deploy key
+  'internal/sites/deploy.go|-o StrictHostKeyChecking=accept-new|-o StrictHostKeyChecking=no'   # APP-02b: a changed repository host key is accepted
+  'internal/spec/spec.go|(/[A-Za-z0-9._~-]+)*/?$`)|(/[A-Za-z0-9._~ =-]+)*/?$`)'   # APP-02b: SSH address with spaces (ssh options)
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"
