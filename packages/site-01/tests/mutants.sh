@@ -79,6 +79,9 @@ GO_MUTANTS=(
   'internal/sites/webhook.go|case p.Ref != "refs/heads/"+s.Branch:|case false:'   # APP-02c: a push to any branch deploys
   'internal/sites/webhook.go|[]byte(sec), 0o600)|[]byte(sec), 0o644)'   # APP-02c: webhook secret readable by every host user
   'internal/sites/webhook.go|	if m.hookWait[id] {|	if false {'   # APP-02c: every push while busy builds again
+  'internal/spec/spec.go|if c.DBEngine != "" && !c.Database && app != AppLaravel {|if false {'   # DB-FLEX: WordPress or a static site picks PostgreSQL
+  'internal/sites/render.go|conn, port, img = "pgsql", "5432", catalog.LaravelPostgresImage(p)|conn, port = "pgsql", "5432"'   # DB-FLEX: Laravel on PostgreSQL without the pdo_pgsql image
+  'internal/catalog/catalog.go|pgsql pdo_pgsql;|pgsql;'   # DB-FLEX: PHP image without pdo_pgsql
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

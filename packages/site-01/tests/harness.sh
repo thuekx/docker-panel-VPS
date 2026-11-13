@@ -291,6 +291,20 @@ PHP
   api POST /v1/sites/e-example-test/db/query '{"sql":"SELECT COUNT(*) AS waiting FROM jobs; SELECT COUNT(*) AS failed FROM failed_jobs"}'
   OUT="tinker: $(tail -n 8 "$T/tinker.log") | db: ${BODY:0:300} | queue: $(tail -n 5 "$T/q.log") | scheduler: $(tail -n 5 "$T/s.log")"
   ok "queue worker runs a queued job, scheduler runs" '[ "$(cat "$SE/wp/storage/app/np-queue-ok" 2>/dev/null)" = ok ] && grep -qi "schedul" "$T/s.log" && [ "$(docker inspect -f "{{.RestartCount}}" np-site-e-example-test-queue-1 np-site-e-example-test-scheduler-1 | sort -u)" = 0 ]'
+  # DB-FLEX: Laravel and plain PHP on PostgreSQL (their PHP image gets pgsql + pdo_pgsql, built here like Laravel's)
+  KEPT=$((KEPT+2))
+  printf '%s q-example-test.%s %s\n%s r-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" "$IP" "$ZONE" "$MARK" >> /etc/hosts
+  api POST /v1/sites '{"app":"laravel","domain":"q.example.test","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"","title":"","db_engine":"postgres"}'; JQ="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+  SQ="$SITE01_TEST_ROOT/srv/nostek/sites/q-example-test"
+  ok "Laravel on PostgreSQL built, installed and migrated" '[ "$CODE" = 202 ] && [ "$(wait_job "$JQ" 400)" = done ] && grep -q "^DB_CONNECTION=pgsql" "$SQ/wp/.env" && grep -q "image: postgres:18" "$SQ/compose.yml" && { api GET /v1/sites/q-example-test/db; grep -q "PostgreSQL 18" <<<"$BODY" && grep -q "\"name\":\"migrations\"" <<<"$BODY"; }'
+  ok "Laravel on PostgreSQL answers through Nginx" 'site_get q-example-test q-example-test.$ZONE / | grep -qi "laravel"'
+  MAXT=330 api POST /v1/sites/q-example-test/laravel/artisan '{"op":"migrate"}'; ok "artisan migrate on PostgreSQL" '[ "$CODE" = 200 ] && grep -qi "nothing to migrate" <<<"$BODY"'
+  api POST /v1/sites '{"app":"php","domain":"r.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"","title":"","database":true,"db_engine":"postgres"}'; JR2="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+  ok "plain PHP (Apache) on PostgreSQL: image built, the starter connects with pdo_pgsql" '[ "$CODE" = 202 ] && [ "$(wait_job "$JR2" 400)" = done ] && site_get r-example-test r-example-test.$ZONE / | grep -q "Database: connected (PostgreSQL)" && docker exec np-site-r-example-test-web-1 php -m | grep -qx pdo_pgsql'
+  api POST /v1/sites/r-example-test/db/query '{"sql":"CREATE TABLE np (id int); INSERT INTO np VALUES (7); SELECT id FROM np"}'
+  ok "Database page console on the PHP site PostgreSQL" '[ "$CODE" = 200 ] && grep -qF "[[\"7\"]]" <<<"$BODY"'
+  api POST /v1/sites '{"domain":"s.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"o@example.test","title":"S","db_engine":"postgres"}'
+  ok "WordPress on PostgreSQL is refused" '[ "$CODE" = 422 ]'
 fi
 api POST /v1/sites/d-example-test/laravel/artisan '{"op":"migrate"}'; ok "no artisan on a plain PHP site" '[ "$CODE" = 400 ]'
 
