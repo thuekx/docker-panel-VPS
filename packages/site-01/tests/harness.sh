@@ -225,6 +225,22 @@ ok "daily backup switched on" '[ "$CODE" = 200 ] && grep -q "\"backup_daily\": *
 api POST /v1/sites/b-example-test/backups/manual-20200101-000000.tar.gz/delete; ok "delete a backup" '[ "$CODE" = 200 ] && [ ! -e "$BKD/manual-20200101-000000.tar.gz" ]'
 api GET "/v1/sites/b-example-test/backups/..%2Fsite.json"; ok "backup names outside the list refused" '[ "$CODE" = 400 ]'
 
+# --- IMG-01 update image: the db container runs an older image; Update image pulls, backs up, recreates
+CAT_DB="$(grep -o 'mariadb:11.8@sha256:[0-9a-f]*' "$REPO/agent/internal/catalog/catalog.go")"
+CF_B="$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/compose.yml"
+docker tag "$CAT_DB" np-old/mariadb:harness
+sed -i "s|image: $CAT_DB|image: np-old/mariadb:harness|" "$CF_B"
+api POST /v1/sites/b-example-test/stop; api POST /v1/sites/b-example-test/start
+ok "harness: db container on an older image" '[ "$CODE" = 200 ] && [ "$(docker inspect -f "{{.Config.Image}}" np-site-b-example-test-db-1)" = np-old/mariadb:harness ]'
+imgcheck() { python3 -c 'import json,sys; i=json.load(sys.stdin); d={x["service"]:x for x in i["services"]}; assert i["update"]==(sys.argv[1]=="1"), i; assert d["db"]["wanted"]==sys.argv[2], d; assert d["db"]["update"]==(sys.argv[1]=="1"), d; assert not d["web"]["update"] and not d["php"]["update"], d' "$1" "$CAT_DB" <<<"$BODY"; }
+api GET /v1/sites/b-example-test/images; ok "update available for the database image only" '[ "$CODE" = 200 ] && imgcheck 1'
+api POST /v1/sites/b-example-test/images/update; JI="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "update image runs" '[ "$CODE" = 202 ] && [ "$(wait_job "$JI")" = done ]'
+api GET /v1/sites/b-example-test/backups; UPB="$(bakname before-update)"
+ok "db recreated on the pinned image, website answers, backup made first" '[ "$(docker inspect -f "{{.Config.Image}}" np-site-b-example-test-db-1)" = "$CAT_DB" ] && grep -q "image: $CAT_DB" "$CF_B" && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ] && [ -n "$UPB" ] && tar -tzf "$BKD/$UPB" | grep -qx database.sql'
+api GET /v1/sites/b-example-test/images; ok "up to date afterwards; a second update is refused" '[ "$CODE" = 200 ] && imgcheck 0 && { api POST /v1/sites/b-example-test/images/update; [ "$CODE" = 400 ]; }'
+docker rmi np-old/mariadb:harness >/dev/null 2>&1
+
 # --- APP-01 static and plain PHP websites (real images; WordPress must never be copied in)
 printf '%s c-example-test.%s d-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
 api POST /v1/sites '{"app":"static","domain":"c.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"Situs C"}'; JC="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"

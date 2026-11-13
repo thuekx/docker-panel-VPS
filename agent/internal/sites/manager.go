@@ -22,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thuekx/docker-panel-VPS/agent/internal/catalog"
 	"github.com/thuekx/docker-panel-VPS/agent/internal/spec"
 )
 
@@ -451,17 +450,12 @@ func (m *Manager) create(j *Job, s Site) {
 		fail("files", err, nil)
 		return
 	}
-	p, _ := catalog.PHP(s.PHP)
 	files := map[string]string{"compose.yml": cf}
 	switch {
 	case s.IsLaravel():
 		files["nginx.conf"] = NginxLaravelConf
 		files["laravel.ini"] = LaravelIni
 		files["laravel-env.php"] = LaravelPrepend
-		files[filepath.Join("build", "Dockerfile")] = catalog.LaravelDockerfile(p)
-		if s.IsPostgres() {
-			files[filepath.Join("build", "Dockerfile")] = catalog.LaravelPostgresDockerfile(p)
-		}
 	case s.AppName() == spec.AppStatic:
 		files["nginx.conf"] = NginxStaticConf
 	case s.IsWP() && s.Server == "nginx":
@@ -472,8 +466,8 @@ func (m *Manager) create(j *Job, s Site) {
 	if s.AppName() != spec.AppStatic {
 		files["php.ini"] = PHPIni
 	}
-	if s.AppName() == spec.AppPHP && s.IsPostgres() {
-		files[filepath.Join("build", "Dockerfile")] = catalog.PHPPostgresDockerfile(catalog.PHPPostgresBase(p, s.Server))
+	if rec := buildRecipe(s); rec != "" {
+		files[filepath.Join("build", "Dockerfile")] = rec
 	}
 	if buildService(s) != "" { // the build context holds only the recipe
 		if err := os.MkdirAll(filepath.Join(dir, "build"), 0o755); err != nil {

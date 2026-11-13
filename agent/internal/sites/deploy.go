@@ -214,6 +214,9 @@ func (m *Manager) switchRelease(ctx context.Context, s *Site, n int) ([]byte, er
 		return nil, err
 	}
 	dir := m.dir(s.ID)
+	if old, err := os.ReadFile(filepath.Join(dir, "compose.yml")); err == nil {
+		cf = keepImages(cf, string(old), "app") // the database keeps its image until "Update image" (IMG-01)
+	}
 	if err := writeFile(filepath.Join(dir, "compose.yml"), []byte(cf), 0o644); err != nil {
 		return nil, err
 	}

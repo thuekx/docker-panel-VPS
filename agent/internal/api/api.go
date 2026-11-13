@@ -113,6 +113,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/trash/{entry}/remove", s.removeTrash)
 	mux.HandleFunc("POST /v1/deploykeys", s.newDeployKey)
 	mux.HandleFunc("GET /v1/sites/{id}/deploykey", s.siteDeployKey)
+	mux.HandleFunc("GET /v1/sites/{id}/images", s.images)
+	mux.HandleFunc("POST /v1/sites/{id}/images/update", s.imageUpdate)
 	mux.HandleFunc("GET /v1/sites/{id}/webhook", s.webhook)
 	mux.HandleFunc("POST /v1/sites/{id}/webhook/secret", s.webhookSecret)
 	mux.HandleFunc("POST /v1/sites/{id}/webhook/remove", s.webhookRemove)

@@ -59,7 +59,7 @@
   {{else}}<div class="table-wrap"><table class="bak-table"><thead><tr><th>{{t $l "bak.when"}}</th><th>{{t $l "bak.kind"}}</th><th class="num">{{t $l "bak.size"}}</th><th></th></tr></thead><tbody>
   {{range $d.Rows}}<tr>
     <td><b>{{.When}}</b></td>
-    <td><span class="pill {{if eq .Kind "before-restore"}}s-warn{{else if eq .Kind "daily"}}s-run{{else}}s-ok{{end}}">{{t $l (printf "bak.kind.%s" .Kind)}}</span></td>
+    <td><span class="pill {{if or (eq .Kind "before-restore") (eq .Kind "before-update")}}s-warn{{else if eq .Kind "daily"}}s-run{{else}}s-ok{{end}}">{{t $l (printf "bak.kind.%s" .Kind)}}</span></td>
     <td class="num">{{.Human}}</td>
     <td class="bak-acts">
       <a class="ghost btn" href="/backup/{{$s.ID}}/file/{{.Name}}">{{t $l "bak.download"}}</a>

@@ -110,6 +110,17 @@
   <p class="muted">{{t $l "lar.out" (printf "php artisan %s" .Op)}}</p><pre class="logs">{{.Output}}</pre>{{end}}
 </section>
 {{end}}
+{{with .Data.Images}}<section class="card wide tone c-teal" data-anim="card" id="images">
+  <div class="deploy-head"><h2>{{t $l "img.title"}}</h2>{{if .Running}}<span class="pill s-run">{{t $l "img.running"}}</span>{{else if .Update}}<span class="pill s-warn">{{t $l "img.available"}}</span>{{else}}<span class="pill s-ok">{{t $l "img.uptodate"}}</span>{{end}}</div>
+  <p class="muted">{{t $l "img.help"}}</p>
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "img.service"}}</th><th>{{t $l "img.current"}}</th><th>{{t $l "img.new"}}</th></tr></thead><tbody>{{range .Rows}}
+    <tr><td class="nowrap">{{t $l (printf "stack.svc.%s" .Service)}}</td><td><code>{{.Current}}</code></td><td>{{if .Update}}<code>{{.Wanted}}</code>{{else}}<span class="muted">{{t $l "img.same"}}</span>{{end}}</td></tr>{{end}}
+  </tbody></table></div>
+  {{if and .Update (not .Running)}}<p class="muted">{{t $l "img.how"}}</p>
+  <form method="post" action="/sites/{{$s.ID}}#images" class="form row"><input type="hidden" name="csrf" value="{{$.CSRF}}">
+    <button class="primary" name="action" value="image-update" type="submit" data-confirm="{{t $l "img.ask"}}">{{t $l "img.update"}}</button>
+  </form>{{end}}
+</section>{{end}}
 {{$st := .Data.Stack}}
 <section class="card wide tone c-blue stack" data-anim="card" id="stack" data-stack="/stack/{{$s.ID}}">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-box"}}</span>{{t $l "stack.title"}} <code class="proj">{{if $st.Project}}{{$st.Project}}{{else}}np-site-{{$s.ID}}{{end}}</code></span>

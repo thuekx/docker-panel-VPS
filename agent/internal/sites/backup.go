@@ -37,7 +37,7 @@ const (
 	KeepDefault = 7
 	// KeepMax is the most daily backups the owner may keep.
 	KeepMax = 30
-	// keepSafety is how many before-restore copies are kept.
+	// keepSafety is how many before-restore (and before-update) copies are kept.
 	keepSafety = 3
 	// DailyHour is the WIB hour of the daily backup (before the nightly off-site copy at 03:30).
 	DailyHour = 2
@@ -45,12 +45,12 @@ const (
 	BackupEvery = 10 * time.Minute
 )
 
-var backupRe = regexp.MustCompile(`^(manual|daily|before-restore)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
+var backupRe = regexp.MustCompile(`^(manual|daily|before-restore|before-update)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
 
 // Backup is one archive of a website.
 type Backup struct {
 	Name    string `json:"name"`
-	Kind    string `json:"kind"` // manual | daily | before-restore
+	Kind    string `json:"kind"` // manual | daily | before-restore | before-update
 	Size    int64  `json:"size"`
 	Created int64  `json:"created"`
 }
@@ -387,8 +387,8 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 	switch kind {
 	case "daily":
 		m.prune(s.ID, "daily", s.keep())
-	case "before-restore":
-		m.prune(s.ID, "before-restore", keepSafety)
+	case "before-restore", "before-update":
+		m.prune(s.ID, kind, keepSafety)
 	}
 	return name, nil
 }

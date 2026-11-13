@@ -19,7 +19,7 @@ Nostek Panel
 │   ├── WP-01 WordPress Tools (like WP Toolkit) ........... ✓ v1.6.0 2026-11-12
 │   ├── BAK-01 backup / restore ........................... ✓ v1.7.0 2026-11-12
 │   ├── APP-01 one-click apps: PHP + static ✓ v1.8.0 2026-11-12; Laravel ✓ v1.9.0/v1.9.1 2026-11-12; APP-02a Node.js ✓ v1.10.0 2026-11-12; APP-02b Go/Python/env ✱ now
-│   ├── IMG-01 update image button (after APP-01 + APP-02 stacks) ○
+│   ├── IMG-01 update image button (after APP-01 + APP-02 stacks) ● BUILT v1.16.0 (PR pending)
 │   ├── NATIVE-01 optional native site engine ............ ○ later
 │   ├── MIG-01 WordPress migration ........................ ○
 │   └── OPS-01 logs, usage, cron, alerts .................. ○

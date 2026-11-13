@@ -218,6 +218,7 @@ var jobKindSteps = map[string][]string{
 	"deploy":  {"fetch and build", "start new release"},
 	"backup":  {"copy database", "copy files"},
 	"restore": {"safety database", "safety files", "restore database", "restore files", "switch files"},
+	"image":   {"pull new images", "copy database", "copy files", "recreate containers"},
 }
 
 // stepRow is one line of the progress list: done, active, failed or todo.
@@ -251,18 +252,22 @@ func jobProgress(j agent.Job) ([]stepRow, int) {
 		}
 	}
 	j.Steps = steps
-	for _, st := range j.Steps { // a step this panel does not know yet still shows up
-		known := false
-		for _, k := range keys {
-			known = known || k == st
-		}
-		if !known {
-			keys = append(keys, st)
-		}
-	}
 	started := map[string]bool{}
 	for _, st := range j.Steps {
 		started[st] = true
+	}
+	for _, st := range j.Steps { // a step this panel does not know yet still shows up, before the steps still to come
+		if slices.Contains(keys, st) {
+			continue
+		}
+		at := len(keys)
+		for i, k := range keys {
+			if !started[k] {
+				at = i
+				break
+			}
+		}
+		keys = slices.Insert(keys, at, st)
 	}
 	last := ""
 	if n := len(j.Steps); n > 0 {
@@ -379,6 +384,7 @@ type siteData struct {
 	NoHist  string           // why the history could not be read
 	Env     []string         // names of the app's environment values
 	Hook    *hookView        // APP-02c: auto-deploy of a website built from Git
+	Images  *imagesView      // IMG-01: pinned images and the update button
 }
 
 // deployRow is one deploy as the Overview shows it.
@@ -456,6 +462,11 @@ func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanRe
 			}
 		}
 	}
+	if site.Phase == "ready" {
+		if img, err := s.ag.Images(ctx, id); err == nil {
+			d.Images = imagesOf(img)
+		}
+	}
 	if svc := r.URL.Query().Get("logs"); siteService(site, svc) {
 		d.Service = svc
 		if out, err := s.ag.Logs(ctx, id, svc, 200); err == nil {
@@ -522,6 +533,17 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		}
 		s.owners.set(job, userOf(r).ID)
 		s.audit1(userOf(r), r, "site.deploy", id+" "+site.Domain)
+		http.Redirect(w, r, "/sites/job/"+job, http.StatusSeeOther)
+		return
+	case "image-update":
+		job, err := s.ag.StartImageUpdate(ctx, id)
+		if err != nil {
+			s.audit1(userOf(r), r, "site.image-update", id+" failed: "+err.Error())
+			http.Redirect(w, r, back+"?err="+url.QueryEscape(err.Error())+"#images", http.StatusSeeOther)
+			return
+		}
+		s.owners.set(job, userOf(r).ID)
+		s.audit1(userOf(r), r, "site.image-update", id+" "+site.Domain)
 		http.Redirect(w, r, "/sites/job/"+job, http.StatusSeeOther)
 		return
 	case "webhook-on", "webhook-off":

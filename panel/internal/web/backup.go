@@ -14,7 +14,7 @@ import (
 	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
 )
 
-var backupNameRe = regexp.MustCompile(`^(manual|daily|before-restore)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
+var backupNameRe = regexp.MustCompile(`^(manual|daily|before-restore|before-update)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
 
 type backupRow struct {
 	agent.SiteBackup
