@@ -237,7 +237,8 @@ api GET /v1/sites/b-example-test/images; ok "update available for the database i
 api POST /v1/sites/b-example-test/images/update; JI="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "update image runs" '[ "$CODE" = 202 ] && [ "$(wait_job "$JI")" = done ]'
 api GET /v1/sites/b-example-test/backups; UPB="$(bakname before-update)"
-ok "db recreated on the pinned image, website answers, backup made first" '[ "$(docker inspect -f "{{.Config.Image}}" np-site-b-example-test-db-1)" = "$CAT_DB" ] && grep -q "image: $CAT_DB" "$CF_B" && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ] && [ -n "$UPB" ] && tar -tzf "$BKD/$UPB" | grep -qx database.sql'
+tar -tzf "$BKD/$UPB" > "$T/upd.list" 2>/dev/null   # a file, not a pipe: grep -q would end tar early (pipefail)
+ok "db recreated on the pinned image, website answers, backup made first" '[ "$(docker inspect -f "{{.Config.Image}}" np-site-b-example-test-db-1)" = "$CAT_DB" ] && grep -q "image: $CAT_DB" "$CF_B" && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ] && [ -n "$UPB" ] && grep -qx database.sql "$T/upd.list"'
 api GET /v1/sites/b-example-test/images; ok "up to date afterwards; a second update is refused" '[ "$CODE" = 200 ] && imgcheck 0 && { api POST /v1/sites/b-example-test/images/update; [ "$CODE" = 400 ]; }'
 docker rmi np-old/mariadb:harness >/dev/null 2>&1
 
