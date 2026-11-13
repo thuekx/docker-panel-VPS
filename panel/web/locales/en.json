@@ -599,5 +599,13 @@
   "dkey.fp": "Fingerprint",
   "dkey.private": "The private half never leaves this server; it is used only by this website's build.",
   "dkey.hostkeys": "Repository host key pinned on the first fetch:",
-  "dkey.nohost": "The repository host key is pinned on the first fetch; a changed host key stops later builds."
+  "dkey.nohost": "The repository host key is pinned on the first fetch; a changed host key stops later builds.",
+  "rt.db": "Database",
+  "rt.db.none": "No database",
+  "rt.db.help": "The app gets its own database on the private network, with DATABASE_URL and DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD in its environment. Backups and the Database page cover it.",
+  "sites.creates.db.mariadb": "Plus its own MariaDB database on the private network; DATABASE_URL is set for the app.",
+  "sites.creates.db.postgres": "Plus its own PostgreSQL 18 database on the private network; DATABASE_URL is set for the app.",
+  "sites.resources.db.mariadb": "The database adds up to 512 MB.",
+  "sites.resources.db.postgres": "The database adds up to 512 MB.",
+  "db.rows.help.pg": "Row counts are PostgreSQL estimates, updated by autovacuum and ANALYZE."
 }

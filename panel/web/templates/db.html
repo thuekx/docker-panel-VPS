@@ -11,7 +11,7 @@
     <tr><th>{{t $l "db.name"}}</th><td><code>{{$d.DB.Name}}</code></td></tr>
     <tr><th>{{t $l "db.user"}}</th><td><code>{{$d.DB.User}}</code> <span class="muted">{{t $l "db.user.help"}}</span></td></tr>
     <tr><th>{{t $l "db.host"}}</th><td><code>{{$d.DB.Host}}</code> <span class="muted">{{t $l "db.host.help"}}</span></td></tr>
-    <tr><th>{{t $l "db.version"}}</th><td>{{$d.DB.Version}}</td></tr>
+    <tr><th>{{t $l "db.version"}}</th><td>{{$s.DBName}} {{$d.DB.Version}}</td></tr>
     <tr><th>{{t $l "db.size"}}</th><td><b>{{$d.Size}}</b> · {{t $l "db.tables.count" (len $d.Tables)}}</td></tr>
   </tbody></table></div>{{end}}
 </article>
@@ -37,7 +37,7 @@
   <p class="banner warn">{{t $l "db.sql.warn"}}</p>
   <form method="post" action="/db/{{$s.ID}}#sql" class="form">
     <input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="query">
-    <textarea name="sql" class="code" rows="6" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="SELECT option_name, option_value FROM wp_options WHERE autoload = 'yes' LIMIT 20;" required>{{$d.SQL}}</textarea>
+    <textarea name="sql" class="code" rows="6" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="{{if $s.IsWP}}SELECT option_name, option_value FROM wp_options WHERE autoload = 'yes' LIMIT 20;{{else if $s.IsPostgres}}SELECT tablename FROM pg_tables WHERE schemaname = 'public';{{else}}SHOW TABLES;{{end}}" required>{{$d.SQL}}</textarea>
     <div class="row"><button class="primary" type="submit">{{t $l "db.sql.go"}}</button><span class="muted">{{t $l "db.sql.help"}}</span></div>
   </form>
   {{if $d.QueryErr}}<p class="err" role="alert" data-anim="shake">{{$d.QueryErr}}</p>{{end}}
@@ -52,10 +52,10 @@
 {{if $d.Tables}}<section class="card wide tone c-green" data-anim="card">
   <h2>{{t $l "db.tables"}}</h2>
   <div class="table-wrap"><table><thead><tr><th>{{t $l "db.table"}}</th><th class="num">{{t $l "db.rows"}}</th><th class="num">{{t $l "db.data"}}</th><th class="num">{{t $l "db.index"}}</th><th>{{t $l "db.engine"}}</th><th></th></tr></thead><tbody>
-  {{range $d.Tables}}<tr><td><code>{{.Name}}</code></td><td class="num">{{.Rows}}</td><td class="num">{{.Data}}</td><td class="num">{{.Index}}</td><td class="muted">{{.Engine}} · {{.Collation}}</td>
-    <td><a class="ghost btn" href="/db/{{$s.ID}}?sql=SELECT+*+FROM+%60{{.Name}}%60+LIMIT+50%3B#sql">{{t $l "db.browse"}}</a></td></tr>{{end}}
+  {{range $d.Tables}}<tr><td><code>{{.Name}}</code></td><td class="num">{{.Rows}}</td><td class="num">{{.Data}}</td><td class="num">{{.Index}}</td><td class="muted">{{.Engine}}{{if .Collation}} · {{.Collation}}{{end}}</td>
+    <td><a class="ghost btn" href="/db/{{$s.ID}}?sql=SELECT+*+FROM+{{if $s.IsPostgres}}%22{{.Name}}%22{{else}}%60{{.Name}}%60{{end}}+LIMIT+50%3B#sql">{{t $l "db.browse"}}</a></td></tr>{{end}}
   </tbody></table></div>
-  <p class="muted">{{t $l "db.rows.help"}}</p>
+  <p class="muted">{{if $s.IsPostgres}}{{t $l "db.rows.help.pg"}}{{else}}{{t $l "db.rows.help"}}{{end}}</p>
 </section>{{end}}
 <p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
 {{end}}

@@ -272,3 +272,67 @@ func TestPrivateRepoPages(t *testing.T) {
 		t.Error("key shown for a public repository")
 	}
 }
+
+func TestAppDatabaseForm(t *testing.T) {
+	r, _ := http.NewRequest("POST", "/", nil)
+	r.PostForm = url.Values{"app": {"python"}, "domain": {"voltix.id"}, "source": {"files"}, "db_engine": {"none"}, "database": {"1"}}
+	if c, _ := formCreate(r); c.Database || c.DBEngine != "" {
+		t.Errorf("no database %+v", c)
+	}
+	r.PostForm.Set("db_engine", " PostgreSQL ")
+	if c, _ := formCreate(r); !c.Database || c.DBEngine != "postgresql" { // the agent refuses an unknown engine
+		t.Errorf("engine %+v", c)
+	}
+	r.PostForm.Set("db_engine", "postgres")
+	if c, _ := formCreate(r); !c.Database || c.DBEngine != "postgres" {
+		t.Errorf("postgres %+v", c)
+	}
+	r.PostForm.Set("app", "php")
+	if c, _ := formCreate(r); !c.Database || c.DBEngine != "" {
+		t.Errorf("engine on a PHP app %+v", c)
+	}
+	pg := agent.Site{App: "go", Database: true, DBEngine: "postgres"}
+	if !siteService(pg, "db") || !pg.IsPostgres() || pg.DBName() != "PostgreSQL" || siteService(agent.Site{App: "go"}, "db") {
+		t.Error("go with PostgreSQL")
+	}
+	if my := (agent.Site{App: "node", Database: true}); !my.HasDB() || my.IsPostgres() || my.DBName() != "MariaDB" || (agent.Site{App: "go", DBEngine: "postgres"}).IsPostgres() {
+		t.Error("node with MariaDB")
+	}
+}
+
+func TestAppDatabasePages(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	_, body, _ := e.get(e.c, "/sites/new")
+	for _, want := range []string{`name="db_engine" value="none" checked`, `name="db_engine" value="postgres"`, "DATABASE_URL"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("form lacks %q", want)
+		}
+	}
+	f.app = "go"
+	for _, engine := range []string{"mariadb", "postgres"} {
+		form := url.Values{"step": {"plan"}, "app": {"go"}, "domain": {"voltix.id"}, "primary": {"domain"}, "source": {"files"}, "go_version": {"1.27"}, "db_engine": {engine}}
+		code, plan, _ := e.postWith(e.c, "/sites/new", form, body)
+		name := map[string]string{"mariadb": "MariaDB", "postgres": "PostgreSQL 18"}[engine]
+		if code != 200 || !strings.Contains(plan, `name="db_engine" value="`+engine+`"`) || !strings.Contains(plan, name+" database") || missingKey.MatchString(plan) {
+			t.Fatalf("%s plan %d %v", engine, code, missingKey.FindString(plan))
+		}
+		form.Set("step", "create")
+		e.postWith(e.c, "/sites/new", form, plan)
+		if n := len(f.created); n == 0 || !f.created[n-1].Database || f.created[n-1].DBEngine != engine {
+			t.Fatalf("%s created %+v", engine, f.created)
+		}
+	}
+	f.appDB, f.dbEngine = true, "postgres"
+	if _, page, _ := e.get(e.c, "/sites/voltix-id"); !strings.Contains(page, ">PostgreSQL</span>") || !strings.Contains(page, "/db/voltix-id") {
+		t.Error("site page lacks PostgreSQL")
+	}
+	if code, page, _ := e.get(e.c, "/db/voltix-id"); code != 200 || !strings.Contains(page, "PostgreSQL") || !strings.Contains(page, "FROM+%22") || !strings.Contains(page, "FROM pg_tables") || missingKey.MatchString(page) {
+		t.Errorf("database page %d %v", code, missingKey.FindString(page))
+	}
+	f.dbEngine = ""
+	if _, page, _ := e.get(e.c, "/db/voltix-id"); !strings.Contains(page, "FROM+%60") || strings.Contains(page, "PostgreSQL") {
+		t.Error("MariaDB database page")
+	}
+}

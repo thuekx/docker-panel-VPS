@@ -36,6 +36,7 @@ type fakeAgent struct {
 	removed   []string
 	keys      int
 	repo      string // APP-02b: repository of the fake runtime site
+	dbEngine  string // APP-02b: engine of the fake site database
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +46,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	site := agent.Site{ID: "voltix-id", Domain: "voltix.id", Server: "nginx", PHP: "8.4", AdminUser: "admin-abc123",
 		URL: "https://voltix-id.preview.nostek.dev", Phase: "ready", Status: "running",
 		Hosts: []agent.Host{{Name: "voltix.id", Role: "primary"}, {Name: "voltix-id.preview.nostek.dev", Role: "preview", Routed: true}}}
-	site.App, site.Database = f.app, f.appDB
+	site.App, site.Database, site.DBEngine = f.app, f.appDB, f.dbEngine
 	if f.app == "laravel" {
 		site.Version = "13"
 	}
@@ -107,6 +108,9 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.URL.Path == "/v1/sites/plan" {
+			if site.IsNode() {
+				site.Database, site.DBEngine = c.Database, c.DBEngine
+			}
 			write(200, site)
 			return
 		}
