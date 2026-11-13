@@ -51,9 +51,11 @@ type Server struct {
 	static  http.Handler
 	sys     sysinfo.Reader
 	ipLimit *auth.Limiter
-	now     func() time.Time
-	ag      *agent.Client
-	owners  jobOwners
+	// hookLimit bounds webhook deliveries per address (APP-02c)
+	hookLimit *auth.Limiter
+	now       func() time.Time
+	ag        *agent.Client
+	owners    jobOwners
 }
 
 func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server, error) {
@@ -67,7 +69,7 @@ func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{cfg: cfg, st: st, tr: tr, sys: sys, ipLimit: auth.NewLimiter(20, time.Minute), now: time.Now, ag: agent.New("")}
+	s := &Server{cfg: cfg, st: st, tr: tr, sys: sys, ipLimit: auth.NewLimiter(20, time.Minute), hookLimit: auth.NewLimiter(60, time.Minute), now: time.Now, ag: agent.New("")}
 	if err := s.parseTemplates(assets); err != nil {
 		return nil, err
 	}
@@ -143,6 +145,7 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", s.static)
+	mux.HandleFunc("POST /hooks/{id}", s.hookDeliver) // APP-02c: public, checked by the agent
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /setup/{token}", s.setupForm)
 	mux.HandleFunc("POST /setup/{token}", s.setupSubmit)

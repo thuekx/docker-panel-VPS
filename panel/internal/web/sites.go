@@ -372,6 +372,7 @@ type siteData struct {
 	Key     *agent.DeployKey // APP-02b: deploy key of a private repository
 	NoHist  string           // why the history could not be read
 	Env     []string         // names of the app's environment values
+	Hook    *hookView        // APP-02c: auto-deploy of a website built from Git
 }
 
 // deployRow is one deploy as the Overview shows it.
@@ -408,10 +409,11 @@ type artisanResult struct {
 var artisanOps = []string{"migrate", "optimize", "optimize-clear", "queue-restart"}
 
 func (s *Server) siteShow(w http.ResponseWriter, r *http.Request) {
-	s.showSite(w, r, nil)
+	s.showSite(w, r, nil, "")
 }
 
-func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanResult) {
+// showSite renders the Overview; art is an artisan command just run, secret a webhook secret just made (shown once).
+func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanResult, secret string) {
 	id := r.PathValue("id")
 	if !siteRe.MatchString(id) {
 		s.notFound(w, r)
@@ -440,6 +442,11 @@ func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanRe
 		if site.PrivateRepo() {
 			if k, err := s.ag.SiteDeployKey(ctx, id); err == nil {
 				d.Key = &k
+			}
+		}
+		if !site.FromFiles() {
+			if wh, err := s.ag.Webhook(ctx, id); err == nil {
+				d.Hook = s.hookView(r, wh, id, secret)
 			}
 		}
 	}
@@ -494,7 +501,7 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		} else {
 			s.audit1(userOf(r), r, "site.artisan", id+" "+op)
 		}
-		s.showSite(w, r, res)
+		s.showSite(w, r, res, "")
 		return
 	case "deploy":
 		if !site.IsNode() {
@@ -510,6 +517,24 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		s.owners.set(job, userOf(r).ID)
 		s.audit1(userOf(r), r, "site.deploy", id+" "+site.Domain)
 		http.Redirect(w, r, "/sites/job/"+job, http.StatusSeeOther)
+		return
+	case "webhook-on", "webhook-off":
+		if !site.IsNode() || site.FromFiles() {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		if act == "webhook-off" {
+			err = s.ag.RemoveWebhook(ctx, id)
+			break
+		}
+		sec, err := s.ag.NewWebhookSecret(ctx, id)
+		if err != nil {
+			s.audit1(userOf(r), r, "site.webhook-on", id+" failed: "+err.Error())
+			http.Redirect(w, r, back+"?err="+url.QueryEscape(err.Error())+"#autodeploy", http.StatusSeeOther)
+			return
+		}
+		s.audit1(userOf(r), r, "site.webhook-on", id+" new secret")
+		s.showSite(w, r, nil, sec)
 		return
 	case "rollback":
 		n, cerr := strconv.Atoi(r.PostForm.Get("release"))

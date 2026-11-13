@@ -262,6 +262,7 @@ type Deploy struct {
 	Result   string `json:"result"` // running | live | ok | failed | removed
 	Error    string `json:"error"`
 	Rollback bool   `json:"rollback"`
+	Trigger  string `json:"trigger"` // webhook = started by a push (APP-02c)
 }
 
 // Deploys reads the deploy history of a Node.js website, newest first.
@@ -483,4 +484,55 @@ func (c *Client) Logs(ctx context.Context, id, service string, lines int) (strin
 	}
 	q := url.Values{"service": {service}, "lines": {strconv.Itoa(lines)}}
 	return v.Logs, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/logs?"+q.Encode(), nil, &v)
+}
+
+// Delivery is what the agent did with one webhook delivery (APP-02c).
+type Delivery struct {
+	At     int64  `json:"at"`
+	Event  string `json:"event"`
+	Result string `json:"result"` // ping | deploy | queued | ignored
+	Detail string `json:"detail"`
+	Commit string `json:"commit"`
+	Job    string `json:"job"`
+}
+
+// Webhook is the auto-deploy state of a website built from Git.
+type Webhook struct {
+	On         bool       `json:"on"`
+	Branch     string     `json:"branch"`
+	Deliveries []Delivery `json:"deliveries"`
+}
+
+// Hook is one delivery passed on from the panel's public webhook address.
+type Hook struct {
+	Event     string `json:"event"`
+	Signature string `json:"signature,omitempty"`
+	Token     string `json:"token,omitempty"`
+	Body      []byte `json:"body"`
+}
+
+// Webhook reads the auto-deploy state of a website.
+func (c *Client) Webhook(ctx context.Context, id string) (Webhook, error) {
+	var w Webhook
+	return w, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/webhook", nil, &w)
+}
+
+// NewWebhookSecret turns auto-deploy on, or replaces its secret, and returns the secret (shown once).
+func (c *Client) NewWebhookSecret(ctx context.Context, id string) (string, error) {
+	var v struct {
+		Secret string `json:"secret"`
+	}
+	err := c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/webhook/secret", nil, &v)
+	return v.Secret, err
+}
+
+// RemoveWebhook turns auto-deploy off.
+func (c *Client) RemoveWebhook(ctx context.Context, id string) error {
+	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/webhook/remove", nil, nil)
+}
+
+// Deliver passes a webhook delivery to the agent, which checks its signature.
+func (c *Client) Deliver(ctx context.Context, id string, h Hook) (Delivery, error) {
+	var d Delivery
+	return d, c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/webhook/deliver", h, &d)
 }
