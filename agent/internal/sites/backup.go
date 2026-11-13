@@ -659,13 +659,15 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	}
 	// swap the folders: the running containers keep the old folder mounted, so they are recreated on the new one
 	j.Step("switch files")
-	if out, err := m.compose(ctx, s.ID, nil, "stop", "web"); err != nil {
-		return fmt.Errorf("stop failed: %s", tail(out))
+	stop := []string{"stop", "web"} // the containers that mount the website folder
+	switch {
+	case s.IsRuntime(): // Node.js, Go, Python: one app container, no web server
+		stop = []string{"stop", "app"}
+	case s.Server == "nginx":
+		stop = append(stop, "php")
 	}
-	if s.Server == "nginx" {
-		if out, err := m.compose(ctx, s.ID, nil, "stop", "php"); err != nil {
-			return fmt.Errorf("stop failed: %s", tail(out))
-		}
+	if out, err := m.compose(ctx, s.ID, nil, stop...); err != nil {
+		return fmt.Errorf("stop failed: %s", tail(out))
 	}
 	old := filepath.Join(sdir, "wp.old-"+randHex(4))
 	wp := m.wpDir(s.ID)

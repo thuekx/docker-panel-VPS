@@ -3,7 +3,25 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.13.0] — 2026-11-13
+
+### Added
+- **A database for Node.js, Go and Python websites** (APP-02b). "Add website" asks for one: no database, **MariaDB**
+  or **PostgreSQL 18**, each on its official image pinned by digest, on the website's own private network.
+  - The app gets the connection values in its environment, ready to use: `DATABASE_URL` (`mysql://…` or
+    `postgres://…`) and `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`. The password is made on the server
+    and is never shown; the Overview lists only the names.
+  - The Database page (tables, SQL console, export and import) and website backups and restores work for both
+    engines, with the engine's own tools (`pg_dump` and `psql` for PostgreSQL).
+  - The Overview names the engine (MariaDB or PostgreSQL).
+
+### Fixed
+- Restoring the files of a Node.js, Go or Python website from a backup failed: it tried to stop a web server
+  container these websites do not have. It now stops the app container.
+
 ## [1.12.0] — 2026-11-13
+
+Running at the owner's server since 17:05 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Private Git repositories** for Node.js, Go and Python websites (APP-02b). Give the SSH address of the repository
@@ -16,6 +34,9 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
     running) instead of fetching from an unknown server.
 
 ## [1.11.0] — 2026-11-12
+
+Running at the owner's server since 17:05 WIB 2026-11-13, together with 1.12.0 (`site-01` APPLY + VERIFY PASS,
+`panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Go and Python websites** (APP-02, second part). "Add website" now offers Go (1.26, 1.27 default) and Python

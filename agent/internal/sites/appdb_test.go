@@ -55,6 +55,9 @@ func TestAppDatabase(t *testing.T) {
 				t.Errorf("%s compose lacks %q", c.app, want)
 			}
 		}
+		if st, _ := os.Stat(filepath.Join(m.dir(s.ID), "secrets")); st == nil || st.Mode().Perm() != 0o700 {
+			t.Errorf("%s secrets folder %v", c.app, st)
+		}
 		pw, _ := os.ReadFile(filepath.Join(m.dir(s.ID), "secrets", "db_password"))
 		if len(pw) != 24 || strings.Contains(string(cf), string(pw)) {
 			t.Fatalf("%s password file %q", c.app, pw)
@@ -143,5 +146,50 @@ func TestParsePGHTML(t *testing.T) {
 	}
 	if e := pgErr([]byte("ERROR:  syntax error at or near \"SELEC\"\nLINE 1: SELEC 1;\n")); e == nil || !strings.Contains(e.Error(), `syntax error at or near "SELEC"`) {
 		t.Errorf("error %v", e)
+	}
+}
+
+func TestAppDatabaseBackupRestore(t *testing.T) {
+	m, f, s := appDBSite(t, spec.Create{App: "python", Domain: "voltix.id", Primary: "domain", Version: "3.14", Source: "files", Database: true, DBEngine: spec.DBPostgres})
+	_ = os.MkdirAll(filepath.Join(m.wpDir(s.ID), "source"), 0o755)
+	_ = os.WriteFile(filepath.Join(m.wpDir(s.ID), "source", "app.py"), []byte("print(1)"), 0o644)
+	f.dumped = "-- PostgreSQL database dump\nCREATE TABLE public.items (id int);\n"
+	job, err := m.StartBackup(s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := waitJob(t, m, job); v.State != "done" {
+		t.Fatalf("backup %+v", v)
+	}
+	b, _ := m.ListBackups(s.ID)
+	if len(b.Backups) != 1 {
+		t.Fatalf("backups %+v", b)
+	}
+	got := entries(t, filepath.Join(m.backupDir(s.ID), b.Backups[0].Name))
+	if got["database.sql"] != f.dumped || got["wp/source/app.py"] != "print(1)" {
+		t.Fatalf("archive %v", got)
+	}
+	f.calls = nil
+	job, err = m.StartRestore(s.ID, b.Backups[0].Name, "all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := waitJob(t, m, job); v.State != "done" {
+		t.Fatalf("restore %+v", v)
+	}
+	var all string
+	for _, c := range f.calls {
+		all += strings.Join(c, " ") + "\n"
+	}
+	for _, want := range []string{"pg_dump --no-owner", "stop app\n", "up -d --force-recreate"} {
+		if !strings.Contains(all, want) {
+			t.Errorf("restore lacks %q:\n%s", want, all)
+		}
+	}
+	if strings.Contains(all, "stop web") || strings.Contains(all, "mariadb") {
+		t.Errorf("restore of an app used the web server or MariaDB:\n%s", all)
+	}
+	if b, _ := os.ReadFile(filepath.Join(m.wpDir(s.ID), "source", "app.py")); string(b) != "print(1)" {
+		t.Errorf("files not restored: %q", b)
 	}
 }

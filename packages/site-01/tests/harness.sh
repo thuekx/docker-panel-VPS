@@ -333,6 +333,40 @@ api POST /v1/sites '{"app":"python","domain":"i.example.test","aliases":[],"prim
 ok "Python site in its own virtual environment from its own files, answers on port 3000 as www-data" '[ "$CODE" = 202 ] && [ "$(wait_job "$JI" 300)" = done ] && app_get i-example-test i-example-test.$ZONE / | grep -q "This Python app is ready (<code>Python 3.14" && [ "$(docker exec np-site-i-example-test-app-1 id -u)" = 33 ] && [ -f "$SITE01_TEST_ROOT/srv/nostek/sites/i-example-test/wp/releases/1/.venv/pyvenv.cfg" ] && docker exec np-site-i-example-test-app-1 /app/.venv/bin/python -c "import sys; assert sys.prefix != sys.base_prefix"'
 MAXT=240 api POST /v1/sites/i-example-test/env '{"set":{"NP_PY":"ok"},"delete":[]}'
 ok "environment value reaches the Python app" '[ "$CODE" = 200 ] && [ "$(docker exec np-site-i-example-test-app-1 printenv NP_PY)" = ok ]'
+# --- APP-02b database for apps: Python with PostgreSQL, Node.js with MariaDB; connection values in the app env,
+# the Database page tools and backup/restore on the engine's own clients
+printf '%s k-example-test.%s %s\n%s l-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" "$IP" "$ZONE" "$MARK" >> /etc/hosts
+SK="$SITE01_TEST_ROOT/srv/nostek/sites/k-example-test"
+api POST /v1/sites '{"app":"python","domain":"k.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"","version":"3.14","source":"files","database":true,"db_engine":"postgres"}'; JK="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "Python site with its own PostgreSQL: app and healthy database running" '[ "$CODE" = 202 ] && [ "$(wait_job "$JK" 300)" = done ] && app_get k-example-test k-example-test.$ZONE / | grep -q "This Python app is ready" && [ "$(docker inspect -f "{{.State.Health.Status}}" np-site-k-example-test-db-1)" = healthy ] && grep -q "image: postgres:18" "$SK/compose.yml"'
+KPW="$(cat "$SK/secrets/db_password" 2>/dev/null)"
+ok "DATABASE_URL and DB_* reach the app, the password only in its secret file and the 0600 env file" '[ -n "$KPW" ] && [ "$(docker exec np-site-k-example-test-app-1 printenv DATABASE_URL)" = "postgres://app:$KPW@db:5432/app" ] && [ "$(docker exec np-site-k-example-test-app-1 printenv DB_HOST)" = db ] && [ "$(stat -c %a "$SK/secrets")" = 700 ] && ! grep -qF "$KPW" "$SK/compose.yml" "$SK/site.json" "$SITE01_TEST_ROOT/var/log/nostek-agent/"*'
+ok "the app reaches its database on the private network" 'docker exec np-site-k-example-test-app-1 /app/.venv/bin/python -c "import socket; socket.create_connection((\"db\", 5432), 5)"'
+api POST /v1/sites/k-example-test/db/query '{"sql":"CREATE TABLE np_items (id int PRIMARY KEY, name text); INSERT INTO np_items VALUES (1, '"'"'satu <b>&'"'"'), (2, NULL); SELECT name FROM np_items ORDER BY id"}'
+ok "SQL console runs PostgreSQL statements, values and NULL as written" '[ "$CODE" = 200 ] && python3 -c "import json,sys; r=json.load(sys.stdin)[\"results\"]; assert r[-1][\"rows\"]==[[\"satu <b>&\"],[None]], r" <<<"$BODY"'
+api GET /v1/sites/k-example-test/db; ok "database overview names PostgreSQL and lists the table" '[ "$CODE" = 200 ] && python3 -c "import json,sys; d=json.load(sys.stdin); assert d[\"version\"].startswith(\"PostgreSQL 18\"), d; assert [t[\"name\"] for t in d[\"tables\"]]==[\"np_items\"], d" <<<"$BODY"'
+api POST /v1/sites/k-example-test/db/query '{"sql":"SELEC 1"}'; ok "PostgreSQL error is shown" '[ "$CODE" = 400 ] && grep -q "syntax error" <<<"$BODY"'
+RAWOUT="$T/k.sql.gz" raw GET /v1/sites/k-example-test/db/export
+ok "export is a pg_dump with the table and no password" '[ "$CODE" = 200 ] && gzip -dc "$T/k.sql.gz" > "$T/k.sql" && grep -q "CREATE TABLE public.np_items" "$T/k.sql" && ! grep -qF "$KPW" "$T/k.sql"'
+printf "INSERT INTO np_items VALUES (3, 'tiga');\n" | gzip > "$T/kimp.sql.gz"
+raw PUT /v1/sites/k-example-test/db/import "$T/kimp.sql.gz"; api POST /v1/sites/k-example-test/db/query '{"sql":"SELECT count(*) FROM np_items"}'
+ok "import runs on PostgreSQL" '[ "$CODE" = 200 ] && grep -qF "[[\"3\"]]" <<<"$BODY"'
+api POST /v1/sites/k-example-test/backups; JKB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "backup of the app with its PostgreSQL" '[ "$CODE" = 202 ] && [ "$(wait_job "$JKB")" = done ]'
+api GET /v1/sites/k-example-test/backups; KBN="$(bakname manual)"
+api POST /v1/sites/k-example-test/db/query '{"sql":"DROP TABLE np_items; CREATE TABLE np_after (id int)"}'
+printf 'x' > "$SK/wp/source/rusak.txt"
+api POST "/v1/sites/k-example-test/backups/$KBN/restore" '{"what":"all"}'; JKR="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "restore everything of the app: database and files back, the app answers" '[ "$CODE" = 202 ] && [ "$(wait_job "$JKR")" = done ] && [ ! -e "$SK/wp/source/rusak.txt" ] && app_get k-example-test k-example-test.$ZONE / | grep -q "This Python app is ready" && { api POST /v1/sites/k-example-test/db/query "{\"sql\":\"SELECT count(*) FROM np_items; SELECT to_regclass('"'"'np_after'"'"') IS NULL\"}"; grep -qF "[[\"3\"]]" <<<"$BODY" && grep -qF "[[\"t\"]]" <<<"$BODY"; }'
+SL="$SITE01_TEST_ROOT/srv/nostek/sites/l-example-test"
+api POST /v1/sites '{"app":"node","domain":"l.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"","version":"24","source":"files","database":true,"db_engine":"mariadb"}'; JL="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+LPW() { cat "$SL/secrets/db_password" 2>/dev/null; }
+ok "Node.js site with its own MariaDB, DATABASE_URL in the app, the app reaches it" '[ "$CODE" = 202 ] && [ "$(wait_job "$JL" 300)" = done ] && [ "$(docker inspect -f "{{.State.Health.Status}}" np-site-l-example-test-db-1)" = healthy ] && [ "$(docker exec np-site-l-example-test-app-1 printenv DATABASE_URL)" = "mysql://app:$(LPW)@db:3306/app" ] && docker exec np-site-l-example-test-app-1 node -e "require(\"net\").connect(3306, \"db\").on(\"connect\", () => process.exit(0)).on(\"error\", () => process.exit(1))"'
+api POST /v1/sites/l-example-test/db/query '{"sql":"CREATE TABLE np_items (id int PRIMARY KEY, name text); INSERT INTO np_items VALUES (1, '"'"'satu'"'"'); SELECT name FROM np_items"}'
+ok "SQL console on the app MariaDB" '[ "$CODE" = 200 ] && grep -qF "[[\"satu\"]]" <<<"$BODY"'
+api POST /v1/sites '{"app":"static","domain":"m.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"","database":true,"db_engine":"postgres"}'
+ok "a database engine on a site without an app database is refused" '[ "$CODE" = 422 ]'
+KEPT=$((KEPT+2))
 api POST /v1/sites '{"app":"python","domain":"j.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"","version":"2.7","source":"files"}'
 ok "an unsupported Python version is refused" '[ "$CODE" = 422 ]'
 KEPT=$((KEPT+2))
