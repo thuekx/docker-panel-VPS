@@ -24,13 +24,29 @@ func TestFormCreateApps(t *testing.T) {
 	if c.App != "static" || c.Server != "nginx" || c.PHP != "" || c.AdminEmail != "" || c.Database || c.Domain != "voltix.id" {
 		t.Errorf("static %+v", c)
 	}
-	c, _ = formCreate(form("app", "php", "database", "1", "server", "nginx"))
-	if c.App != "php" || c.Server != "nginx" || c.PHP != "8.4" || c.AdminEmail != "" || !c.Database {
+	c, _ = formCreate(form("app", "php", "db_engine", "mariadb", "server", "nginx"))
+	if c.App != "php" || c.Server != "nginx" || c.PHP != "8.4" || c.AdminEmail != "" || !c.Database || c.DBEngine != "mariadb" {
 		t.Errorf("php %+v", c)
 	}
-	c, _ = formCreate(form("app", "php"))
-	if c.Database {
-		t.Error("database without the box ticked")
+	c, _ = formCreate(form("app", "php", "database", "1", "db_engine", "none"))
+	if c.Database || c.DBEngine != "" {
+		t.Error("database without choosing one")
+	}
+	c, _ = formCreate(form("app", "php", "db_engine", "postgres"))
+	if !c.Database || c.DBEngine != "postgres" {
+		t.Errorf("php on PostgreSQL %+v", c)
+	}
+	c, _ = formCreate(form("app", "laravel", "db_engine", "postgres", "laravel_db", "postgres"))
+	if c.Database || c.DBEngine != "postgres" {
+		t.Errorf("laravel on PostgreSQL %+v", c)
+	}
+	c, _ = formCreate(form("app", "laravel", "laravel_db", "mariadb"))
+	if c.Database || c.DBEngine != "" {
+		t.Errorf("laravel on MariaDB %+v", c)
+	}
+	c, _ = formCreate(form("laravel_db", "postgres", "db_engine", "postgres"))
+	if c.Database || c.DBEngine != "" {
+		t.Errorf("WordPress took an engine %+v", c)
 	}
 }
 
@@ -39,7 +55,7 @@ func TestAppSitePages(t *testing.T) {
 	f := e.withAgent()
 	e.setupAdmin(e.c, "admin@example.test")
 	_, body, _ := e.get(e.c, "/sites/new")
-	for _, want := range []string{`name="app" value="wordpress" checked`, `name="app" value="php"`, `name="app" value="static"`, "Add a MariaDB database"} {
+	for _, want := range []string{`name="app" value="wordpress" checked`, `name="app" value="php"`, `name="app" value="static"`, `name="db_engine" value="postgres"`, `name="laravel_db" value="postgres"`, "WordPress supports MySQL and MariaDB only"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("form lacks %q", want)
 		}
@@ -69,12 +85,51 @@ func TestAppSitePages(t *testing.T) {
 	}
 	// the create request carries the app
 	_, page, _ := e.get(e.c, "/sites/new")
-	e.postWith(e.c, "/sites/new", url.Values{"step": {"create"}, "app": {"php"}, "database": {"1"}, "domain": {"voltix.id"}, "primary": {"domain"}, "server": {"nginx"}, "php": {"8.4"}, "admin_email": {"x@y.z"}}, page)
+	e.postWith(e.c, "/sites/new", url.Values{"step": {"create"}, "app": {"php"}, "db_engine": {"mariadb"}, "domain": {"voltix.id"}, "primary": {"domain"}, "server": {"nginx"}, "php": {"8.4"}, "admin_email": {"x@y.z"}}, page)
 	if n := len(f.created); n == 0 || f.created[n-1].App != "php" || !f.created[n-1].Database || f.created[n-1].AdminEmail != "" {
 		t.Fatalf("created %+v", f.created)
 	}
 	_, audit, _ := e.get(e.c, "/audit")
 	if !strings.Contains(audit, "voltix.id php nginx") {
 		t.Error("audit lacks the app")
+	}
+}
+
+func TestDatabaseChoicePerApp(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	_, body, _ := e.get(e.c, "/sites/new")
+	for _, c := range []struct {
+		form         url.Values
+		hidden, lead string
+		database     bool
+		engine       string
+	}{
+		{url.Values{"app": {"php"}, "server": {"apache"}, "php": {"8.4"}, "db_engine": {"postgres"}}, `name="db_engine" value="postgres"`, "PostgreSQL 18 database", true, "postgres"},
+		{url.Values{"app": {"php"}, "server": {"nginx"}, "php": {"8.4"}, "db_engine": {"mariadb"}}, `name="db_engine" value="mariadb"`, "MariaDB database", true, "mariadb"},
+		{url.Values{"app": {"laravel"}, "php": {"8.4"}, "laravel_db": {"postgres"}}, `name="laravel_db" value="postgres"`, "PostgreSQL 18, bukan MariaDB", false, "postgres"},
+	} {
+		c.form.Set("step", "plan")
+		c.form.Set("domain", "voltix.id")
+		c.form.Set("primary", "domain")
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"id"}})
+		if c.form.Get("app") != "laravel" {
+			e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+		}
+		code, plan, _ := e.postWith(e.c, "/sites/new", c.form, body)
+		if code != 200 || !strings.Contains(plan, c.hidden) || !strings.Contains(plan, c.lead) || missingKey.MatchString(plan) {
+			t.Fatalf("%v plan %d %v", c.form, code, missingKey.FindString(plan))
+		}
+		c.form.Set("step", "create")
+		e.postWith(e.c, "/sites/new", c.form, plan)
+		got := f.created[len(f.created)-1]
+		if got.Database != c.database || got.DBEngine != c.engine {
+			t.Errorf("%v created %+v", c.form, got)
+		}
+	}
+	f.app, f.appDB, f.dbEngine = "php", true, "postgres"
+	if _, page, _ := e.get(e.c, "/sites/voltix-id"); !strings.Contains(page, ">PostgreSQL</span>") {
+		t.Error("PHP overview lacks PostgreSQL")
 	}
 }

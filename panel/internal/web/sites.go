@@ -121,8 +121,11 @@ func formCreate(r *http.Request) (agent.Create, string) {
 	case "", "wordpress":
 	case "static":
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "nginx", "", ""
-	case "laravel": // always Nginx + PHP-FPM with its own MariaDB
+	case "laravel": // always Nginx + PHP-FPM with its own database: MariaDB or PostgreSQL
 		c.App, c.Server, c.AdminEmail, c.Version = app, "nginx", "", strings.TrimSpace(f.Get("version"))
+		if low("laravel_db") == "postgres" {
+			c.DBEngine = "postgres"
+		}
 	case "node", "go", "python": // APP-02: built from Git or own files, no web server or PHP choice
 		c.App, c.Server, c.PHP, c.AdminEmail = app, "", "", ""
 		c.Version = strings.TrimSpace(f.Get(app + "_version"))
@@ -139,7 +142,10 @@ func formCreate(r *http.Request) (agent.Create, string) {
 			c.Database, c.DBEngine = true, e
 		}
 	default: // php, or anything else for the agent to refuse
-		c.App, c.AdminEmail, c.Database = app, "", f.Get("database") == "1"
+		c.App, c.AdminEmail = app, ""
+		if e := low("db_engine"); e != "" && e != "none" { // DB-FLEX: none | mariadb | postgres
+			c.Database, c.DBEngine = true, e
+		}
 	}
 	return c, raw
 }

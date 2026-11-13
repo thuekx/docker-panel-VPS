@@ -124,3 +124,21 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
   differently); websites built from their own files have no webhook.
 - Harness (with the Git test): signed push deploys release 2 marked `webhook`; other branch ignored; wrong secret 401;
   off → 404.
+
+## DB-FLEX database choice per package as built (v1.15.0)
+
+- Owner decision 2026-11-13 21:46 WIB: like cPanel, each package offers the databases it supports; one database per
+  website (two at once only if a real need comes up).
+- Spec: `db_engine` (`mariadb` | `postgres`) needs `database: true` for PHP and runtime apps; Laravel takes it alone
+  (it always has a database); WordPress and static sites take none.
+- PHP on PostgreSQL: `build/Dockerfile` = the pinned official image (Apache or PHP-FPM) + `pgsql`, `pdo_pgsql`
+  (`libpq5` kept, headers and build tools removed), tag `nostek-local/php-pg:php<v>-<apache|fpm>-<hash>`, built in the
+  create job ("build PHP image"), `pull_policy: never`. Extra values `DB_PORT=5432`, `DB_ENGINE=postgres`; the starter
+  page checks the connection with PDO.
+- Laravel on PostgreSQL: `LaravelPostgresDockerfile` = the unchanged MariaDB recipe + the same extensions, tag
+  `nostek-local/laravel-pg:…`; the MariaDB recipe and tag are untouched, so existing Laravel websites keep their image.
+  `DB_CONNECTION=pgsql`, `DB_PORT=5432` in compose and `.env`.
+- Panel: PHP and runtime apps share the radio `db_engine` (none, MariaDB, PostgreSQL 18); Laravel has `laravel_db`
+  (MariaDB, PostgreSQL 18); WordPress shows "MariaDB only".
+- Harness (with the Laravel build): Laravel on PostgreSQL (install, migrations, artisan migrate), PHP Apache on
+  PostgreSQL (starter connects, pdo_pgsql loaded, console), WordPress on PostgreSQL refused.

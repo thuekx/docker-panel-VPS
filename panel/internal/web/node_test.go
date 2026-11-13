@@ -287,9 +287,9 @@ func TestAppDatabaseForm(t *testing.T) {
 	if c, _ := formCreate(r); !c.Database || c.DBEngine != "postgres" {
 		t.Errorf("postgres %+v", c)
 	}
-	r.PostForm.Set("app", "php")
-	if c, _ := formCreate(r); !c.Database || c.DBEngine != "" {
-		t.Errorf("engine on a PHP app %+v", c)
+	r.PostForm.Set("app", "static")
+	if c, _ := formCreate(r); c.Database || c.DBEngine != "" {
+		t.Errorf("engine on a static site %+v", c)
 	}
 	pg := agent.Site{App: "go", Database: true, DBEngine: "postgres"}
 	if !siteService(pg, "db") || !pg.IsPostgres() || pg.DBName() != "PostgreSQL" || siteService(agent.Site{App: "go"}, "db") {

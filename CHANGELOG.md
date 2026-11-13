@@ -3,6 +3,22 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.15.0] — 2026-11-13
+
+### Added
+- **Database choice per package** (DB-FLEX, as on cPanel). "Add website" now offers the databases each package
+  supports:
+  - **WordPress**: MariaDB (WordPress supports MySQL and MariaDB only).
+  - **Laravel**: MariaDB or **PostgreSQL 18**. With PostgreSQL the Laravel image also gets the `pdo_pgsql`
+    extension, and `.env` uses `DB_CONNECTION=pgsql`.
+  - **PHP**: no database, MariaDB or **PostgreSQL 18**. With PostgreSQL the website's PHP image (Apache or PHP-FPM) is
+    built on the server from its official image plus the `pgsql` and `pdo_pgsql` extensions; the code finds
+    `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_ENGINE` and the password file `DB_PASSWORD_FILE`.
+  - **Node.js, Go, Python**: no database, MariaDB or PostgreSQL 18, as in 1.13.0.
+  - **Static**: no database.
+  - The Database page, export and import, backups and restores work for every package on either engine. Existing
+    websites keep their database and images unchanged.
+
 ## [1.14.0] — 2026-11-13
 
 ### Added

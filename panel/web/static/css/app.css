@@ -384,7 +384,8 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .site-new .for-node .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .site-new:has(input[name=app][value=laravel]:checked) .for-server{display:none}
 .site-new:not(:has(input[name=app][value=laravel]:checked)) .for-laravel{display:none}
-.site-new:not(:has(input[name=app][value=php]:checked)) .for-phpapp{display:none}
+.site-new:not(:has(input[name=app][value=php]:checked)):not(:has(input[name=app][value=node]:checked)):not(:has(input[name=app][value=go]:checked)):not(:has(input[name=app][value=python]:checked)) .for-dbchoice{display:none}
+.site-new:has(input[name=app][value=php]:checked) .for-rtdb,.site-new:not(:has(input[name=app][value=php]:checked)) .for-phpdb{display:none}
 .site-new:not(:has(input[name=app][value=wordpress]:checked)) .for-wp{display:none}
 .site-new:has(input[name=app][value=wordpress]:checked) .for-other{display:none}
 

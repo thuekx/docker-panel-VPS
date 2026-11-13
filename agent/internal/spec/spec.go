@@ -202,7 +202,7 @@ type Create struct {
 	Build      string   `json:"build,omitempty"`     // node: build command ("" = default)
 	Start      string   `json:"start,omitempty"`     // node: start command ("" = default)
 	KeyID      string   `json:"key_id,omitempty"`    // SSH repository: the deploy key made for it (POST /v1/deploykeys)
-	DBEngine   string   `json:"db_engine,omitempty"` // with database: mariadb (default) | postgres (Node.js, Go, Python only)
+	DBEngine   string   `json:"db_engine,omitempty"` // mariadb (default) | postgres: PHP and runtime apps with database, Laravel
 }
 
 // Database engines of a website's own database.
@@ -358,16 +358,13 @@ func (c Create) Check(reserved map[string]bool) error {
 		return errors.New("only a PHP, Node.js, Go or Python app chooses its database (WordPress and Laravel always have one, a static site none)")
 	}
 	switch c.DBEngine {
-	case "", DBMariaDB:
-	case DBPostgres:
-		if !c.Database || !IsRuntimeApp(app) {
-			return errors.New("PostgreSQL is offered for the database of a Node.js, Go or Python app")
-		}
+	case "", DBMariaDB, DBPostgres:
 	default:
 		return errors.New("database must be mariadb or postgres")
 	}
-	if c.DBEngine != "" && !c.Database {
-		return errors.New("a database engine is chosen only together with a database")
+	if c.DBEngine != "" && !c.Database && app != AppLaravel {
+		// WordPress runs on MariaDB only; Laravel always has a database and only picks its engine
+		return errors.New("a database engine is chosen only together with a database (WordPress uses MariaDB)")
 	}
 	if app != AppWordPress {
 		if c.AdminEmail != "" {

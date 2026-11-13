@@ -603,8 +603,8 @@
   "rt.db": "Database",
   "rt.db.none": "Tanpa database",
   "rt.db.help": "Aplikasi mendapat database sendiri di jaringan privat, dengan DATABASE_URL serta DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD di environment-nya. Backup dan halaman Database ikut mencakupnya.",
-  "sites.creates.db.mariadb": "Ditambah database MariaDB sendiri di jaringan privat; DATABASE_URL diisi untuk aplikasi.",
-  "sites.creates.db.postgres": "Ditambah database PostgreSQL 18 sendiri di jaringan privat; DATABASE_URL diisi untuk aplikasi.",
+  "sites.creates.db.mariadb": "Ditambah database MariaDB sendiri di jaringan privat.",
+  "sites.creates.db.postgres": "Ditambah database PostgreSQL 18 sendiri di jaringan privat.",
   "sites.resources.db.mariadb": "Database menambah hingga 512 MB.",
   "sites.resources.db.postgres": "Database menambah hingga 512 MB.",
   "db.rows.help.pg": "Jumlah baris adalah perkiraan PostgreSQL, diperbarui oleh autovacuum dan ANALYZE.",
@@ -629,5 +629,8 @@
   "hook.res.queued": "menunggu",
   "hook.res.ignored": "diabaikan",
   "hook.by": "lewat push",
-  "sites.done.webhook-off": "Deploy otomatis dimatikan. Kiriman berikutnya ditolak; webhook di repository boleh dihapus."
+  "sites.done.webhook-off": "Deploy otomatis dimatikan. Kiriman berikutnya ditolak; webhook di repository boleh dihapus.",
+  "php.db.help": "Database berjalan di jaringan privat website. Kode bro menemukannya di nilai environment DB_HOST, DB_NAME dan DB_USER (untuk PostgreSQL juga DB_PORT dan DB_ENGINE); password ada di file yang ditunjuk DB_PASSWORD_FILE. PostgreSQL menambahkan ekstensi pgsql dan pdo_pgsql ke PHP.",
+  "wp.db.only": "Database: MariaDB (WordPress hanya mendukung MySQL dan MariaDB).",
+  "sites.creates.laravel.pg": "Database: PostgreSQL 18, bukan MariaDB; image PHP juga diberi ekstensi PostgreSQL."
 }

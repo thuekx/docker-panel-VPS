@@ -30,10 +30,19 @@ $v = PHP_VERSION;
 echo "<p>PHP <code>" . htmlspecialchars($v) . "</code></p>";
 if (getenv('DB_HOST')) {
     $pw = @file_get_contents(getenv('DB_PASSWORD_FILE') ?: '/run/secrets/db_password');
-    mysqli_report(MYSQLI_REPORT_OFF);
-    $db = @mysqli_connect(getenv('DB_HOST'), getenv('DB_USER'), trim((string) $pw), getenv('DB_NAME'));
-    echo $db ? "<p>Database: connected</p>" : "<p>Database: not reachable yet</p>";
-    if ($db) { mysqli_close($db); }
+    if (getenv('DB_ENGINE') === 'postgres') {
+        try {
+            $db = new PDO('pgsql:host=' . getenv('DB_HOST') . ';port=5432;dbname=' . getenv('DB_NAME'), getenv('DB_USER'), trim((string) $pw));
+            echo "<p>Database: connected (PostgreSQL)</p>";
+        } catch (Throwable $e) {
+            echo "<p>Database: not reachable yet</p>";
+        }
+    } else {
+        mysqli_report(MYSQLI_REPORT_OFF);
+        $db = @mysqli_connect(getenv('DB_HOST'), getenv('DB_USER'), trim((string) $pw), getenv('DB_NAME'));
+        echo $db ? "<p>Database: connected</p>" : "<p>Database: not reachable yet</p>";
+        if ($db) { mysqli_close($db); }
+    }
 }
 ?>`
 
@@ -51,7 +60,7 @@ func (m *Manager) writeStarter(s Site) error {
 		lead = "This PHP website is ready."
 		how = "Upload your code with the File Manager in Nostek Panel: upload a .zip and extract it here, replacing this file."
 		if s.HasDB() {
-			how += " The database address, name and user are in the environment values <code>DB_HOST</code>, <code>DB_NAME</code>, <code>DB_USER</code>; the password is in the file named by <code>DB_PASSWORD_FILE</code>."
+			how += " The database address, name and user are in the environment values <code>DB_HOST</code>, <code>DB_NAME</code>, <code>DB_USER</code> (with PostgreSQL also <code>DB_PORT</code> and <code>DB_ENGINE</code>); the password is in the file named by <code>DB_PASSWORD_FILE</code>."
 		}
 	}
 	body := strings.NewReplacer("{{TITLE}}", html.EscapeString(title), "{{LEAD}}", lead, "{{HOW}}", how, "{{EXTRA}}", extra).Replace(starterHTML)
