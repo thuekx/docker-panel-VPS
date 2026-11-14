@@ -326,6 +326,13 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 
 	// 2. the archive
 	j.Step(step + " files")
+	if s.IsReady() {
+		// a ready app keeps its database (SQLite) in its data folder: stop it for a consistent copy (a few seconds)
+		if out, err := m.compose(ctx, s.ID, nil, "stop", "app"); err != nil {
+			return "", fmt.Errorf("stop the app for its backup failed: %s", tail(out))
+		}
+		defer func() { _, _ = m.compose(context.WithoutCancel(ctx), s.ID, nil, "start", "app") }()
+	}
 	part := final + ".part"
 	out, err := os.OpenFile(part, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
@@ -661,7 +668,7 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	j.Step("switch files")
 	stop := []string{"stop", "web"} // the containers that mount the website folder
 	switch {
-	case s.IsRuntime(): // Node.js, Go, Python: one app container, no web server
+	case s.OneApp(): // Node.js, Go, Python and ready apps: one app container, no web server
 		stop = []string{"stop", "app"}
 	case s.Server == "nginx":
 		stop = append(stop, "php")

@@ -660,5 +660,17 @@
   "sites.step.recreate containers": "Container memakai image baru",
   "sites.step.now.recreate containers": "Menjalankan ulang container dengan image baru…",
   "sites.step.put back the previous images": "Image sebelumnya terpasang kembali",
-  "sites.step.now.put back the previous images": "Memasang kembali image sebelumnya…"
+  "sites.step.now.put back the previous images": "Memasang kembali image sebelumnya…",
+  "sites.app.uptime-kuma": "Uptime Kuma",
+  "sites.app.n8n": "n8n",
+  "sites.app.uptime-kuma.help": "Memantau website dan layanan Anda (HTTP, ping, port, sertifikat) dan memberi peringatan lewat Telegram, e-mail dan lainnya.",
+  "sites.app.n8n.help": "Otomasi alur kerja: hubungkan aplikasi dan API dengan editor visual, webhook dan jadwal.",
+  "ready.title": "Aplikasi siap pakai",
+  "ready.help": "Aplikasi siap pakai berjalan dengan image resminya, dikunci dengan digest, dan semua datanya ada di folder website: File Manager dan Backup bisa melihatnya, dan Perbarui image memindahkannya ke versi baru yang dibawa panel. Akun pertamanya dibuat di aplikasi itu sendiri.",
+  "ready.open": "Buka %s",
+  "ready.next.uptime-kuma": "Uptime Kuma sudah berjalan. Buka sekarang dan buat akun admin-nya: pengunjung pertama yang menentukan, jadi segera lakukan.",
+  "ready.next.n8n": "n8n sudah berjalan. Buka sekarang dan buat akun pemiliknya: pengunjung pertama yang menentukan, jadi segera lakukan.",
+  "sites.server.ready": "Bawaan aplikasi",
+  "sites.creates.ready": "Satu container: aplikasi dengan image resminya, dikunci dengan digest, berjalan sebagai www-data dengan datanya di folder website; hanya bisa diakses lewat edge HTTPS panel. Boleh mengakses internet (pemeriksaan, alur kerja). Backup menghentikannya beberapa detik agar salinannya utuh.",
+  "sites.resources.ready": "Memori maksimal 768 MB; disk bertambah sesuai data aplikasi."
 }

@@ -141,6 +141,8 @@ func formCreate(r *http.Request) (agent.Create, string) {
 		if e := low("db_engine"); e != "" && e != "none" { // APP-02b: none | mariadb | postgres
 			c.Database, c.DBEngine = true, e
 		}
+	case "uptime-kuma", "n8n": // APP-03: the app brings its own server; nothing else to choose
+		c.App, c.Server, c.PHP, c.AdminEmail = app, "", "", ""
 	default: // php, or anything else for the agent to refuse
 		c.App, c.AdminEmail = app, ""
 		if e := low("db_engine"); e != "" && e != "none" { // DB-FLEX: none | mariadb | postgres
@@ -671,9 +673,9 @@ func (s *Server) trashRemove(w http.ResponseWriter, r *http.Request) {
 func siteService(site agent.Site, svc string) bool {
 	switch svc {
 	case "web":
-		return !site.IsNode()
+		return !site.OneApp()
 	case "app":
-		return site.IsNode()
+		return site.OneApp()
 	case "php":
 		return site.Server == "nginx" && site.AppName() != "static"
 	case "db":

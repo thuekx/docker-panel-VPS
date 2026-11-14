@@ -388,6 +388,8 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .site-new:has(input[name=app][value=php]:checked) .for-rtdb,.site-new:not(:has(input[name=app][value=php]:checked)) .for-phpdb{display:none}
 .site-new:not(:has(input[name=app][value=wordpress]:checked)) .for-wp{display:none}
 .site-new:has(input[name=app][value=wordpress]:checked) .for-other{display:none}
+.site-new:has(input[name=app][data-ready]:checked) .for-php{display:none}
+.site-new:not(:has(input[name=app][data-ready]:checked)) .for-ready{display:none}
 
 /* APP-02: deploy */
 .deploy-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}

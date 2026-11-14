@@ -452,6 +452,27 @@ if [ -n "${HARNESS_NODE_GIT_BRANCH:-}" ]; then
   docker rm -f np-git-ssh >/dev/null 2>&1
 fi
 
+# --- APP-03 ready apps: the pinned upstream image as www-data, data in the website folder, behind the edge only
+ready_code() { docker run --rm --network nostek-edge "$CURL_IMG" -s -o /dev/null -w '%{http_code}' --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-app-1:$3$4"; }
+printf '%s k-example-test.%s n-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
+sleep 6
+api POST /v1/sites '{"app":"uptime-kuma","domain":"k.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":""}'; JK="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+SK="$SITE01_TEST_ROOT/srv/nostek/sites/k-example-test"
+ok "Uptime Kuma created and healthy" '[ "$CODE" = 202 ] && [ "$(wait_job "$JK" 200)" = done ]'
+KC="$(ready_code k-example-test k-example-test.$ZONE 3001 /)"
+ok "Uptime Kuma answers, runs as www-data, keeps its SQLite database in the website folder" '[ "$KC" -ge 200 ] && [ "$KC" -lt 400 ] && [ "$(docker exec np-site-k-example-test-app-1 id -u)" = 33 ] && ls "$SK/wp" | grep -q "^kuma.db" && [ "$(stat -c %u "$SK/wp")" = 33 ]'
+ok "Uptime Kuma publishes no port and is not on another site's network" '[ -z "$(docker port np-site-k-example-test-app-1)" ] && ! docker inspect -f "{{range \$k,\$v := .NetworkSettings.Networks}}{{\$k}} {{end}}" np-site-k-example-test-app-1 | grep -q back'
+api POST /v1/sites/k-example-test/backups; JKB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "ready app backup (app stopped for the copy, started again)" '[ "$CODE" = 202 ] && [ "$(wait_job "$JKB")" = done ] && ls "$SK/backups" | grep -q "^manual-" && sleep 15 && KC2="$(ready_code k-example-test k-example-test.$ZONE 3001 /)" && [ "$KC2" -ge 200 ] && [ "$KC2" -lt 400 ]'
+api POST /v1/sites '{"app":"n8n","domain":"n.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":""}'; JN="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+SN="$SITE01_TEST_ROOT/srv/nostek/sites/n-example-test"
+ok "n8n created and healthy" '[ "$CODE" = 202 ] && [ "$(wait_job "$JN" 200)" = done ]'
+ok "n8n answers /healthz, runs as www-data, keeps its data and key in the website folder" '[ "$(ready_code n-example-test n-example-test.$ZONE 5678 /healthz)" = 200 ] && [ "$(docker exec np-site-n-example-test-app-1 id -u)" = 33 ] && [ -e "$SN/wp/.n8n/config" ] && [ -e "$SN/wp/.n8n/database.sqlite" ]'
+api POST /v1/sites '{"app":"n8n","domain":"n2.example.test","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"","title":""}'
+ok "a ready app with a web server or PHP is refused" '[ "$CODE" = 422 ] || [ "$CODE" = 400 ]'
+api GET /v1/catalog; ok "the catalogue lists the ready apps with their versions" 'grep -q "\"id\":\"uptime-kuma\"" <<<"$BODY" && grep -q "\"version\":\"2.47.7\"" <<<"$BODY"'
+KEPT=$((KEPT+2))
+
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply again (update) passes, websites untouched" '[ $RC = 0 ] && has "already built" && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$CIDS" ]'

@@ -3,7 +3,26 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.17.0] — 2026-11-14
+
+### Added
+- **Ready apps** (APP-03, first wave). "Add website" gains a second group, **Ready apps**: **Uptime Kuma** (website
+  and service monitoring) and **n8n** (workflow automation). Each runs its official image as it is, pinned by digest,
+  with nothing to choose but the domain.
+  - The app runs as www-data with all its data (its SQLite database too) in the website folder, so the File Manager,
+    backups, restores and **Update image** work as for every website. A backup stops the app for a few seconds so the
+    copy of its database is consistent.
+  - It is reachable only through the panel's HTTPS edge; it may reach the internet (monitor checks, workflow calls).
+  - After creating it, open it at once and make its first account: the first visitor sets it.
+  - Logs of the app are on the Overview.
+
+### Fixed
+- The Overview's log button of a Node.js, Go or Python website asked the agent for a service it refused; logs of the
+  app container now open.
+
 ## [1.16.0] — 2026-11-13
+
+Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Update image** for every website (IMG-01). A new card **Images** on the Overview lists each container, the image
@@ -22,6 +41,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ## [1.15.0] — 2026-11-13
 
+Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+
 ### Added
 - **Database choice per package** (DB-FLEX, as on cPanel). "Add website" now offers the databases each package
   supports:
@@ -37,6 +58,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
     websites keep their database and images unchanged.
 
 ## [1.14.0] — 2026-11-13
+
+Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Auto-deploy on push** for Node.js, Go and Python websites built from Git (APP-02c). A new card **Auto-deploy** on
