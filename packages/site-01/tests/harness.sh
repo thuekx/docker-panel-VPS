@@ -135,7 +135,8 @@ raw() { # METHOD PATH FILE|- -> body in $BODY (or saved to $RAWOUT), HTTP code i
   out="$(curl -s --noproxy '*' --max-time 120 --unix-socket "$(SOCK)" -X "$1" -H 'Content-Type: application/octet-stream' ${3:+--data-binary "@$3"} ${RAWOUT:+-o "$RAWOUT"} -w '\n%{http_code}' "http://agent$2")"
   CODE="${out##*$'\n'}"; BODY="${out%$'\n'*}"
 }
-site_get() { docker run --rm --network nostek-edge "$CURL_IMG" -s --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-web-1$3"; }
+# the page is read whole first: grep -q ends the pipe at the first match, and a large page then fails (pipefail)
+site_get() { local o; o="$(docker run --rm --network nostek-edge "$CURL_IMG" -s --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-web-1$3")"; printf '%s\n' "$o" 2>/dev/null || true; }
 WPB="$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/wp"
 printf 'hello from the file manager\n' > "$T/hello.txt"
 raw PUT '/v1/sites/b-example-test/files/content?path=/hello.txt' "$T/hello.txt"
@@ -328,7 +329,7 @@ api POST /v1/sites/d-example-test/laravel/artisan '{"op":"migrate"}'; ok "no art
 # --- APP-02 Node.js: built from the website's own files (the starter app has no dependencies, so no registry is
 # needed), redeploy, a failing build keeps the live release, rollback. Then from Git (this repository's test app)
 # when HARNESS_NODE_GIT_BRANCH names a branch that is on GitHub (the repo's own check sets it).
-app_get() { docker run --rm --network nostek-edge "$CURL_IMG" -s --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-app-1:3000$3"; }
+app_get() { local o; o="$(docker run --rm --network nostek-edge "$CURL_IMG" -s --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-app-1:3000$3")"; printf '%s\n' "$o" 2>/dev/null || true; }
 printf '%s f-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" >> /etc/hosts
 api POST /v1/sites '{"app":"node","domain":"f.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"Situs F","version":"24","source":"files"}'; JF="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "Node.js site built from its own files and started" '[ "$CODE" = 202 ] && [ "$(wait_job "$JF" 200)" = done ]'
@@ -451,6 +452,27 @@ if [ -n "${HARNESS_NODE_GIT_BRANCH:-}" ]; then
   ok "a changed repository host key stops the build, the live release keeps running" '[ "$(wait_job "$JP2" 200 2>/dev/null)" = failed ] && app_get p-example-test p-example-test.$ZONE / | grep -q "private-repo ok" && { api GET /v1/sites/p-example-test/deploys/2/log; grep -qi "host key" <<<"$BODY"; }'
   docker rm -f np-git-ssh >/dev/null 2>&1
 fi
+
+# --- APP-03 ready apps: the pinned upstream image as www-data, data in the website folder, behind the edge only
+ready_code() { docker run --rm --network nostek-edge "$CURL_IMG" -s -o /dev/null -w '%{http_code}' --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-app-1:$3$4"; }
+printf '%s u-example-test.%s n-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
+sleep 6
+api POST /v1/sites '{"app":"uptime-kuma","domain":"u.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":""}'; JK="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+SK="$SITE01_TEST_ROOT/srv/nostek/sites/u-example-test"
+ok "Uptime Kuma created and healthy" '[ "$CODE" = 202 ] && [ "$(wait_job "$JK" 200)" = done ]'
+KC="$(ready_code u-example-test u-example-test.$ZONE 3001 /)"
+ok "Uptime Kuma answers, runs as www-data, keeps its SQLite database in the website folder" '[ "$KC" -ge 200 ] && [ "$KC" -lt 400 ] && [ "$(docker exec np-site-u-example-test-app-1 id -u)" = 33 ] && ls "$SK/wp" | grep -q "^kuma.db" && [ "$(stat -c %u "$SK/wp")" = 33 ]'
+ok "Uptime Kuma publishes no port and is not on another site's network" '[ -z "$(docker port np-site-u-example-test-app-1)" ] && ! docker inspect -f "{{range \$k,\$v := .NetworkSettings.Networks}}{{\$k}} {{end}}" np-site-u-example-test-app-1 | grep -q back'
+api POST /v1/sites/u-example-test/backups; JKB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "ready app backup (app stopped for the copy, started again)" '[ "$CODE" = 202 ] && [ "$(wait_job "$JKB")" = done ] && ls "$SK/backups" | grep -q "^manual-" && sleep 15 && KC2="$(ready_code u-example-test u-example-test.$ZONE 3001 /)" && [ "$KC2" -ge 200 ] && [ "$KC2" -lt 400 ]'
+api POST /v1/sites '{"app":"n8n","domain":"n.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":""}'; JN="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+SN="$SITE01_TEST_ROOT/srv/nostek/sites/n-example-test"
+ok "n8n created and healthy" '[ "$CODE" = 202 ] && [ "$(wait_job "$JN" 200)" = done ]'
+ok "n8n answers /healthz, runs as www-data, keeps its data and key in the website folder" '[ "$(ready_code n-example-test n-example-test.$ZONE 5678 /healthz)" = 200 ] && [ "$(docker exec np-site-n-example-test-app-1 id -u)" = 33 ] && [ -e "$SN/wp/.n8n/config" ] && [ -e "$SN/wp/.n8n/database.sqlite" ]'
+api POST /v1/sites '{"app":"n8n","domain":"n2.example.test","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"","title":""}'
+ok "a ready app with a web server or PHP is refused" '[ "$CODE" = 422 ] || [ "$CODE" = 400 ]'
+api GET /v1/catalog; ok "the catalogue lists the ready apps with their versions" 'grep -q "\"id\":\"uptime-kuma\"" <<<"$BODY" && grep -q "\"version\":\"2.47.7\"" <<<"$BODY"'
+KEPT=$((KEPT+2))
 
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"

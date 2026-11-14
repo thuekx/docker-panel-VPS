@@ -26,6 +26,7 @@
       <form method="post" action="/sites/job/{{$j.ID}}/secret" class="form"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="primary" type="submit">{{t $l "sites.job.showpw"}}</button></form>
       <p class="muted">{{t $l "sites.job.pwhelp"}}</p>
     {{else}}<p class="muted">{{t $l "sites.job.pwgone"}}</p>{{end}}
+    {{else if .Data.Site.IsReady}}<p class="muted">{{t $l (printf "ready.next.%s" .Data.Site.App)}}</p><p class="row"><a class="primary btn" href="{{.Data.Site.URL}}" target="_blank" rel="noopener noreferrer">{{t $l "ready.open" (t $l (printf "sites.app.%s" .Data.Site.App))}}</a><a class="ghost btn" href="/sites/{{.Data.Site.ID}}">{{t $l "sites.tab.overview"}}</a></p>
     {{else if .Data.Site.IsNode}}<p class="muted">{{t $l "sites.job.nodenext"}}</p><p class="row"><a class="primary btn" href="/sites/{{.Data.Site.ID}}#deploy">{{t $l "deploy.title"}}</a></p>
     {{else}}<p class="muted">{{if .Data.Site.IsLaravel}}{{t $l "sites.job.laravelnext"}}{{else}}{{t $l "sites.job.appnext"}}{{end}}</p><p class="row"><a class="primary btn" href="/files/{{.Data.Site.ID}}">{{t $l "files.title"}}</a><a class="ghost btn" href="/sites/{{.Data.Site.ID}}">{{t $l "sites.tab.overview"}}</a></p>{{end}}
   </div>

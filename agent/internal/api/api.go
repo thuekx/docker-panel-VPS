@@ -209,8 +209,20 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 		}
 		return v
 	}
+	type readyView struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Version string `json:"version"` // the image tag
+		Home    string `json:"home"`
+	}
+	var ready []readyView
+	for _, a := range catalog.ReadyAll() {
+		tag, _, _ := strings.Cut(a.Image, "@")
+		_, tag, _ = strings.Cut(tag, ":")
+		ready = append(ready, readyView{a.ID, a.Name, tag, a.Home})
+	}
 	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv, "node": nv,
-		"go": rt("go"), "python": rt("python")})
+		"go": rt("go"), "python": rt("python"), "ready": ready})
 }
 
 type siteView struct {

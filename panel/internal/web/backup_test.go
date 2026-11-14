@@ -180,22 +180,22 @@ func TestBackupActions(t *testing.T) {
 }
 
 func TestJobProgressOfBackupJobs(t *testing.T) {
-	rows, pct := jobProgress(agent.Job{Kind: "backup", State: "running", Steps: []string{"copy database"}})
+	rows, pct := jobProgress(agent.Job{Kind: "backup", State: "running", Steps: []string{"copy database"}}, agent.Site{})
 	if len(rows) != 2 || rows[0].State != "active" || rows[1].State != "todo" || pct != 0 {
 		t.Fatalf("running backup: %v %d", rows, pct)
 	}
-	rows, pct = jobProgress(agent.Job{Kind: "restore", State: "done", Steps: []string{"safety database", "safety files", "restore database", "done before-restore-x"}})
+	rows, pct = jobProgress(agent.Job{Kind: "restore", State: "done", Steps: []string{"safety database", "safety files", "restore database", "done before-restore-x"}}, agent.Site{})
 	if len(rows) != 3 || pct != 100 || rows[2].Key != "restore database" {
 		t.Fatalf("done restore: %v %d", rows, pct)
 	}
-	rows, _ = jobProgress(agent.Job{Kind: "restore", State: "failed", Steps: []string{"safety database"}})
+	rows, _ = jobProgress(agent.Job{Kind: "restore", State: "failed", Steps: []string{"safety database"}}, agent.Site{})
 	if len(rows) != 5 || rows[0].State != "failed" {
 		t.Fatalf("failed restore: %v", rows)
 	}
-	if rows, pct := jobProgress(agent.Job{Kind: "backup", State: "done"}); len(rows) != 0 || pct != 100 {
+	if rows, pct := jobProgress(agent.Job{Kind: "backup", State: "done"}, agent.Site{}); len(rows) != 0 || pct != 100 {
 		t.Fatalf("empty done: %v %d", rows, pct)
 	}
-	rows, _ = jobProgress(agent.Job{State: "running", Steps: []string{"files"}})
+	rows, _ = jobProgress(agent.Job{State: "running", Steps: []string{"files"}}, agent.Site{})
 	if len(rows) != 4 {
 		t.Fatalf("create job lost its steps: %v", rows)
 	}

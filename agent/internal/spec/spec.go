@@ -98,7 +98,16 @@ const (
 	AppNode      = "node"    // Node.js / Next.js app built from Git or its own files (APP-02)
 	AppGo        = "go"      // Go app built from Git or its own files (APP-02b)
 	AppPython    = "python"  // Python app (Django, FastAPI, Flask …) built from Git or its own files (APP-02b)
+	// Ready apps (APP-03): an upstream image from the catalogue, see catalog.ReadyAll.
+	AppUptimeKuma = "uptime-kuma"
+	AppN8N        = "n8n"
 )
+
+// IsReadyApp is true for an app of the ready-app catalogue.
+func IsReadyApp(app string) bool {
+	_, ok := catalog.Ready(app)
+	return ok
+}
 
 // Limits of the Node.js deploy settings.
 const (
@@ -345,8 +354,12 @@ func (c Create) Check(reserved map[string]bool) error {
 				return err
 			}
 		}
+	case AppUptimeKuma, AppN8N:
+		if c.PHP != "" || c.Server != "" || c.Version != "" {
+			return errors.New("a ready app runs its own server: no web server, PHP or version to choose")
+		}
 	default:
-		return errors.New("app must be wordpress, php, laravel, static, node, go or python")
+		return errors.New("app must be wordpress, php, laravel, static, node, go, python, uptime-kuma or n8n")
 	}
 	if c.Version != "" && app != AppLaravel && !IsRuntimeApp(app) {
 		return errors.New("only Laravel, Node.js, Go and Python take a version")

@@ -141,6 +141,8 @@ func formCreate(r *http.Request) (agent.Create, string) {
 		if e := low("db_engine"); e != "" && e != "none" { // APP-02b: none | mariadb | postgres
 			c.Database, c.DBEngine = true, e
 		}
+	case "uptime-kuma", "n8n": // APP-03: the app brings its own server; nothing else to choose
+		c.App, c.Server, c.PHP, c.AdminEmail = app, "", "", ""
 	default: // php, or anything else for the agent to refuse
 		c.App, c.AdminEmail = app, ""
 		if e := low("db_engine"); e != "" && e != "none" { // DB-FLEX: none | mariadb | postgres
@@ -221,6 +223,22 @@ var jobKindSteps = map[string][]string{
 	"image":   {"pull new images", "copy database", "copy files", "recreate containers"},
 }
 
+// createSteps is the order of the steps a create of this website runs, so the list is right from the first poll
+// (a Go website never shows "install WordPress").
+func createSteps(site agent.Site) []string {
+	switch {
+	case site.IsWP():
+		return append([]string{}, jobSteps...)
+	case site.IsLaravel():
+		return append([]string{}, laravelSteps...)
+	case site.IsNode():
+		return append([]string{}, nodeSteps...)
+	case site.AppName() == "php" && site.IsPostgres():
+		return []string{"files", "build PHP image", "pull images", "start containers"}
+	}
+	return []string{"files", "pull images", "start containers"} // plain PHP, static, ready apps
+}
+
 // stepRow is one line of the progress list: done, active, failed or todo.
 type stepRow struct {
 	Key   string `json:"key"`
@@ -229,9 +247,11 @@ type stepRow struct {
 
 // jobProgress turns the agent's job (each step is reported when it starts) into the full list of
 // steps with a state each, and the share of finished steps in percent.
-func jobProgress(j agent.Job) ([]stepRow, int) {
+func jobProgress(j agent.Job, site agent.Site) ([]stepRow, int) {
 	keys := append([]string{}, jobKindSteps[j.Kind]...)
-	if j.Kind == "" || j.Kind == "create" {
+	if (j.Kind == "" || j.Kind == "create") && site.ID != "" {
+		keys = createSteps(site)
+	} else if j.Kind == "" || j.Kind == "create" { // the site is unknown: guess from what the agent reported
 		keys = append([]string{}, jobSteps...)
 		for _, st := range j.Steps {
 			if st == "build PHP image" {
@@ -314,7 +334,8 @@ func (s *Server) siteJobStatus(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	rows, pct := jobProgress(j)
+	site, _ := s.ag.Site(ctx, j.Site)
+	rows, pct := jobProgress(j, site)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(struct {
@@ -340,7 +361,7 @@ func (s *Server) siteJob(w http.ResponseWriter, r *http.Request) {
 	}
 	site, _ := s.ag.Site(ctx, j.Site)
 	owner, ok := s.owners.owner(id)
-	steps, pct := jobProgress(j)
+	steps, pct := jobProgress(j, site)
 	s.render(w, r, "sitejob", page{Title: s.tr.T(s.lang(r), "sites.job"), Active: "sites",
 		Data: jobData{Job: j, Site: site, Mine: ok && owner == userOf(r).ID, Steps: steps, Percent: pct}})
 }
@@ -367,7 +388,7 @@ func (s *Server) siteSecret(w http.ResponseWriter, r *http.Request) {
 	}
 	site, _ := s.ag.Site(ctx, j.Site)
 	s.audit1(userOf(r), r, "site.password_shown", j.Site+" admin password shown once")
-	steps, pct := jobProgress(j)
+	steps, pct := jobProgress(j, site)
 	s.render(w, r, "sitejob", page{Title: s.tr.T(s.lang(r), "sites.job"), Active: "sites",
 		Data: jobData{Job: j, Site: site, Password: pw, Mine: true, Steps: steps, Percent: pct}})
 }
@@ -671,9 +692,9 @@ func (s *Server) trashRemove(w http.ResponseWriter, r *http.Request) {
 func siteService(site agent.Site, svc string) bool {
 	switch svc {
 	case "web":
-		return !site.IsNode()
+		return !site.OneApp()
 	case "app":
-		return site.IsNode()
+		return site.OneApp()
 	case "php":
 		return site.Server == "nginx" && site.AppName() != "static"
 	case "db":

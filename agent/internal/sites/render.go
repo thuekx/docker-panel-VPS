@@ -84,6 +84,12 @@ func (s Site) AppName() string {
 	return s.App
 }
 
+// IsReady is true for an app of the ready-app catalogue (APP-03).
+func (s Site) IsReady() bool { return spec.IsReadyApp(s.AppName()) }
+
+// OneApp is true when one "app" container serves the website (runtime and ready apps).
+func (s Site) OneApp() bool { return s.IsRuntime() || s.IsReady() }
+
 // IsWP is true for a WordPress site.
 func (s Site) IsWP() bool { return s.AppName() == spec.AppWordPress }
 
@@ -129,6 +135,9 @@ func (s Site) labels() []string {
 	port := 80
 	if s.IsRuntime() {
 		port = NodePort
+	}
+	if r, ok := catalog.Ready(s.AppName()); ok {
+		port = r.Port
 	}
 	canon := s.Canonical()
 	rid := "site-" + s.ID
@@ -207,6 +216,10 @@ func (s Site) Compose() (string, error) {
 		}
 		if s.Release < 1 {
 			return "", fmt.Errorf("site %s has no release yet", s.ID)
+		}
+	case spec.AppUptimeKuma, spec.AppN8N:
+		if _, ok := catalog.Ready(s.AppName()); !ok {
+			return "", fmt.Errorf("unknown app %s", s.App)
 		}
 	default:
 		return "", fmt.Errorf("unknown app %s", s.App)
@@ -287,6 +300,8 @@ secrets:
 		s.laravelServices(&b, p)
 	case spec.AppNode, spec.AppGo, spec.AppPython:
 		s.nodeServices(&b)
+	case spec.AppUptimeKuma, spec.AppN8N:
+		s.readyServices(&b)
 	case spec.AppStatic:
 		fmt.Fprintf(&b, `  web:
     <<: *site
@@ -738,4 +753,35 @@ func (s Site) nodeServices(b *strings.Builder) {
 func yamlQuote(v string) string {
 	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, `$`, `$$`)
 	return `"` + r.Replace(v) + `"`
+}
+
+// readyServices renders the one container of a ready app (APP-03): the pinned upstream image as www-data, its data
+// folder on the website folder, reachable only through the edge; it may reach the internet (monitors, workflows).
+func (s Site) readyServices(b *strings.Builder) {
+	r, _ := catalog.Ready(s.AppName())
+	var env []string
+	for _, e := range r.Env {
+		k, v, _ := strings.Cut(strings.ReplaceAll(e, "{host}", s.Canonical()), "=")
+		env = append(env, k+": "+yamlQuote(v))
+	}
+	health := fmt.Sprintf(`["CMD", "node", "-e", "require('http').get('http://127.0.0.1:%d/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]`, r.Port)
+	fmt.Fprintf(b, `  app:
+    <<: *site
+    image: %s
+    user: "%d:%d"
+    mem_limit: 768m
+    environment:
+%s
+    volumes:
+      - ./wp:%s
+    healthcheck:
+      test: %s
+      interval: 5s
+      timeout: 4s
+      retries: 3
+      start_period: 120s
+    labels:
+%s
+    networks: [nostek-edge, out]
+`, r.Image, wwwData, wwwData, indent(env, 6), r.Data, health, indent(s.labels(), 6))
 }
