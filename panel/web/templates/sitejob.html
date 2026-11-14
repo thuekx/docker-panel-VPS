@@ -3,7 +3,7 @@
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
 <section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status"{{end}}>
   <div class="stat-head"><span>{{t $l "sites.job"}}: <b class="ink">{{if .Data.Site.Domain}}{{.Data.Site.Domain}}{{else}}{{$j.Site}}{{end}}</b></span>
-  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "sites.st.creating"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "sites.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "sites.st.failed"}}</span>{{end}}</span></div>
+  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{if eq $j.Kind "image"}}{{t $l "img.running"}}{{else}}{{t $l "sites.st.creating"}}{{end}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "sites.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "sites.st.failed"}}</span>{{end}}</span></div>
   <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{.Data.Percent}}" aria-label="{{t $l "sites.job"}}"><i data-pct="{{.Data.Percent}}"></i></div>
   <ol class="stepper">{{range .Data.Steps}}
     <li class="st-{{.State}}" data-step="{{.Key}}">
@@ -12,11 +12,12 @@
     </li>{{end}}
   </ol>
   {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "sites.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if $j.Error}}<p class="err" role="alert">{{$j.Error}}</p><p class="muted">{{if .Data.Site.IsNode}}{{t $l "deploy.failhelp"}}{{else}}{{t $l "sites.job.failhelp"}}{{end}}</p>{{if .Data.Site.IsNode}}<p class="row"><a class="primary btn" href="/sites/{{.Data.Site.ID}}#deploy">{{t $l "deploy.title"}}</a></p>{{end}}{{end}}
+  {{if $j.Error}}<p class="err" role="alert">{{$j.Error}}</p><p class="muted">{{if eq $j.Kind "image"}}{{t $l "img.failhelp"}}{{else if .Data.Site.IsNode}}{{t $l "deploy.failhelp"}}{{else}}{{t $l "sites.job.failhelp"}}{{end}}</p>{{if eq $j.Kind "image"}}<p class="row"><a class="primary btn" href="/sites/{{.Data.Site.ID}}#images">{{t $l "img.title"}}</a><a class="ghost btn" href="/backup/{{.Data.Site.ID}}">{{t $l "bak.title"}}</a></p>{{else if .Data.Site.IsNode}}<p class="row"><a class="primary btn" href="/sites/{{.Data.Site.ID}}#deploy">{{t $l "deploy.title"}}</a></p>{{end}}{{end}}
   {{if eq $j.State "done"}}
   <div class="job-done" data-anim="card">
     <p>{{t $l "sites.job.url"}} <a href="{{.Data.Site.URL}}" target="_blank" rel="noopener noreferrer">{{.Data.Site.URL}}</a>{{if .Data.Site.IsWP}} · <a href="{{.Data.Site.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a>{{end}}</p>
-    {{if .Data.Site.IsWP}}
+    {{if eq $j.Kind "image"}}<p class="muted">{{t $l "img.done"}}</p><p class="row"><a class="primary btn" href="/sites/{{.Data.Site.ID}}#images">{{t $l "sites.tab.overview"}}</a><a class="ghost btn" href="/backup/{{.Data.Site.ID}}">{{t $l "bak.title"}}</a></p>
+    {{else if .Data.Site.IsWP}}
     <p>{{t $l "sites.job.user"}} <code>{{.Data.Site.AdminUser}}</code></p>
     {{if .Data.Password}}
       <p class="banner warn">{{t $l "sites.job.pwonce"}}</p>

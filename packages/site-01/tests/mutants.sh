@@ -82,6 +82,11 @@ GO_MUTANTS=(
   'internal/spec/spec.go|if c.DBEngine != "" && !c.Database && app != AppLaravel {|if false {'   # DB-FLEX: WordPress or a static site picks PostgreSQL
   'internal/sites/render.go|conn, port, img = "pgsql", "5432", catalog.LaravelPostgresImage(p)|conn, port = "pgsql", "5432"'   # DB-FLEX: Laravel on PostgreSQL without the pdo_pgsql image
   'internal/catalog/catalog.go|pgsql pdo_pgsql;|pgsql;'   # DB-FLEX: PHP image without pdo_pgsql
+  'internal/sites/wp.go|cf = keepImages(cf, string(old))|_ = old'   # IMG-01: rewriting a compose file moves the website to newer images
+  'internal/sites/deploy.go|cf = keepImages(cf, string(old), "app")|_ = old'   # IMG-01: a deploy moves the database to a newer image
+  'internal/sites/images.go|name, err := m.backup(ctx, j, s, "before-update")|name, err := "", error(nil)'   # IMG-01: images updated without a backup
+  'internal/sites/images.go|return putBack("the website did not start on the new images: " + tail(out))|return fmt.Errorf("start failed: %s", tail(out))'   # IMG-01: a failed update is not put back
+  'internal/sites/images.go|return fmt.Errorf("pull %s failed, nothing was changed: %s", u.Wanted, tail(out))|_ = out'   # IMG-01: a failed pull still changes the website
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

@@ -40,6 +40,8 @@ type fakeAgent struct {
 	hookOn    bool   // APP-02c
 	hooks     []agent.Hook
 	hookCalls []string
+	imgOld    bool // IMG-01: the database runs an older image
+	imgCalls  int
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +99,24 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/v1/deploykeys" && r.Method == "POST":
 		f.keys++
 		write(200, agent.DeployKey{ID: "0123456789abcdef", Public: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey nostek-panel-deploy-0123456789abcdef", Fingerprint: "SHA256:testfp"})
+	case r.URL.Path == "/v1/sites/voltix-id/images":
+		cur := "mariadb:11.8@sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd"
+		img := agent.Images{Services: []agent.ImageUse{
+			{Service: "db", Current: cur, Wanted: cur},
+			{Service: "web", Current: "nginx:1.30-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311", Wanted: "nginx:1.30-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"}}}
+		if f.imgOld {
+			img.Services[0].Current, img.Services[0].Update, img.Update = "sha256:0ld0ld0ld0ld0ld0ld", true, true
+		}
+		write(200, img)
+	case r.URL.Path == "/v1/sites/voltix-id/images/update":
+		f.imgCalls++
+		if !f.imgOld {
+			write(400, map[string]string{"error": "the website already runs the newest images of this panel version"})
+			return
+		}
+		write(202, map[string]string{"job": "jabcdef0123456789"})
+	case r.URL.Path == "/v1/jobs/jabcdef0123456789":
+		write(200, agent.Job{ID: "jabcdef0123456789", Kind: "image", Site: "voltix-id", State: "done", Steps: []string{"pull new images", "copy database", "copy files", "recreate containers", "done before-update-20261114-080000.tar.gz"}})
 	case r.URL.Path == "/v1/sites/voltix-id/webhook":
 		write(200, agent.Webhook{On: f.hookOn, Branch: "main", Deliveries: []agent.Delivery{{At: 1700000000, Event: "push", Result: "deploy", Commit: "0123456789abcdef0123456789abcdef01234567", Job: "j0123456789abcdef"}}})
 	case r.URL.Path == "/v1/sites/voltix-id/webhook/secret":

@@ -123,7 +123,10 @@ func TestJobProgress(t *testing.T) {
 		{agent.Job{State: "running", Steps: []string{"files", "pull images", "start containers"}}, "done done active todo", 50},
 		{agent.Job{State: "failed", Steps: []string{"files", "pull images"}}, "done failed todo todo", 25},
 		{agent.Job{State: "done", Steps: jobSteps}, "done done done done", 100},
-		{agent.Job{State: "running", Steps: []string{"files", "something new"}}, "done todo todo todo active", 20},
+		{agent.Job{State: "running", Steps: []string{"files", "something new"}}, "done active todo todo todo", 20},
+		// IMG-01: an image built on the server shows up before the recreate, where it runs
+		{agent.Job{Kind: "image", State: "running", Steps: []string{"pull new images", "copy database", "copy files", "build image"}}, "done done done active todo", 60},
+		{agent.Job{Kind: "image", State: "failed", Steps: []string{"pull new images", "copy database", "copy files", "recreate containers", "put back the previous images"}}, "done done done done failed", 80},
 	}
 	for _, c := range cases {
 		rows, pct := jobProgress(c.j)

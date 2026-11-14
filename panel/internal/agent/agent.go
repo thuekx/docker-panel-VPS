@@ -536,3 +536,32 @@ func (c *Client) Deliver(ctx context.Context, id string, h Hook) (Delivery, erro
 	var d Delivery
 	return d, c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/webhook/deliver", h, &d)
 }
+
+// ImageUse is one service of a website: the image it runs and the one the agent would run (IMG-01).
+type ImageUse struct {
+	Service string `json:"service"`
+	Current string `json:"current"`
+	Wanted  string `json:"wanted"`
+	Update  bool   `json:"update"`
+}
+
+// Images is the image state of a website.
+type Images struct {
+	Services []ImageUse `json:"services"`
+	Update   bool       `json:"update"`
+	Running  bool       `json:"running"`
+}
+
+// Images reads which images a website runs and whether the agent carries newer pinned ones.
+func (c *Client) Images(ctx context.Context, id string) (Images, error) {
+	var v Images
+	return v, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/images", nil, &v)
+}
+
+// StartImageUpdate moves a website to the newer images (pull, backup, recreate) and returns the job.
+func (c *Client) StartImageUpdate(ctx context.Context, id string) (string, error) {
+	var v struct {
+		Job string `json:"job"`
+	}
+	return v.Job, c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/images/update", nil, &v)
+}

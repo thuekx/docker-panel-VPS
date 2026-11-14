@@ -3,6 +3,23 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.16.0] — 2026-11-13
+
+### Added
+- **Update image** for every website (IMG-01). A new card **Images** on the Overview lists each container, the image
+  it runs (name, tag and the start of its digest) and, when this panel version carries a newer pinned image, the new
+  one, marked **Update available**.
+  - One press of **Update image** downloads the new images first (if a download fails, nothing changes), makes a
+    backup ("before update" on the Backup page), then restarts the containers on the new images. If the website does
+    not come up healthy, the previous images are put back; if even that fails, the job names the backup to restore.
+  - Built images (Laravel, PHP with PostgreSQL) are built again from the new recipe.
+  - Images stay pinned by digest; nothing ever runs a floating "latest".
+
+### Changed
+- A website no longer moves to newer images by itself. When the agent rewrites a compose file (WordPress Tools, a
+  deploy), the containers keep the images they run; only **Update image** changes them. A deploy of a Node.js, Go or
+  Python website still builds and runs the app on the newest pinned runtime, and its database keeps its image.
+
 ## [1.15.0] — 2026-11-13
 
 ### Added

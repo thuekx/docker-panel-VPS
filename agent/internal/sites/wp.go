@@ -209,7 +209,7 @@ var composeMu sync.Mutex
 
 // syncCompose rewrites the site's compose file when this agent renders it differently (for example the WP-CLI
 // container got outbound internet in v1.6.0). Running containers are not touched: changes to web, php or db apply
-// at the next start of the website.
+// at the next start of the website. The images stay those of the file: newer ones come only with "Update image".
 func (m *Manager) syncCompose(s Site) error {
 	cf, err := s.Compose()
 	if err != nil {
@@ -218,8 +218,12 @@ func (m *Manager) syncCompose(s Site) error {
 	composeMu.Lock()
 	defer composeMu.Unlock()
 	p := filepath.Join(m.dir(s.ID), "compose.yml")
-	if old, err := os.ReadFile(p); err == nil && string(old) == cf {
-		return nil
+	old, err := os.ReadFile(p)
+	if err == nil {
+		cf = keepImages(cf, string(old)) // newer images only through "Update image" (IMG-01)
+		if string(old) == cf {
+			return nil
+		}
 	}
 	return writeFile(p, []byte(cf), 0o644)
 }
