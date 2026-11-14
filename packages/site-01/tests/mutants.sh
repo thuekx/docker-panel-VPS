@@ -87,7 +87,7 @@ GO_MUTANTS=(
   'internal/sites/images.go|name, err := m.backup(ctx, j, s, "before-update")|name, err := "", error(nil)'   # IMG-01: images updated without a backup
   'internal/sites/images.go|return putBack("the website did not start on the new images: " + tail(out))|return fmt.Errorf("start failed: %s", tail(out))'   # IMG-01: a failed update is not put back
   'internal/sites/images.go|return fmt.Errorf("pull %s failed, nothing was changed: %s", u.Wanted, tail(out))|_ = out'   # IMG-01: a failed pull still changes the website
-  'internal/spec/spec.go|		if c.PHP != "" || c.Server != "" || c.Version != "" {|		if false {'   # APP-03: a ready app takes a web server, PHP or version
+  'internal/spec/spec.go|return errors.New("a ready app runs its own server: no web server, PHP or version to choose")|return nil'   # APP-03: a ready app takes a web server, PHP or version
   'internal/sites/render.go|`, r.Image, wwwData, wwwData, indent(env, 6)|`, r.Image, 0, 0, indent(env, 6)'   # APP-03: a ready app runs as root
   'internal/sites/backup.go|	if s.IsReady() {
 		// a ready app|	if false {
