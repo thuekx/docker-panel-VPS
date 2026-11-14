@@ -19,6 +19,10 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 ### Fixed
 - The Overview's log button of a Node.js, Go or Python website asked the agent for a service it refused; logs of the
   app container now open.
+- The progress page of a new website listed the WordPress steps for every app: a Go, Node.js or Python website
+  showed "Installing WordPress…" and its build step never turned. The list now follows the app from the start
+  (plain PHP, static and ready apps have no install step), and the page reloads itself if the agent reports a step
+  the list does not have.
 
 ## [1.16.0] — 2026-11-13
 

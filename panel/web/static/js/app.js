@@ -83,9 +83,12 @@
       if (meter) meter.setAttribute("aria-valuenow", String(p));
     }
     function setSteps(steps) {
+      var rows = card.querySelectorAll("[data-step]");
+      if (steps.length && rows.length !== steps.length) { location.reload(); return; } // the list of steps changed
       steps.forEach(function (st) {
         var li = card.querySelector('[data-step="' + (window.CSS && CSS.escape ? CSS.escape(st.key) : st.key) + '"]');
-        if (!li || li.classList.contains("st-" + st.state)) return;
+        if (!li) { location.reload(); return; }
+        if (li.classList.contains("st-" + st.state)) return;
         li.className = "st-" + st.state;
         if (!reduce && window.Motion && (st.state === "done" || st.state === "active" || st.state === "failed")) {
           window.Motion.animate(li.querySelector(".dot"), { scale: [0.6, 1.15, 1] }, { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] });
@@ -112,7 +115,7 @@
         .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
         .then(function (d) {
           fails = 0;
-          setSteps(d.steps || []);
+          if (d.state === "running") setSteps(d.steps || []); // a finished job swaps in its own card
           setBar(d.percent || 0);
           if (d.state === "running") { timer = setTimeout(poll, 1500); return; }
           setBar(d.state === "done" ? 100 : (d.percent || 0));
