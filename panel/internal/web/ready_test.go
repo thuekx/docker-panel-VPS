@@ -7,6 +7,24 @@ import (
 	"testing"
 )
 
+func TestActionsShowProgress(t *testing.T) {
+	e := newEnv(t)
+	e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	for _, lang := range []string{"en", "id"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		_, body, _ := e.get(e.c, "/sites/voltix-id")
+		for _, a := range []string{"start", "restart", "stop"} {
+			if !strings.Contains(body, `value="`+a+`" type="submit" data-busy="`) {
+				t.Errorf("%s (%s): no progress on the button", a, lang)
+			}
+		}
+		if !strings.Contains(body, `class="muted busy-note" role="status" hidden`) || strings.Contains(body, "[sites.busy") {
+			t.Errorf("(%s) no progress note", lang)
+		}
+	}
+}
+
 func TestReadyApps(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/", nil)
 	r.PostForm = url.Values{"app": {"n8n"}, "domain": {"flow.nostek.dev"}, "primary": {"domain"}, "server": {"apache"}, "php": {"8.4"}, "admin_email": {"o@nostek.dev"}, "db_engine": {"postgres"}, "version": {"13"}}

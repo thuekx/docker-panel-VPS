@@ -672,5 +672,10 @@
   "ready.next.n8n": "n8n is running. Open it now and create its owner account: the first visitor sets it, so do it right away.",
   "sites.server.ready": "Built into the app",
   "sites.creates.ready": "One container: the app on its official image, pinned by digest, running as www-data with its data in the website folder; reachable only through the panel's HTTPS edge. It may reach the internet (checks, workflows). Backups stop it for a few seconds for a consistent copy.",
-  "sites.resources.ready": "Up to 768 MB memory; disk grows with the app's data."
+  "sites.resources.ready": "Up to 768 MB memory; disk grows with the app's data.",
+  "sites.busy.start": "Starting…",
+  "sites.busy.restart": "Restarting…",
+  "sites.busy.stop": "Stopping…",
+  "sites.busy.delete": "Deleting…",
+  "sites.busy.note": "Working on the containers: usually a few seconds, up to 3 minutes while they report healthy. This page updates by itself when it is done."
 }

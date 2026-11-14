@@ -240,12 +240,18 @@
     });
   }
 
-  // long WordPress actions: the button says it is working and cannot be pressed twice
+  // long actions (WordPress Tools, start/stop/restart): the button spins and says what runs, every button of the
+  // form waits, and a note under it says how long it may take; the page that answers shows the result
   function busy() {
     document.addEventListener("submit", function (e) {
-      var b = e.submitter || (e.target.querySelector && e.target.querySelector("button[data-busy]"));
+      var f = e.target, b = e.submitter || (f.querySelector && f.querySelector("button[data-busy]"));
       if (!b || !b.hasAttribute("data-busy") || e.defaultPrevented) return;
-      setTimeout(function () { b.disabled = true; b.classList.add("busy"); b.textContent = b.getAttribute("data-busy"); }, 0);
+      setTimeout(function () {
+        f.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
+        b.classList.add("busy"); b.textContent = b.getAttribute("data-busy");
+        var note = f.querySelector(".busy-note") || (f.parentNode && f.parentNode.querySelector(".busy-note"));
+        if (note) note.hidden = false;
+      }, 0);
     });
   }
 

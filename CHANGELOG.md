@@ -15,6 +15,9 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   - It is reachable only through the panel's HTTPS edge; it may reach the internet (monitor checks, workflow calls).
   - After creating it, open it at once and make its first account: the first visitor sets it.
   - Logs of the app are on the Overview.
+- **Start, Restart, Stop and Delete show that they are working** (owner request): the pressed button spins and says
+  what runs ("Stopping…"), the other buttons wait, and a note says it can take up to 3 minutes; the page shows the
+  result by itself when it is done. Also on the restart button of each container.
 
 ### Fixed
 - The Overview's log button of a Node.js, Go or Python website asked the agent for a service it refused; logs of the

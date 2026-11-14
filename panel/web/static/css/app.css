@@ -334,7 +334,9 @@ button.switch:focus-visible{outline:2px solid var(--c-teal);outline-offset:2px}
 .wp-items td{vertical-align:middle}.wp-items .sw-row{margin:0}
 .cli-in{display:flex;align-items:center;gap:8px}.cli-in>span{font:600 14px ui-monospace,Menlo,monospace;color:var(--muted)}
 .cli-in input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-button[data-busy].busy{opacity:.7;cursor:progress}
+button[data-busy].busy{opacity:.8;cursor:progress}
+button.busy::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:-2px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+@media (prefers-reduced-motion:reduce){button.busy::before{animation:none;border-right-color:currentColor;opacity:.6}}
 .wp-go{max-width:560px}
 .ico{display:inline-flex;color:var(--tone,var(--teal-l))}
 .ico svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
