@@ -3,7 +3,27 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.18.0] — 2026-11-16
+
+### Added
+- **Resources per website** (RES-01, owner request). The Overview gains a **Resources** card. Every website keeps
+  running on our standard limits until the owner raises them, and they can only be raised (or set back to the
+  standard), never set below it.
+  - **Memory per container**: the standard of the template (for example PHP 512 MB, Nginx 128 MB, database 512 MB),
+    or 768 MB, 1 GB, 1.5 GB, 2 GB. Memory is taken from the server only while it is used; the limit stops one website
+    from taking all of it.
+  - **PHP settings**, like cPanel's MultiPHP INI Editor: `memory_limit` (256 MB to 1 GB), the largest upload
+    (`upload_max_filesize` and `post_max_size`, 128 MB to 1 GB; the website's Nginx accepts the same size),
+    `max_execution_time` (120 to 900 s) and `max_input_vars` (1000 to 10000). A higher `memory_limit` raises the
+    memory of the containers that run PHP with it, so PHP always has room.
+  - The card shows the limits of all websites together against the server's memory, and warns when they add up to
+    more than the server has.
+  - Saving recreates the website's containers with the new limits (a few seconds offline); if they do not come up,
+    the previous limits are put back and the website starts on them again. Images stay as they are (IMG-01).
+
 ## [1.17.0] — 2026-11-14
+
+Running at the owner's server since 2026-11-16 01:38 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Ready apps** (APP-03, first wave). "Add website" gains a second group, **Ready apps**: **Uptime Kuma** (website

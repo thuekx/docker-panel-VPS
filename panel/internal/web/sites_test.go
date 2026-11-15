@@ -42,6 +42,7 @@ type fakeAgent struct {
 	hookCalls []string
 	imgOld    bool // IMG-01: the database runs an older image
 	imgCalls  int
+	limCalls  []string // RES-01: bodies of the limit changes
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +113,20 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			img.Services[0].Current, img.Services[0].Update, img.Update = "sha256:0ld0ld0ld0ld0ld0ld", true, true
 		}
 		write(200, img)
+	case r.URL.Path == "/v1/sites/voltix-id/limits" && r.Method == "GET":
+		write(200, agent.Limits{Services: []agent.ServiceRAM{{Service: "db", Standard: 512, Current: 1024}, {Service: "php", Standard: 512, Current: 512, PHP: true}, {Service: "web", Standard: 128, Current: 128}},
+			RAMChoice: []int{768, 1024, 1536, 2048}, PHP: &agent.PHPSettings{Memory: 256, Upload: 512, ExecTime: 120, InputVars: 1000},
+			PHPStd:    agent.PHPSettings{Memory: 256, Upload: 128, ExecTime: 120, InputVars: 1000},
+			PHPChoice: map[string][]int{"memory_mb": {256, 512}, "upload_mb": {128, 512}, "exec_seconds": {120, 300}, "max_input_vars": {1000, 3000}},
+			HostMB:    1024, TotalMB: 1664})
+	case r.URL.Path == "/v1/sites/voltix-id/limits":
+		b, _ := io.ReadAll(r.Body)
+		f.limCalls = append(f.limCalls, string(b))
+		if strings.Contains(string(b), `"db":256`) {
+			write(400, map[string]string{"error": "memory of db can be the standard 512 MB or one of [768 1024 1536 2048] MB above it"})
+			return
+		}
+		write(200, map[string]bool{"ok": true})
 	case r.URL.Path == "/v1/sites/voltix-id/images/update":
 		f.imgCalls++
 		if !f.imgOld {

@@ -381,7 +381,7 @@ func (m *Manager) writeLimits(ctx context.Context, s Site) error {
 		putBack()
 		return err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 6*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute) // within the panel's 6 minutes
 	defer cancel()
 	// php.ini and nginx.conf are read when a container starts: a change of them recreates every container
 	args := []string{"up", "-d", "--wait", "--wait-timeout", fmt.Sprint(StartTimeout)}

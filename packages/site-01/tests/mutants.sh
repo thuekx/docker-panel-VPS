@@ -89,6 +89,9 @@ GO_MUTANTS=(
   'internal/sites/images.go|return fmt.Errorf("pull %s failed, nothing was changed: %s", u.Wanted, tail(out))|_ = out'   # IMG-01: a failed pull still changes the website
   'internal/spec/spec.go|return errors.New("a ready app runs its own server: no web server, PHP or version to choose")|return nil'   # APP-03: a ready app takes a web server, PHP or version
   'internal/sites/render.go|`, r.Image, wwwData, wwwData, indent(env, 6)|`, r.Image, 0, 0, indent(env, 6)'   # APP-03: a ready app runs as root
+  'internal/sites/limits.go|			if n := ramFor(php.Memory, mem); n > mem {|			if n := ramFor(php.Memory, mem); false && n > mem {'   # RES-01: memory_limit raised past its container's memory
+  'internal/sites/limits.go|		case v > cur.Standard && allowed(v, RAMChoices):|		case v > 0:'   # RES-01: memory set below the standard
+  'internal/sites/render.go|	return applyRAM(b.String(), s.RAM), nil|	return b.String(), nil'   # RES-01: raised memory never reaches the containers
   'internal/sites/backup.go|	if s.IsReady() {
 		// a ready app|	if false {
 		// a ready app'   # APP-03: a ready app is copied while it writes its SQLite database

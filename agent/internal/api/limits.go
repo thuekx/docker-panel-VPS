@@ -29,7 +29,7 @@ func (s *Server) limitsSet(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, err.Error())
 		return
 	}
-	long(w, 7*time.Minute)
+	long(w, 6*time.Minute)
 	if err := s.M.SetLimits(r.Context(), id, c); err != nil {
 		s.fail(w, r, "limits", id, err)
 		return

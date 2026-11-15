@@ -584,3 +584,47 @@ func (c *Client) StartImageUpdate(ctx context.Context, id string) (string, error
 	}
 	return v.Job, c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/images/update", nil, &v)
 }
+
+// ServiceRAM is the memory limit of one service of a website (RES-01).
+type ServiceRAM struct {
+	Service  string `json:"service"`
+	Standard int    `json:"standard_mb"`
+	Current  int    `json:"current_mb"`
+	PHP      bool   `json:"php,omitempty"`
+}
+
+// PHPSettings are the PHP settings of a website (RES-01, like cPanel's MultiPHP INI Editor).
+type PHPSettings struct {
+	Memory    int `json:"memory_mb"`
+	Upload    int `json:"upload_mb"`
+	ExecTime  int `json:"exec_seconds"`
+	InputVars int `json:"max_input_vars"`
+}
+
+// Limits are a website's resource limits, the choices, and the server's memory against all websites' limits.
+type Limits struct {
+	Services  []ServiceRAM     `json:"services"`
+	RAMChoice []int            `json:"ram_choices"`
+	PHP       *PHPSettings     `json:"php"`
+	PHPStd    PHPSettings      `json:"php_standard"`
+	PHPChoice map[string][]int `json:"php_choices"`
+	HostMB    int              `json:"host_mb"`
+	TotalMB   int              `json:"total_mb"`
+}
+
+// LimitChange sets the memory of services and the PHP settings; the standard value drops a raise.
+type LimitChange struct {
+	RAM map[string]int `json:"ram,omitempty"`
+	PHP *PHPSettings   `json:"php,omitempty"`
+}
+
+// Limits reads a website's resource limits.
+func (c *Client) Limits(ctx context.Context, id string) (Limits, error) {
+	var v Limits
+	return v, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/limits", nil, &v)
+}
+
+// SetLimits changes a website's resource limits; the agent recreates its containers with them.
+func (c *Client) SetLimits(ctx context.Context, id string, ch LimitChange) error {
+	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/limits", ch, nil)
+}
