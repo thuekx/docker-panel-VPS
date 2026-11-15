@@ -1,6 +1,6 @@
 # NATIVE-01 — Optional native site engine
 
-Status: DESIGN 2026-11-16, waiting for the owner's choice of scope. ENGINE-1 (owner 2026-11-12): websites run on
+Status: DESIGN 2026-11-16; scope decided by the owner 2026-11-16 01:43 WIB (NATIVE-1): the recommended shape below, PHP 8.1-8.5 from the ondrej/php PPA. ENGINE-1 (owner 2026-11-12): websites run on
 Docker stacks only "for now"; a native engine (Nginx/Apache + PHP-FPM on the host, cPanel-style, lighter on RAM) comes
 after the core site features, and the add-website page then explains Docker vs native.
 
@@ -48,6 +48,3 @@ PHP per site only while it serves requests (`pm = ondemand`): a quiet site costs
 5. Harness on a real host (a fresh Ubuntu 24.04 container with systemd is not enough for nftables and slices; the
    CI runner VM is), mutants for isolation (open_basedir off, pool as www-data, firewall rule missing).
 
-## Open choice for the owner
-- Scope: as above (recommended), or Ubuntu's PHP 8.3 only (no PPA on the host), or park NATIVE-01 and do MIG-01
-  (WordPress migration) first.

@@ -50,6 +50,8 @@ type Site struct {
 	// RES-01: memory of services raised above the standard (MB), and PHP settings raised above the standard
 	RAM       map[string]int `json:"ram,omitempty"`
 	PHPLimits *PHPSettings   `json:"php_limits,omitempty"`
+	// NATIVE-01: "" = Docker stack, native = host Nginx + PHP-FPM + MariaDB
+	Engine string `json:"engine,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
