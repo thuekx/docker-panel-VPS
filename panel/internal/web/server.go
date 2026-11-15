@@ -86,7 +86,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "buildlog"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "buildlog", "disk", "diskserver"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -184,6 +184,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /files/{id}/upload", s.needMultipart(s.filesUpload))
 	mux.HandleFunc("GET /wp/{id}", s.need(true, s.wpPage))
 	mux.HandleFunc("POST /wp/{id}", s.need(true, s.wpAction))
+	mux.HandleFunc("GET /disk", s.need(true, s.serverDiskPage))
+	mux.HandleFunc("POST /disk", s.need(true, s.serverDiskAction))
+	mux.HandleFunc("GET /disk/{id}", s.need(true, s.diskPage))
 	mux.HandleFunc("GET /backup/{id}", s.need(true, s.backupPage))
 	mux.HandleFunc("POST /backup/{id}", s.need(true, s.backupAction))
 	mux.HandleFunc("GET /backup/{id}/file/{name}", s.need(true, s.backupDownload))

@@ -92,6 +92,10 @@ GO_MUTANTS=(
   'internal/sites/limits.go|			if n := ramFor(php.Memory, mem); n > mem {|			if n := ramFor(php.Memory, mem); false && n > mem {'   # RES-01: memory_limit raised past its container's memory
   'internal/sites/limits.go|		case v > cur.Standard && allowed(v, RAMChoices):|		case v > 0:'   # RES-01: memory set below the standard
   'internal/sites/render.go|	return applyRAM(b.String(), s.RAM), nil|	return b.String(), nil'   # RES-01: raised memory never reaches the containers
+  'internal/sites/disk.go|func named(r imageRow, keep map[string]bool) bool {|func named(r imageRow, keep map[string]bool) bool {
+	return false'   # DISK-01: clean-up removes images websites name (WP-CLI, built images)
+  'internal/sites/disk.go|	}{{"db", &out.Database}, {"backups", &out.Backups}|	}{{"wp", &out.Database}, {"backups", &out.Backups}'   # DISK-01: the database counted from the wrong folder
+  'internal/sites/disk.go|			return out.Rows[a].Bytes > out.Rows[b].Bytes|			return out.Rows[a].Bytes < out.Rows[b].Bytes'   # DISK-01: the drill-down not largest first
   'internal/sites/backup.go|	if s.IsReady() {
 		// a ready app|	if false {
 		// a ready app'   # APP-03: a ready app is copied while it writes its SQLite database

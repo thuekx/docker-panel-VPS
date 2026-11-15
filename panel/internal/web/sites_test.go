@@ -43,6 +43,8 @@ type fakeAgent struct {
 	imgOld    bool // IMG-01: the database runs an older image
 	imgCalls  int
 	limCalls  []string // RES-01: bodies of the limit changes
+	cleans    []string // DISK-01: clean-up bodies
+	diskPaths []string // DISK-01: drill-down paths asked
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +115,24 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			img.Services[0].Current, img.Services[0].Update, img.Update = "sha256:0ld0ld0ld0ld0ld0ld", true, true
 		}
 		write(200, img)
+	case r.URL.Path == "/v1/sites/voltix-id/disk":
+		p := r.URL.Query().Get("path")
+		f.diskPaths = append(f.diskPaths, p)
+		if p == "/nope" {
+			write(404, map[string]string{"error": "no such file or folder"})
+			return
+		}
+		write(200, agent.SiteDisk{Files: 60100, Database: 20000, Backups: 9000, Trash: 400, Other: 500, Total: 90000, Path: p,
+			Rows: []agent.DiskRow{{Name: "wp-content", Type: "dir", Bytes: 60000, Files: 3}, {Name: "index.php", Type: "file", Bytes: 100, Files: 1}, {Name: "link", Type: "link"}},
+			Big:  []agent.BigFile{{Path: "/wp-content/uploads/2026/video.mp4", Bytes: 50000, MTime: 1763251200}}})
+	case r.URL.Path == "/v1/disk" && r.Method == "GET":
+		write(200, agent.ServerDisk{DiskBytes: 90 << 30, UsedBytes: 20 << 30, FreeBytes: 70 << 30, Trash: 1 << 20,
+			Sites:  []agent.SiteTotal{{ID: "voltix-id", Domain: "voltix.id", Bytes: 3 << 30}},
+			Docker: []agent.DockerUse{{Kind: "images", Count: 9, Bytes: 3e9, Reclaimable: 1.2e9}, {Kind: "build-cache", Count: 0}}})
+	case r.URL.Path == "/v1/disk/clean":
+		b, _ := io.ReadAll(r.Body)
+		f.cleans = append(f.cleans, string(b))
+		write(200, map[string]string{"freed": "2 images, 1.2 GB"})
 	case r.URL.Path == "/v1/sites/voltix-id/limits" && r.Method == "GET":
 		write(200, agent.Limits{Services: []agent.ServiceRAM{{Service: "db", Standard: 512, Current: 1024}, {Service: "php", Standard: 512, Current: 512, PHP: true}, {Service: "web", Standard: 128, Current: 128}},
 			RAMChoice: []int{768, 1024, 1536, 2048}, PHP: &agent.PHPSettings{Memory: 256, Upload: 512, ExecTime: 120, InputVars: 1000},

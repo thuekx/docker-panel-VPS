@@ -1,0 +1,31 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}
+{{template "sitetabs" (tabs $l $s "disk")}}
+{{if $d.Err}}<p class="err" role="alert" data-anim="shake">{{$d.Err}}</p>{{else}}
+<section class="card wide tone c-violet" data-anim="card" id="disk-parts">
+  <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-disk"}}</span>{{t $l "disk.site.title"}}</span><b class="ink">{{$d.Total}}</b></div>
+  <p class="muted">{{t $l "disk.site.help"}}</p>
+  <div class="disk-stack" role="img" aria-label="{{t $l "disk.site.title"}}">{{range $d.Parts}}<i class="dp-{{.Key}}" data-bar="{{.Pct}}" title="{{t $l (printf "disk.part.%s" .Key)}} {{.Size}}"></i>{{end}}</div>
+  <ul class="disk-legend">{{range $d.Parts}}<li><span class="sw dp-{{.Key}}"></span>{{t $l (printf "disk.part.%s" .Key)}} <b>{{.Size}}</b> <span class="muted">{{.Pct}}%</span></li>{{end}}</ul>
+  {{if $d.D.Incomplete}}<p class="banner warn">{{t $l "disk.incomplete"}}</p>{{end}}
+</section>
+<section class="card wide" data-anim="card" id="disk-tree">
+  <div class="stat-head"><span>{{t $l "disk.tree.title"}}</span><a class="ghost btn" href="/files/{{$s.ID}}?path={{$d.D.Path}}">{{t $l "disk.open.files"}}</a></div>
+  <nav class="crumbs" aria-label="{{t $l "disk.path"}}">{{range $i, $c := $d.Crumbs}}{{if $i}} / {{end}}<a href="/disk/{{$s.ID}}?path={{$c.Path}}">{{$c.Name}}</a>{{end}}</nav>
+  {{if not $d.Rows}}<p class="muted">{{t $l "disk.empty"}}</p>{{else}}
+  <div class="table-wrap"><table class="disk-table"><thead><tr><th>{{t $l "disk.name"}}</th><th>{{t $l "disk.size"}}</th><th class="hide-sm">{{t $l "disk.files"}}</th></tr></thead><tbody>{{range $d.Rows}}
+    <tr><td>{{if .Path}}<a href="/disk/{{$s.ID}}?path={{.Path}}">{{template "ico-folder"}} {{.Name}}</a>{{else if eq .Type "link"}}<span class="muted">{{.Name}} → {{t $l "disk.link"}}</span>{{else}}{{.Name}}{{end}}
+      <div class="bar thin"><i data-bar="{{.Pct}}"></i></div></td>
+      <td class="nowrap">{{.Size}}</td><td class="nowrap hide-sm">{{.Files}}</td></tr>{{end}}
+  </tbody></table></div>
+  {{if $d.D.More}}<p class="muted">{{t $l "disk.more" $d.D.More}}</p>{{end}}{{end}}
+</section>
+{{if $d.Big}}<section class="card wide" data-anim="card" id="disk-big">
+  <div class="stat-head"><span>{{t $l "disk.big.title"}}</span></div>
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "disk.file"}}</th><th>{{t $l "disk.size"}}</th><th class="hide-sm">{{t $l "disk.changed"}}</th></tr></thead><tbody>{{range $d.Big}}
+    <tr><td><a href="/files/{{$s.ID}}?path={{.Dir}}"><code>{{.Path}}</code></a></td><td class="nowrap">{{.Size}}</td><td class="nowrap hide-sm">{{.When}}</td></tr>{{end}}
+  </tbody></table></div>
+  <p class="muted">{{t $l "disk.big.help"}}</p>
+</section>{{end}}
+{{end}}
+{{end}}

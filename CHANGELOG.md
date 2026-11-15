@@ -3,6 +3,20 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.19.0] — 2026-11-16
+
+### Added
+- **Disk usage and disk analyzer** (DISK-01, like cPanel's Disk Usage, owner 2026-11-16).
+  - Every website gets a **Disk** tab: what its files, database, backups and deleted files take, a drill-down of its
+    folders from largest to smallest (click a folder to go in), and its 20 largest files with a link to their folder
+    in the File Manager. Symbolic links are never followed; a very large folder stops counting after 20 seconds and
+    says so.
+  - A new **Disk** page (menu, and "Analyze disk" on the Dashboard's Disk card): the server's disk, every website by
+    size, the website trash, and what Docker keeps (images, containers, volumes, build cache) with what can be freed.
+  - Two safe clean-ups: **Remove unused images** removes only images no website names and no container uses (the
+    images of your websites, WP-CLI and built images stay; older versions kept after Update image go), and **Clear
+    build cache** removes build cache older than a day. Neither runs while a website is being changed.
+
 ## [1.18.0] — 2026-11-16
 
 ### Added
