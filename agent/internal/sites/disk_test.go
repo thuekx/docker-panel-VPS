@@ -114,7 +114,9 @@ func TestCleanImagesKeepsWhatWebsitesName(t *testing.T) {
 	ls := `{"ID":"sha256:aaa","Repository":"` + repo + `","Tag":"` + tag + `","Digest":"` + digest + `"}
 {"ID":"sha256:bbb","Repository":"mariadb","Tag":"11.4","Digest":"sha256:0000"}
 {"ID":"sha256:ccc","Repository":"<none>","Tag":"<none>","Digest":"<none>"}
-{"ID":"sha256:ddd","Repository":"traefik","Tag":"v3","Digest":"sha256:1111"}`
+{"ID":"sha256:ddd","Repository":"traefik","Tag":"v3","Digest":"sha256:1111"}
+{"ID":"sha256:eee","Repository":"nostek/agent-build","Tag":"v1.19.0","Digest":"<none>"}
+{"ID":"sha256:fff","Repository":"nostek/panel","Tag":"v1.18.0","Digest":"<none>"}`
 	f.answer = map[string]string{"image ls": ls, "system df": dfJSON}
 	f.hook = func(args []string) ([]byte, error, bool) {
 		if strings.Join(args, " ") == "image rm sha256:ddd" {
@@ -127,8 +129,8 @@ func TestCleanImagesKeepsWhatWebsitesName(t *testing.T) {
 		t.Fatal(err)
 	}
 	all := calls(f)
-	if strings.Contains(all, "image rm sha256:aaa") || !strings.Contains(all, "image rm sha256:bbb") || !strings.Contains(all, "image rm sha256:ccc") || strings.Contains(all, "image rm --force") {
-		t.Errorf("removed the wrong images:\n%s", all)
+	if strings.Contains(all, "image rm sha256:aaa") || !strings.Contains(all, "image rm sha256:bbb") || !strings.Contains(all, "image rm sha256:ccc") || strings.Contains(all, "image rm --force") || strings.Contains(all, "sha256:eee") || strings.Contains(all, "sha256:fff") {
+		t.Errorf("removed the wrong images (the panel's own images stay):\n%s", all)
 	}
 	if !strings.HasPrefix(freed, "2 images") {
 		t.Errorf("freed %q (the image in use stays and is not counted)", freed)

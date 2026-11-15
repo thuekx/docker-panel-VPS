@@ -278,8 +278,8 @@ func (m *Manager) dockerDF(ctx context.Context) ([]DockerUse, error) {
 	return out, nil
 }
 
-// Clean-ups the panel offers. Both leave every website as it is: an image a website's compose file names, or a
-// container uses (running or stopped), is never removed.
+// Clean-ups the panel offers. Both leave every website and the panel as they are: an image a website's compose
+// file names, an image of the panel itself (nostek/…), or one a container uses (running or stopped), is never removed.
 const (
 	CleanImages = "images"      // images no website names (old versions after Update image, leftovers)
 	CleanBuild  = "build-cache" // the build cache of Laravel, PHP and app builds older than a day
@@ -310,6 +310,12 @@ func (m *Manager) keptImages() (map[string]bool, error) {
 		}
 	}
 	return keep, nil
+}
+
+// platformImage is an image of the panel itself: the agent build and the panel of this release and of the one
+// before it, which a revert starts again. A clean-up never removes them.
+func platformImage(r imageRow) bool {
+	return strings.HasPrefix(r.Repository, "nostek/") || strings.HasPrefix(r.Repository, "docker.io/nostek/")
 }
 
 // named is true when the image row is one of the kept references (name:tag@sha256:…, name@sha256:… or name:tag).
@@ -368,7 +374,7 @@ func (m *Manager) CleanDocker(ctx context.Context, what string) (string, error) 
 	removed := 0
 	for _, l := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
 		var r imageRow
-		if json.Unmarshal([]byte(l), &r) != nil || r.ID == "" || named(r, keep) {
+		if json.Unmarshal([]byte(l), &r) != nil || r.ID == "" || platformImage(r) || named(r, keep) {
 			continue
 		}
 		// without --force: Docker refuses an image a container still uses, which stays

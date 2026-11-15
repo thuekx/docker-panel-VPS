@@ -14,7 +14,7 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   - A new **Disk** page (menu, and "Analyze disk" on the Dashboard's Disk card): the server's disk, every website by
     size, the website trash, and what Docker keeps (images, containers, volumes, build cache) with what can be freed.
   - Two safe clean-ups: **Remove unused images** removes only images no website names and no container uses (the
-    images of your websites, WP-CLI and built images stay; older versions kept after Update image go), and **Clear
+    images of your websites, WP-CLI, built images and the panel's own images stay; older versions kept after Update image go), and **Clear
     build cache** removes build cache older than a day. Neither runs while a website is being changed.
 
 ## [1.18.0] — 2026-11-16
