@@ -61,6 +61,9 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if f.app == "go" || f.app == "python" {
 		site.PHP, site.Server, site.AdminUser, site.Version, site.Source, site.Release = "", "", "", "1.27", "files", 1
 	}
+	if f.app == "n8n" || f.app == "uptime-kuma" {
+		site.PHP, site.Server, site.AdminUser = "", "", ""
+	}
 	if f.app == "node" {
 		site.PHP, site.Server, site.AdminUser, site.Version = "", "", "", "24"
 		site.Repo, site.Branch, site.Start, site.Release = "https://github.com/owner/shop.git", "main", "node server.js", 3
@@ -87,7 +90,8 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Laravel: []agent.Laravel{{Version: "13", MinPHP: "8.3", Default: true}, {Version: "12", MinPHP: "8.2"}},
 			Node:    []agent.Node{{Version: "26", SecurityUntil: "2029-04-30"}, {Version: "24", SecurityUntil: "2028-04-30", Default: true}},
 			Go:      []agent.Node{{Version: "1.27", SecurityUntil: "2027-08-31", Default: true}},
-			Python:  []agent.Node{{Version: "3.14", SecurityUntil: "2030-10-31", Default: true}}})
+			Python:  []agent.Node{{Version: "3.14", SecurityUntil: "2030-10-31", Default: true}},
+			Ready:   []agent.Ready{{ID: "uptime-kuma", Name: "Uptime Kuma", Version: "2.5.11-slim-rootless"}, {ID: "n8n", Name: "n8n", Version: "2.47.7"}}})
 	case r.URL.Path == "/v1/sites" && r.Method == "GET":
 		write(200, map[string]any{"sites": []agent.Site{site}})
 	case r.URL.Path == "/v1/trash":
@@ -148,7 +152,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var c agent.Create
 		b, _ := io.ReadAll(r.Body)
 		json.Unmarshal(b, &c)
-		if c.Server != "apache" && c.Server != "nginx" && c.App != "node" && c.App != "go" && c.App != "python" {
+		if c.Server != "apache" && c.Server != "nginx" && c.App != "node" && c.App != "go" && c.App != "python" && c.App != "n8n" && c.App != "uptime-kuma" {
 			write(422, map[string]string{"error": "web server must be apache or nginx"})
 			return
 		}

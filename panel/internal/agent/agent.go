@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -195,6 +196,15 @@ func (s Site) DBName() string {
 	return "MariaDB"
 }
 
+// ReadyApps are the apps of the agent's ready-app catalogue (APP-03); the catalogue names their image versions.
+var ReadyApps = []string{"uptime-kuma", "n8n"}
+
+// IsReady is true for an app of the ready-app catalogue: an upstream image that runs as it is.
+func (s Site) IsReady() bool { return slices.Contains(ReadyApps, s.App) }
+
+// OneApp is true when one "app" container serves the website (built or ready apps).
+func (s Site) OneApp() bool { return s.IsNode() || s.IsReady() }
+
 // IsLaravel is true for a Laravel site.
 func (s Site) IsLaravel() bool { return s.App == "laravel" }
 
@@ -243,6 +253,15 @@ type Catalog struct {
 	Node    []Node    `json:"node"`
 	Go      []Node    `json:"go"`
 	Python  []Node    `json:"python"`
+	Ready   []Ready   `json:"ready"`
+}
+
+// Ready is one app of the ready-app catalogue (APP-03).
+type Ready struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Home    string `json:"home"`
 }
 
 // Node is one offered Node.js version (APP-02).

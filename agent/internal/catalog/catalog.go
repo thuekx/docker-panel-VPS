@@ -256,3 +256,40 @@ func Runtimes(app string) []Runtime {
 	}
 	return append([]Runtime(nil), runtimes[app]...)
 }
+
+// ReadyApp is one app of the ready-app catalogue (APP-03): an upstream image that runs as it is, pinned by digest,
+// with its data in the website folder. It runs as www-data, so the File Manager and backups see its data.
+type ReadyApp struct {
+	ID    string
+	Name  string
+	Image string
+	Port  int      // where the app answers inside its container
+	Data  string   // the folder inside the container that holds all its data (the website folder is mounted there)
+	Env   []string // fixed environment, KEY=value; {host} is the website's address
+	Home  string   // home page of the project, for the panel
+}
+
+var ready = []ReadyApp{
+	{ID: "uptime-kuma", Name: "Uptime Kuma", Port: 3001, Data: "/app/data", Home: "https://github.com/louislam/uptime-kuma",
+		Image: "louislam/uptime-kuma:2.5.11-slim-rootless@sha256:ebc6299a1bc8bd4a29e0bddcc04f11440e3690b1c52e19558006eeefb5a8b019",
+		Env:   []string{"UPTIME_KUMA_PORT=3001", "UPTIME_KUMA_DB_TYPE=sqlite", "TZ=Asia/Jakarta"}}, // SQLite in the data folder: no setup page
+	{ID: "n8n", Name: "n8n", Port: 5678, Data: "/data", Home: "https://n8n.io",
+		Image: "n8nio/n8n:2.47.7@sha256:b4b90747b81fcda7e76550c0d3aa7f0f64917a1e9573cff40d6834eaf2e0f8ea",
+		Env: []string{"N8N_PORT=5678", "N8N_HOST={host}", "N8N_PROTOCOL=https", "WEBHOOK_URL=https://{host}/",
+			"N8N_EDITOR_BASE_URL=https://{host}/", "N8N_PROXY_HOPS=1", "N8N_USER_FOLDER=/data", "HOME=/data",
+			"GENERIC_TIMEZONE=Asia/Jakarta", "TZ=Asia/Jakarta", "N8N_DIAGNOSTICS_ENABLED=false",
+			"N8N_VERSION_NOTIFICATIONS_ENABLED=false", "N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true"}},
+}
+
+// Ready returns the entry of a ready app.
+func Ready(id string) (ReadyApp, bool) {
+	for _, r := range ready {
+		if r.ID == id {
+			return r, true
+		}
+	}
+	return ReadyApp{}, false
+}
+
+// ReadyAll returns the ready-app catalogue in the order the panel shows it.
+func ReadyAll() []ReadyApp { return append([]ReadyApp(nil), ready...) }

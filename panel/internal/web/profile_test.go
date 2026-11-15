@@ -129,13 +129,37 @@ func TestJobProgress(t *testing.T) {
 		{agent.Job{Kind: "image", State: "failed", Steps: []string{"pull new images", "copy database", "copy files", "recreate containers", "put back the previous images"}}, "done done done done failed", 80},
 	}
 	for _, c := range cases {
-		rows, pct := jobProgress(c.j)
+		rows, pct := jobProgress(c.j, agent.Site{})
 		var got []string
 		for _, r := range rows {
 			got = append(got, r.State)
 		}
 		if strings.Join(got, " ") != c.want || pct != c.pct {
 			t.Errorf("%v: got %v %d%%, want %s %d%%", c.j.Steps, got, pct, c.want, c.pct)
+		}
+	}
+}
+
+func TestCreateStepsFollowTheApp(t *testing.T) {
+	for _, c := range []struct {
+		site agent.Site
+		want string
+	}{
+		{agent.Site{ID: "x"}, "files,pull images,start containers,install WordPress"},
+		{agent.Site{ID: "x", App: "go"}, "files,pull images,fetch and build,start new release"},
+		{agent.Site{ID: "x", App: "laravel"}, "files,build PHP image,pull images,install Laravel,start containers"},
+		{agent.Site{ID: "x", App: "php", Database: true, DBEngine: "postgres"}, "files,build PHP image,pull images,start containers"},
+		{agent.Site{ID: "x", App: "static"}, "files,pull images,start containers"},
+		{agent.Site{ID: "x", App: "n8n"}, "files,pull images,start containers"},
+	} {
+		// right from the first poll, before the agent reports the app's own steps
+		rows, _ := jobProgress(agent.Job{Kind: "create", State: "running", Steps: []string{"files", "pull images"}}, c.site)
+		var keys []string
+		for _, r := range rows {
+			keys = append(keys, r.Key)
+		}
+		if strings.Join(keys, ",") != c.want {
+			t.Errorf("%s: %v", c.site.AppName(), keys)
 		}
 	}
 }

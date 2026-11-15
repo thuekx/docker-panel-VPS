@@ -83,9 +83,12 @@
       if (meter) meter.setAttribute("aria-valuenow", String(p));
     }
     function setSteps(steps) {
+      var rows = card.querySelectorAll("[data-step]");
+      if (steps.length && rows.length !== steps.length) { location.reload(); return; } // the list of steps changed
       steps.forEach(function (st) {
         var li = card.querySelector('[data-step="' + (window.CSS && CSS.escape ? CSS.escape(st.key) : st.key) + '"]');
-        if (!li || li.classList.contains("st-" + st.state)) return;
+        if (!li) { location.reload(); return; }
+        if (li.classList.contains("st-" + st.state)) return;
         li.className = "st-" + st.state;
         if (!reduce && window.Motion && (st.state === "done" || st.state === "active" || st.state === "failed")) {
           window.Motion.animate(li.querySelector(".dot"), { scale: [0.6, 1.15, 1] }, { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] });
@@ -112,7 +115,7 @@
         .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
         .then(function (d) {
           fails = 0;
-          setSteps(d.steps || []);
+          if (d.state === "running") setSteps(d.steps || []); // a finished job swaps in its own card
           setBar(d.percent || 0);
           if (d.state === "running") { timer = setTimeout(poll, 1500); return; }
           setBar(d.state === "done" ? 100 : (d.percent || 0));
@@ -237,12 +240,18 @@
     });
   }
 
-  // long WordPress actions: the button says it is working and cannot be pressed twice
+  // long actions (WordPress Tools, start/stop/restart): the button spins and says what runs, every button of the
+  // form waits, and a note under it says how long it may take; the page that answers shows the result
   function busy() {
     document.addEventListener("submit", function (e) {
-      var b = e.submitter || (e.target.querySelector && e.target.querySelector("button[data-busy]"));
+      var f = e.target, b = e.submitter || (f.querySelector && f.querySelector("button[data-busy]"));
       if (!b || !b.hasAttribute("data-busy") || e.defaultPrevented) return;
-      setTimeout(function () { b.disabled = true; b.classList.add("busy"); b.textContent = b.getAttribute("data-busy"); }, 0);
+      setTimeout(function () {
+        f.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
+        b.classList.add("busy"); b.textContent = b.getAttribute("data-busy");
+        var note = f.querySelector(".busy-note") || (f.parentNode && f.parentNode.querySelector(".busy-note"));
+        if (note) note.hidden = false;
+      }, 0);
     });
   }
 

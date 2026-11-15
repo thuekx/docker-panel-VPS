@@ -660,5 +660,22 @@
   "sites.step.recreate containers": "Containers on the new images",
   "sites.step.now.recreate containers": "Restarting the containers on the new images…",
   "sites.step.put back the previous images": "Previous images back",
-  "sites.step.now.put back the previous images": "Putting the previous images back…"
+  "sites.step.now.put back the previous images": "Putting the previous images back…",
+  "sites.app.uptime-kuma": "Uptime Kuma",
+  "sites.app.n8n": "n8n",
+  "sites.app.uptime-kuma.help": "Watches your websites and services (HTTP, ping, ports, certificates) and alerts you by Telegram, e-mail and more.",
+  "sites.app.n8n.help": "Workflow automation: connect apps and APIs with a visual editor, webhooks and schedules.",
+  "ready.title": "Ready apps",
+  "ready.help": "A ready app runs its own official image, pinned by digest, with all its data in the website folder: the File Manager and Backup see it, and Update image moves it to newer versions the panel brings. You create its first account in the app itself.",
+  "ready.open": "Open %s",
+  "ready.next.uptime-kuma": "Uptime Kuma is running. Open it now and create its admin account: the first visitor sets it, so do it right away.",
+  "ready.next.n8n": "n8n is running. Open it now and create its owner account: the first visitor sets it, so do it right away.",
+  "sites.server.ready": "Built into the app",
+  "sites.creates.ready": "One container: the app on its official image, pinned by digest, running as www-data with its data in the website folder; reachable only through the panel's HTTPS edge. It may reach the internet (checks, workflows). Backups stop it for a few seconds for a consistent copy.",
+  "sites.resources.ready": "Up to 768 MB memory; disk grows with the app's data.",
+  "sites.busy.start": "Starting…",
+  "sites.busy.restart": "Restarting…",
+  "sites.busy.stop": "Stopping…",
+  "sites.busy.delete": "Deleting…",
+  "sites.busy.note": "Working on the containers: usually a few seconds, up to 3 minutes while they report healthy. This page updates by itself when it is done."
 }

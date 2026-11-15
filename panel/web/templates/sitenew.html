@@ -8,10 +8,11 @@
   <p class="lead">{{t $l "sites.approve.lead" $p.Domain}}</p>
   <div class="table-wrap"><table>
   <tbody>
-{{$k := $p.Server}}{{if eq $p.App "php"}}{{$k = printf "php-%s" $p.Server}}{{else if eq $p.App "static"}}{{$k = "static"}}{{else if eq $p.App "laravel"}}{{$k = "laravel"}}{{else if $p.IsNode}}{{$k = $p.App}}{{end}}
+{{$k := $p.Server}}{{if eq $p.App "php"}}{{$k = printf "php-%s" $p.Server}}{{else if eq $p.App "static"}}{{$k = "static"}}{{else if eq $p.App "laravel"}}{{$k = "laravel"}}{{else if $p.IsNode}}{{$k = $p.App}}{{else if $p.IsReady}}{{$k = "ready"}}{{end}}
     <tr><th>{{t $l "sites.app"}}</th><td>{{t $l (printf "sites.app.%s" $p.AppName)}}{{if $p.Version}} {{$p.Version}}{{end}}</td></tr>
     {{if $p.IsNode}}<tr><th>{{t $l "node.source"}}</th><td>{{if $p.FromFiles}}{{t $l "node.source.files"}}{{else}}<code>{{$p.Repo}}</code> · {{t $l "node.branch"}} <code>{{$p.Branch}}</code>{{end}}{{if $p.Dir}} · {{t $l "node.dir"}} <code>{{$p.Dir}}</code>{{end}}</td></tr>
     <tr><th>{{t $l "node.commands"}}</th><td><code>{{if $p.Build}}{{$p.Build}}{{else}}{{t $l (printf "rt.build.%s" $p.App)}}{{end}}</code> · <code>{{if $p.Start}}{{$p.Start}}{{else}}{{t $l (printf "rt.start.%s" $p.App)}}{{end}}</code></td></tr>
+    {{else if $p.IsReady}}<tr><th>{{t $l "sites.server"}}</th><td>{{t $l "sites.server.ready"}}</td></tr>
     {{else}}<tr><th>{{t $l "sites.server"}}</th><td>{{if eq $f.App "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $p.Server)}}{{end}}</td></tr>{{end}}
     {{if $p.PHP}}<tr><th>PHP</th><td>{{$p.PHP}}{{range $.Data.Catalog.PHP}}{{if eq .Version $p.PHP}}{{if .EOL}} <span class="pill s-bad">{{t $l "sites.php.eol"}}</span>{{end}}{{end}}{{end}}</td></tr>{{end}}
     <tr><th>{{if $p.IsWP}}{{t $l "sites.wpurl"}}{{else}}{{t $l "sites.url"}}{{end}}</th><td><code>{{$p.URL}}</code></td></tr>
@@ -45,6 +46,10 @@
     <fieldset class="choice apps"><legend>{{t $l "sites.app"}}</legend>
       {{range $a := list "wordpress" "laravel" "node" "go" "python" "php" "static"}}<label class="app-card"><input type="radio" name="app" value="{{$a}}" {{if or (eq $f.App $a) (and (eq $a "wordpress") (eq $f.App ""))}}checked{{end}}><span><b>{{t $l (printf "sites.app.%s" $a)}}</b><span class="muted">{{t $l (printf "sites.app.%s.help" $a)}}</span></span></label>{{end}}
     </fieldset>
+    {{with .Data.Catalog.Ready}}<fieldset class="choice apps"><legend>{{t $l "ready.title"}}</legend>
+      {{range .}}<label class="app-card"><input type="radio" name="app" value="{{.ID}}" data-ready {{if eq $f.App .ID}}checked{{end}}><span><b>{{.Name}} <span class="muted">{{.Version}}</span></b><span class="muted">{{t $l (printf "sites.app.%s.help" .ID)}}</span></span></label>{{end}}
+    </fieldset>
+    <p class="muted for-ready">{{t $l "ready.help"}}</p>{{end}}
     <label>{{t $l "sites.domain"}}<input name="domain" value="{{$f.Domain}}" placeholder="voltix.id" required autofocus autocapitalize="none" spellcheck="false"></label>
     <fieldset class="choice"><legend>{{t $l "sites.primary"}}</legend>
       <label><input type="radio" name="primary" value="domain" {{if ne $f.Primary "www"}}checked{{end}}> {{t $l "sites.primary.domain"}}</label>

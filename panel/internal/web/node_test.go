@@ -35,7 +35,7 @@ func TestNodeServicesAndSteps(t *testing.T) {
 	if !siteService(n, "app") || siteService(n, "web") || siteService(n, "php") || siteService(n, "db") || siteService(agent.Site{}, "app") {
 		t.Error("node services")
 	}
-	rows, _ := jobProgress(agent.Job{Kind: "create", State: "running", Steps: []string{"files", "pull images", "fetch and build"}})
+	rows, _ := jobProgress(agent.Job{Kind: "create", State: "running", Steps: []string{"files", "pull images", "fetch and build"}}, agent.Site{})
 	var keys []string
 	for _, r := range rows {
 		keys = append(keys, r.Key)
@@ -43,7 +43,7 @@ func TestNodeServicesAndSteps(t *testing.T) {
 	if strings.Join(keys, ",") != "files,pull images,fetch and build,start new release" {
 		t.Errorf("create steps %v", keys)
 	}
-	rows, _ = jobProgress(agent.Job{Kind: "deploy", State: "failed", Steps: []string{"fetch and build", "start new release", "previous release back"}})
+	rows, _ = jobProgress(agent.Job{Kind: "deploy", State: "failed", Steps: []string{"fetch and build", "start new release", "previous release back"}}, agent.Site{})
 	keys = nil
 	for _, r := range rows {
 		keys = append(keys, r.Key+"="+r.State)

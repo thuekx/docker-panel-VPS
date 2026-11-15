@@ -69,7 +69,7 @@ func (s *Server) backupPage(w http.ResponseWriter, r *http.Request) {
 		d.Job = b.Job
 	}
 	if d.Job != nil {
-		d.Steps, d.Percent = jobProgress(*d.Job)
+		d.Steps, d.Percent = jobProgress(*d.Job, agent.Site{})
 		for _, st := range d.Job.Steps {
 			if strings.HasPrefix(st, "done ") {
 				d.Result = strings.TrimPrefix(st, "done ")

@@ -49,7 +49,7 @@ func TestSiteService(t *testing.T) {
 }
 
 func TestLaravelJobSteps(t *testing.T) {
-	rows, _ := jobProgress(agent.Job{Kind: "create", State: "running", Steps: []string{"files", "build PHP image"}})
+	rows, _ := jobProgress(agent.Job{Kind: "create", State: "running", Steps: []string{"files", "build PHP image"}}, agent.Site{})
 	var keys []string
 	for _, r := range rows {
 		keys = append(keys, r.Key)

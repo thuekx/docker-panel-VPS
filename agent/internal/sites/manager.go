@@ -463,7 +463,7 @@ func (m *Manager) create(j *Job, s Site) {
 	case s.Server == "nginx":
 		files["nginx.conf"] = NginxPHPConf
 	}
-	if s.AppName() != spec.AppStatic {
+	if s.AppName() != spec.AppStatic && !s.IsReady() {
 		files["php.ini"] = PHPIni
 	}
 	if rec := buildRecipe(s); rec != "" {
@@ -475,8 +475,8 @@ func (m *Manager) create(j *Job, s Site) {
 			return
 		}
 	}
-	if s.IsLaravel() {
-		// composer runs as www-data and fills the empty website folder
+	if s.IsLaravel() || s.IsReady() {
+		// composer (Laravel) or the ready app runs as www-data and fills the empty website folder
 		if err := os.Chown(filepath.Join(dir, "wp"), m.uid(), m.uid()); err != nil {
 			fail("files", err, nil)
 			return
@@ -488,7 +488,7 @@ func (m *Manager) create(j *Job, s Site) {
 			return
 		}
 	}
-	if !s.IsWP() && !s.IsLaravel() {
+	if !s.IsWP() && !s.IsLaravel() && !s.IsReady() {
 		if err := m.writeStarter(s); err != nil {
 			fail("files", err, nil)
 			return
@@ -623,8 +623,7 @@ func (m *Manager) Logs(ctx context.Context, id, service string, lines int) (stri
 	if err != nil {
 		return "", err
 	}
-	ok := service == "web" || service == "db" || (service == "php" && s.Server == "nginx")
-	if !ok {
+	if !validService(s, service) {
 		return "", fmt.Errorf("service %q is not part of this site", service)
 	}
 	if lines < 1 || lines > 1000 {
@@ -766,7 +765,7 @@ type Stack struct {
 
 // services lists the services a site may have; anything else in the project is ignored.
 func services(s Site) []string {
-	if s.IsRuntime() {
+	if s.OneApp() {
 		if s.HasDB() {
 			return []string{"app", "db"}
 		}
