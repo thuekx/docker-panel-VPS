@@ -196,6 +196,12 @@ func (m *Manager) memMB() int {
 
 // limitsOf works out the limits of one website from its compose file as the templates render it.
 func (s Site) limitsOf() ([]ServiceRAM, bool, error) {
+	if s.IsNative() { // one PHP-FPM service; the host's Nginx and MariaDB are shared, not the website's
+		if !s.nativePHP() {
+			return nil, false, nil
+		}
+		return []ServiceRAM{{Service: "php", Standard: NativeMemory, Current: s.nativeMem(), PHP: true}}, true, nil
+	}
 	std := s
 	std.RAM = nil
 	cf, err := std.Compose()
@@ -347,6 +353,9 @@ func (m *Manager) SetLimits(ctx context.Context, id string, c LimitChange) error
 // writeLimits writes the website's files with its new limits and recreates its containers; on a failure the
 // previous files come back and the website is started on them again.
 func (m *Manager) writeLimits(ctx context.Context, s Site) error {
+	if s.IsNative() {
+		return m.nativeLimits(ctx, s)
+	}
 	dir := m.dir(s.ID)
 	cf, err := s.Compose()
 	if err != nil {

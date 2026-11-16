@@ -223,6 +223,9 @@ SE="$(wait_job "$JE" 2>/dev/null)"; api GET "/v1/jobs/$JE"
 ok "hostile archive refused, website untouched" '[ "$SE" = failed ] && grep -q "outside the website" <<<"$BODY" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/escape.php" ] && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/sites/escape.php" ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
 api POST /v1/sites/b-example-test/backups/schedule '{"daily":true,"keep":3}'
 ok "daily backup switched on" '[ "$CODE" = 200 ] && grep -q "\"backup_daily\": *true" "$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/site.json"'
+# off again: the agent's 10-minute daily-backup tick would otherwise take the lock in the middle of later tests
+api POST /v1/sites/b-example-test/backups/schedule '{"daily":false,"keep":3}'
+ok "daily backup switched off" '[ "$CODE" = 200 ] && ! grep -q "\"backup_daily\": *true" "$SITE01_TEST_ROOT/srv/nostek/sites/b-example-test/site.json"'
 api POST /v1/sites/b-example-test/backups/manual-20200101-000000.tar.gz/delete; ok "delete a backup" '[ "$CODE" = 200 ] && [ ! -e "$BKD/manual-20200101-000000.tar.gz" ]'
 api GET "/v1/sites/b-example-test/backups/..%2Fsite.json"; ok "backup names outside the list refused" '[ "$CODE" = 400 ]'
 

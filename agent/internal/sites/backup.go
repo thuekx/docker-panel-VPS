@@ -268,8 +268,11 @@ func (m *Manager) siteBytes(id string) int64 {
 // backup writes one archive; the caller holds m.mu. It returns the file name.
 func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (string, error) {
 	st, ok := m.run.(Streamer)
-	if !ok {
+	if !ok && !s.IsNative() {
 		return "", errors.New("backup is not available")
+	}
+	if s.IsNative() && m.native == nil {
+		return "", errNativeOff
 	}
 	dir := m.backupDir(s.ID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -304,10 +307,15 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 		defer f.Close()
 		sqlf = f
 		bw := bufio.NewWriterSize(sqlf, 1<<20)
-		sdir := m.dir(s.ID)
-		args := append([]string{"compose", "--project-directory", sdir, "-p", Project(s.ID), "-f", filepath.Join(sdir, "compose.yml")},
-			m.dumpArgs(s, true)...)
-		errOut, err := st.DockerTo(ctx, sdir, nil, bw, args...)
+		var errOut []byte
+		if s.IsNative() {
+			errOut, err = m.nativeDumpTo(ctx, s, true, bw)
+		} else {
+			sdir := m.dir(s.ID)
+			args := append([]string{"compose", "--project-directory", sdir, "-p", Project(s.ID), "-f", filepath.Join(sdir, "compose.yml")},
+				m.dumpArgs(s, true)...)
+			errOut, err = st.DockerTo(ctx, sdir, nil, bw, args...)
+		}
 		if err = errors.Join(err, bw.Flush()); err != nil {
 			if len(errOut) > 0 {
 				return "", fmt.Errorf("database copy failed: %w", sqlErr(s, errOut))
@@ -620,6 +628,12 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 				continue
 			}
 			j.Step("restore database")
+			if s.IsNative() {
+				if out, err := m.nativeLoad(ctx, s, tr); err != nil {
+					return fmt.Errorf("database restore failed: %w", dbErr(out))
+				}
+				continue
+			}
 			// start from an empty database, so tables made after the backup do not stay behind
 			reset, rargs := m.resetArgs(s)
 			if out, err := m.compose(ctx, s.ID, strings.NewReader(reset), rargs...); err != nil {
@@ -666,6 +680,9 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	}
 	// swap the folders: the running containers keep the old folder mounted, so they are recreated on the new one
 	j.Step("switch files")
+	if s.IsNative() {
+		return m.nativeSwitch(ctx, s, stage, func() { stage = "" })
+	}
 	stop := []string{"stop", "web"} // the containers that mount the website folder
 	switch {
 	case s.OneApp(): // Node.js, Go, Python and ready apps: one app container, no web server

@@ -392,6 +392,11 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .site-new:has(input[name=app][value=wordpress]:checked) .for-other{display:none}
 .site-new:has(input[name=app][data-ready]:checked) .for-php{display:none}
 .site-new:not(:has(input[name=app][data-ready]:checked)) .for-ready{display:none}
+/* NATIVE-01: the engine choice is for WordPress, PHP and static; native always runs on Nginx with MariaDB */
+.site-new:not(:has(input[name=app][value=wordpress]:checked)):not(:has(input[name=app][value=php]:checked)):not(:has(input[name=app][value=static]:checked)) .for-engine{display:none}
+.site-new:has(input[name=engine][value=native]:checked):has(input[name=app][value=wordpress]:checked) .for-server,.site-new:has(input[name=engine][value=native]:checked):has(input[name=app][value=php]:checked) .for-server{display:none}
+.site-new:has(input[name=engine][value=native]:checked) .for-dbchoice input[value=postgres],.site-new:has(input[name=engine][value=native]:checked) .for-dbchoice label:has(input[value=postgres]){display:none}
+.for-engine label{align-items:flex-start}
 
 /* APP-02: deploy */
 .deploy-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}

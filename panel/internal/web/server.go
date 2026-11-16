@@ -107,6 +107,7 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 			"list3": func(a, b, c string) []string { return []string{a, b, c} },
 			"list4": func(a, b, c, d string) []string { return []string{a, b, c, d} },
 			"list":  func(a ...string) []string { return a },
+			"join":  strings.Join,
 			"add3":  func(a, b, c int) int { return a + b + c },
 			"len1": func(s string) int {
 				if s == "" {

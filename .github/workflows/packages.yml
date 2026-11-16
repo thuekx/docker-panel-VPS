@@ -14,6 +14,7 @@ jobs:
       app: ${{ steps.f.outputs.app }}
       agent: ${{ steps.f.outputs.agent }}
       site01: ${{ steps.f.outputs.site01 }}
+      native01: ${{ steps.f.outputs.native01 }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -29,6 +30,7 @@ jobs:
           if grep -qE "^(panel/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "app=true" >> "$GITHUB_OUTPUT"; else echo "app=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "agent=true" >> "$GITHUB_OUTPUT"; else echo "agent=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(packages/site-01/|agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "site01=true" >> "$GITHUB_OUTPUT"; else echo "site01=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE "^(packages/native-01/|agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "native01=true" >> "$GITHUB_OUTPUT"; else echo "native01=false" >> "$GITHUB_OUTPUT"; fi
   host-01:
     needs: select
     if: needs.select.outputs.host01 == 'true'
@@ -131,3 +133,18 @@ jobs:
         run: sudo env "HARNESS_NODE_GIT_BRANCH=$NODE_GIT_BRANCH" bash packages/site-01/tests/harness.sh
       - name: mutants
         run: sudo env "PATH=$PATH" bash packages/site-01/tests/mutants.sh
+  native-01:
+    needs: select
+    if: needs.select.outputs.native01 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: agent/go.mod, cache: false }
+      - name: shellcheck
+        run: shellcheck -S warning -x packages/native-01/native-01-host.sh packages/native-01/tests/*.sh
+      - name: lock
+        run: cd packages/native-01 && sha256sum -c native-01.lock
+      - name: harness (real packages on this throwaway VM; Nginx, PHP-FPM 8.1-8.5, MariaDB, WP-CLI)
+        run: sudo env "PATH=$PATH" NATIVE01_HARNESS_ON_THROWAWAY_VM=1 bash packages/native-01/tests/harness.sh

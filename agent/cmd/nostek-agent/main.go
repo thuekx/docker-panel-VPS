@@ -89,6 +89,12 @@ func main() {
 	}
 	m := sites.New(sites.Config{Data: cfg.Data, PublicIPv4: cfg.PublicIPv4, PanelDomain: cfg.PanelDomain,
 		PreviewZone: cfg.PreviewZone}, sites.ExecRunner{}, nil)
+	// NATIVE-01: native.json next to the config turns the native engine on; a broken one leaves Docker only
+	if nc, err := sites.LoadNative(filepath.Join(filepath.Dir(cfgPath), "native.json")); err != nil {
+		fmt.Fprintln(os.Stderr, "native engine off:", err)
+	} else if nc != nil {
+		m.EnableNative(nc, sites.ExecHost{}, sites.NativePaths{Etc: "/etc", Run: "/run", Data: cfg.Data})
+	}
 	switch cmd {
 	case "check-config":
 		fmt.Println("config OK")

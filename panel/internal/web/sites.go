@@ -149,6 +149,10 @@ func formCreate(r *http.Request) (agent.Create, string) {
 			c.Database, c.DBEngine = true, e
 		}
 	}
+	// NATIVE-01: the native engine runs WordPress, PHP and static websites on the host's Nginx
+	if low("engine") == "native" && (c.App == "" || c.App == "php" || c.App == "static") {
+		c.Engine, c.Server = "native", "nginx"
+	}
 	return c, raw
 }
 

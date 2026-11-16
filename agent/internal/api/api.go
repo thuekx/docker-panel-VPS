@@ -226,8 +226,12 @@ func (s *Server) catalog(w http.ResponseWriter, r *http.Request) {
 		_, tag, _ = strings.Cut(tag, ":")
 		ready = append(ready, readyView{a.ID, a.Name, tag, a.Home})
 	}
-	writeJSON(w, 200, map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv, "node": nv,
-		"go": rt("go"), "python": rt("python"), "ready": ready})
+	body := map[string]any{"php": out, "servers": []string{"apache", "nginx"}, "laravel": lv, "node": nv,
+		"go": rt("go"), "python": rt("python"), "ready": ready}
+	if v := s.M.NativePHP(); v != nil { // NATIVE-01 installed: the PHP versions the native engine has
+		body["native"] = map[string]any{"php": v}
+	}
+	writeJSON(w, 200, body)
 }
 
 type siteView struct {

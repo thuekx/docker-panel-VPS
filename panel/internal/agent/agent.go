@@ -131,6 +131,7 @@ type Site struct {
 	App        string `json:"app"`       // APP-01: wordpress (empty) | php | laravel | static
 	Database   bool   `json:"database"`  // php, node, go, python: own database
 	DBEngine   string `json:"db_engine"` // mariadb (empty) | postgres
+	Engine     string `json:"engine"`    // "" = Docker stack | native (NATIVE-01)
 	Version    string `json:"version"`   // laravel: major version; node: Node.js version
 	Source     string `json:"source"`    // node: git (empty) | files
 	Dir        string `json:"dir"`       // node: app folder
@@ -171,6 +172,9 @@ func (s Site) AppName() string {
 
 // IsWP is true for a WordPress site.
 func (s Site) IsWP() bool { return s.AppName() == "wordpress" }
+
+// IsNative is true for a website on the native engine (host Nginx + PHP-FPM + MariaDB, NATIVE-01).
+func (s Site) IsNative() bool { return s.Engine == "native" }
 
 // HasDB is true when the site has its own database.
 func (s Site) HasDB() bool {
@@ -254,6 +258,12 @@ type Catalog struct {
 	Go      []Node    `json:"go"`
 	Python  []Node    `json:"python"`
 	Ready   []Ready   `json:"ready"`
+	Native  *Native   `json:"native,omitempty"` // nil = the native engine is not installed (NATIVE-01)
+}
+
+// Native is the native engine of this server: the PHP versions installed for it.
+type Native struct {
+	PHP []string `json:"php"`
 }
 
 // Ready is one app of the ready-app catalogue (APP-03).
@@ -369,6 +379,7 @@ type Create struct {
 	PHP        string   `json:"php"`
 	AdminEmail string   `json:"admin_email"`
 	Title      string   `json:"title"`
+	Engine     string   `json:"engine,omitempty"` // "" = Docker | native (WordPress, PHP, static)
 }
 
 // Job is a running or finished change.

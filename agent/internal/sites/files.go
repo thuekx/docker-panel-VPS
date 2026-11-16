@@ -94,6 +94,17 @@ func validName(n string) error {
 }
 
 // uid is the owner of files the agent writes: www-data, or Config.FileUID (tests that do not run as root).
+// owner is the owner of files the file manager writes in a website: www-data for a Docker website, the website's
+// own user for a native one (NATIVE-01).
+func (m *Manager) owner(id string) (int, int) {
+	if s, err := readSite(m.dir(id)); err == nil && s.IsNative() && m.lookupUser != nil {
+		if uid, gid, err := m.lookupUser(NativeUser(id)); err == nil {
+			return uid, gid
+		}
+	}
+	return m.uid(), m.uid()
+}
+
 func (m *Manager) uid() int {
 	if m.cfg.FileUID > 0 {
 		return m.cfg.FileUID
@@ -235,6 +246,7 @@ func (m *Manager) OpenFile(id, p string) (*os.File, fs.FileInfo, error) {
 // WriteFile creates or (with overwrite) replaces a file from body, atomically: the old file stays until the new
 // one is complete. A replaced file keeps its permissions.
 func (m *Manager) WriteFile(id, p string, body io.Reader, overwrite bool) (Entry, error) {
+	uid, gid := m.owner(id)
 	rel, err := CleanPath(p)
 	if err != nil {
 		return Entry{}, err
@@ -276,7 +288,7 @@ func (m *Manager) WriteFile(id, p string, body io.Reader, overwrite bool) (Entry
 		err = ErrTooBig
 	}
 	if err == nil {
-		err = errors.Join(r.Chown(tmp, m.uid(), m.uid()), r.Chmod(tmp, mode))
+		err = errors.Join(r.Chown(tmp, uid, gid), r.Chmod(tmp, mode))
 	}
 	if err == nil {
 		err = r.Rename(tmp, rel)
@@ -294,6 +306,7 @@ func (m *Manager) WriteFile(id, p string, body io.Reader, overwrite bool) (Entry
 
 // Mkdir creates one folder.
 func (m *Manager) Mkdir(id, p string) error {
+	uid, gid := m.owner(id)
 	rel, err := CleanPath(p)
 	if err != nil {
 		return err
@@ -315,7 +328,7 @@ func (m *Manager) Mkdir(id, p string) error {
 		}
 		return notExist(err)
 	}
-	return r.Chown(rel, m.uid(), m.uid())
+	return r.Chown(rel, uid, gid)
 }
 
 // Rename renames or moves a file or folder inside the website folder. The target must not exist.
@@ -619,6 +632,7 @@ func (m *Manager) ZipFolder(id, p string, w io.Writer) error {
 // Unzip extracts a .zip file into the folder it is in. Existing files with the same name are replaced; symbolic
 // links and names that would leave the folder are refused.
 func (m *Manager) Unzip(id, p string) (int, error) {
+	uid, gid := m.owner(id)
 	rel, err := CleanPath(p)
 	if err != nil {
 		return 0, err
@@ -667,7 +681,7 @@ func (m *Manager) Unzip(id, p string) (int, error) {
 			if err := r.MkdirAll(target, 0o755); err != nil {
 				return n, notExist(err)
 			}
-			_ = r.Chown(target, m.uid(), m.uid())
+			_ = r.Chown(target, uid, gid)
 			continue
 		}
 		if err := r.MkdirAll(path.Dir(target), 0o755); err != nil {
@@ -701,7 +715,7 @@ func (m *Manager) Unzip(id, p string) (int, error) {
 		if budget < 0 {
 			return n, fmt.Errorf("%w: the zip unpacks to more than %d GB", ErrBadInput, MaxUnzip>>30)
 		}
-		_ = r.Chown(target, m.uid(), m.uid())
+		_ = r.Chown(target, uid, gid)
 		_ = r.Chmod(target, perm)
 		n++
 	}

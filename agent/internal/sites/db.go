@@ -141,11 +141,19 @@ func (m *Manager) Database(ctx context.Context, id string) (DB, error) {
 	if site.IsPostgres() {
 		return m.pgDatabase(ctx, site)
 	}
-	out, err := m.compose(ctx, id, strings.NewReader(overviewSQL), m.dbArgs("mariadb", "--batch", "--skip-column-names", site.DBName())...)
+	var out []byte
+	if site.IsNative() {
+		out, err = m.nativeClient(ctx, site, strings.NewReader(overviewSQL), "--batch", "--skip-column-names")
+	} else {
+		out, err = m.compose(ctx, id, strings.NewReader(overviewSQL), m.dbArgs("mariadb", "--batch", "--skip-column-names", site.DBName())...)
+	}
 	if err != nil {
 		return DB{}, dbErr(out)
 	}
 	d := DB{Name: site.DBName(), User: site.DBName(), Host: "db", Tables: []Table{}}
+	if site.IsNative() {
+		d.Name, d.User, d.Host = NativeDB(id), NativeDB(id), "localhost (host MariaDB, socket)"
+	}
 	for i, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
 		f := strings.Split(line, "\t")
 		if i == 0 {
@@ -285,7 +293,12 @@ func (m *Manager) Query(ctx context.Context, id, sql string) (QueryAnswer, error
 		return QueryAnswer{Results: res, Millis: m.now().Sub(start).Milliseconds()}, nil
 	}
 	in := fmt.Sprintf("SET SESSION sql_select_limit=%d;\n%s\n", QueryRows, sql)
-	out, err := m.compose(ctx, id, strings.NewReader(in), m.dbArgs("mariadb", "--xml", m.dbName(id))...)
+	var out []byte
+	if site.IsNative() {
+		out, err = m.nativeClient(ctx, site, strings.NewReader(in), "--xml")
+	} else {
+		out, err = m.compose(ctx, id, strings.NewReader(in), m.dbArgs("mariadb", "--xml", m.dbName(id))...)
+	}
 	ms := m.now().Sub(start).Milliseconds()
 	if err != nil {
 		return QueryAnswer{}, dbErr(out)
@@ -321,8 +334,9 @@ func (m *Manager) dumps(id string) []Dump {
 
 // dump writes a gzip'd mariadb-dump of the site database to a new file in db-backups and returns its path.
 func (m *Manager) dump(ctx context.Context, id, kind string) (string, error) {
+	site, _ := m.Get(id)
 	st, ok := m.run.(Streamer)
-	if !ok {
+	if !ok && !site.IsNative() {
 		return "", errors.New("export is not available")
 	}
 	if err := os.MkdirAll(m.dumpDir(id), 0o700); err != nil {
@@ -336,11 +350,15 @@ func (m *Manager) dump(ctx context.Context, id, kind string) (string, error) {
 	}
 	gz := gzip.NewWriter(f)
 	bw := bufio.NewWriterSize(gz, 1<<20)
-	dir := m.dir(id)
-	site, _ := m.Get(id)
-	args := append([]string{"compose", "--project-directory", dir, "-p", Project(id), "-f", filepath.Join(dir, "compose.yml")},
-		m.dumpArgs(site, false)...)
-	errOut, err := st.DockerTo(ctx, dir, nil, bw, args...)
+	var errOut []byte
+	if site.IsNative() {
+		errOut, err = m.nativeDumpTo(ctx, site, false, bw)
+	} else {
+		dir := m.dir(id)
+		args := append([]string{"compose", "--project-directory", dir, "-p", Project(id), "-f", filepath.Join(dir, "compose.yml")},
+			m.dumpArgs(site, false)...)
+		errOut, err = st.DockerTo(ctx, dir, nil, bw, args...)
+	}
 	err = errors.Join(err, bw.Flush(), gz.Close(), f.Close())
 	if err != nil {
 		os.Remove(p + ".part")
@@ -445,7 +463,12 @@ func (m *Manager) Import(ctx context.Context, id string, body io.Reader) (string
 		return "", fmt.Errorf("the safety copy before import failed, nothing was changed: %w", err)
 	}
 	m.pruneDumps(id)
-	out, err := m.compose(ctx, id, in, m.loadArgs(site)...)
+	var out []byte
+	if site.IsNative() {
+		out, err = m.nativeClient(ctx, site, in, "--batch", "--default-character-set=utf8mb4")
+	} else {
+		out, err = m.compose(ctx, id, in, m.loadArgs(site)...)
+	}
 	if err != nil {
 		return filepath.Base(backup), sqlErr(site, out)
 	}
