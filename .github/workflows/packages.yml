@@ -15,6 +15,7 @@ jobs:
       agent: ${{ steps.f.outputs.agent }}
       site01: ${{ steps.f.outputs.site01 }}
       native01: ${{ steps.f.outputs.native01 }}
+      mig01: ${{ steps.f.outputs.mig01 }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -31,6 +32,7 @@ jobs:
           if grep -qE "^(agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "agent=true" >> "$GITHUB_OUTPUT"; else echo "agent=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(packages/site-01/|agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "site01=true" >> "$GITHUB_OUTPUT"; else echo "site01=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(packages/native-01/|agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "native01=true" >> "$GITHUB_OUTPUT"; else echo "native01=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE "^(packages/site-01/|agent/|panel/web/plugin/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "mig01=true" >> "$GITHUB_OUTPUT"; else echo "mig01=false" >> "$GITHUB_OUTPUT"; fi
   host-01:
     needs: select
     if: needs.select.outputs.host01 == 'true'
@@ -133,6 +135,20 @@ jobs:
         run: sudo env "HARNESS_NODE_GIT_BRANCH=$NODE_GIT_BRANCH" bash packages/site-01/tests/harness.sh
       - name: mutants
         run: sudo env "PATH=$PATH" bash packages/site-01/tests/mutants.sh
+  mig-01:
+    needs: select
+    if: needs.select.outputs.mig01 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: shellcheck
+        run: shellcheck -S warning packages/site-01/tests/migrate.sh
+      - name: plugin syntax
+        run: php -l panel/web/plugin/nostek-migrate.php
+      - name: harness (real Docker; an old WordPress behind HTTPS with the plugin, cPanel backups)
+        run: sudo bash packages/site-01/tests/migrate.sh
   native-01:
     needs: select
     if: needs.select.outputs.native01 == 'true'

@@ -63,8 +63,9 @@ wait_job() { # job [tries of 3 s] -> state; the job body stays in $JOB
     api GET "/v1/jobs/$1"; s="$(grep -o '"state":"[a-z]*"' <<<"$BODY" | cut -d'"' -f4)"
     [ "$s" != running ] && break; sleep 3
   done
-  JOB="$BODY"; echo "$s"
+  printf '%s' "$BODY" > "$T/job.json"; echo "$s"
 }
+JOB() { cat "$T/job.json"; }
 site_body() { docker run --rm --network nostek-edge "$CURL_IMG" -s --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-web-1$3"; }
 cli() { api POST "/v1/sites/$1/wp/cli" "$(python3 -c 'import json,sys; print(json.dumps({"line": sys.argv[1]}))' "$2")"; python3 -c 'import json,sys; print(json.load(sys.stdin).get("output","").strip())' <<<"$BODY" 2>/dev/null; }
 sql() { api POST "/v1/sites/$1/db/query" "$(python3 -c 'import json,sys; print(json.dumps({"sql": sys.argv[1]}))' "$2")"; echo "$BODY"; }
@@ -125,7 +126,7 @@ wpo plugin activate nostek-migrate >/dev/null
 CODE_PL="$(wpo eval 'echo Nostek_Migrate::new_key();')"
 KEY="$(python3 -c 'import base64,json,sys; s=sys.argv[1][4:]; print(json.loads(base64.urlsafe_b64decode(s+"="*(-len(s)%4)))["k"])' "$CODE_PL" 2>/dev/null)"
 H="Host: old.example.test"
-ok "old site answers over HTTPS with its title" 'curl -s --noproxy "*" --cacert "$T/tls/tls.crt" https://old.example.test/ | grep -q "<title>Situs Lama"'
+ok "old site answers over HTTPS with its title" 'grep -q "<title>Situs Lama" <<<"$(curl -s --noproxy "*" --cacert "$T/tls/tls.crt" https://old.example.test/)"'
 ok "plugin code made for the https address" '[[ "$CODE_PL" == nm1.* ]] && [ ${#KEY} = 43 ]'
 
 # --- the plugin on its own: keys, paths, the tar stream and the SQL pieces
@@ -144,7 +145,7 @@ MCFG="$(cat "$WPM/wp-config.php")"
 
 # the guard: the old site is on a private Docker network, which a real server never reaches
 api POST /v1/sites/m-example-test/migrate "{\"way\":\"plugin\",\"code\":\"$CODE_PL\"}"; J="$(jobid)"
-ok "private address refused by the URL guard, nothing changed" '[ "$CODE" = 202 ] && [ "$(wait_job "$J")" = failed ] && grep -q "public internet address" <<<"$JOB" && [ ! -e "$SM/backups" -o -z "$(ls "$SM/backups" 2>/dev/null)" ]'
+ok "private address refused by the URL guard, nothing changed" '[ "$CODE" = 202 ] && [ "$(wait_job "$J")" = failed ] && grep -q "public internet address" <<<"$(JOB)" && [ ! -e "$SM/backups" -o -z "$(ls "$SM/backups" 2>/dev/null)" ]'
 
 python3 - "$CONF" "$OLDNET" "$T/tls/tls.crt" <<'EOF'
 import json, sys
@@ -153,29 +154,30 @@ json.dump(c, open(sys.argv[1], "w"), indent=2)
 EOF
 ok "test agent restarted with the harness allow-list" 'agent_restart'
 
-api POST /v1/sites/m-example-test/migrate '{"way":"plugin","code":"nm1.eyJ1IjoiaHR0cHM6Ly9vbGQuZXhhbXBsZS50ZXN0LyIsImsiOiJ4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHgifQ"}'; J="$(jobid)"
-ok "a wrong code is refused by the plugin" '[ "$CODE" = 202 ] && [ "$(wait_job "$J")" = failed ] && grep -q "403" <<<"$JOB"'
+WRONG="$(python3 -c 'import base64,json; print("nm1."+base64.urlsafe_b64encode(json.dumps({"u":"https://old.example.test/","k":"x"*43}).encode()).decode().rstrip("="))')"
+api POST /v1/sites/m-example-test/migrate "{\"way\":\"plugin\",\"code\":\"$WRONG\"}"; J="$(jobid)"
+ok "a wrong code is refused by the plugin" '[ "$CODE" = 202 ] && [ "$(wait_job "$J")" = failed ] && grep -q "403" <<<"$(JOB)"'
 
 OLDHASH="$(wpo db query "SELECT user_pass FROM np_users WHERE user_login='oldadmin'" --skip-column-names)"
 api POST /v1/sites/m-example-test/migrate "{\"way\":\"plugin\",\"code\":\"$CODE_PL\"}"; J="$(jobid)"
 ST="$(wait_job "$J" 400)"
-ok "migration by plugin done" '[ "$ST" = done ] && grep -q "done https://old.example.test → https://m-example-test.$ZONE" <<<"$JOB"'
-grep -o '"steps":\[[^]]*\]' <<<"$JOB" | sed 's/^/    | /'
+ok "migration by plugin done" '[ "$ST" = done ] && grep -q "done https://old.example.test → https://m-example-test.$ZONE" <<<"$(JOB)"'
+grep -o '"steps":\[[^]]*\]' <<<"$(JOB)" | sed 's/^/    | /'
 ok "the moved site answers with the old title" 'grep -q "<title>Situs Lama" <<<"$(site_body m-example-test m-example-test.$ZONE /)"'
 ok "the post came along, its links point at the new address" 'P="$(site_body m-example-test m-example-test.$ZONE /halo-dari-situs-lama/)"; grep -q "Halo dari situs lama" <<<"$P" && grep -q "https://m-example-test.$ZONE/wp-content/uploads/2026/11/a.jpg" <<<"$P" && grep -q "https://m-example-test.$ZONE/kontak/" <<<"$P" && ! grep -q "old.example.test" <<<"$P"'
 ok "home and siteurl are the new address" '[ "$(cli m-example-test "option get home")" = "https://m-example-test.$ZONE" ] && [ "$(cli m-example-test "option get siteurl")" = "https://m-example-test.$ZONE" ]'
 ok "serialized option rewritten and still readable" '[ "$(cli m-example-test "option get np_serial --format=json")" = "{\"url\":\"https:\/\/m-example-test.$ZONE\/x\",\"n\":3}" ]'
 ok "the old administrator can log in (same password hash)" '[ -n "$OLDHASH" ] && grep -qF "$OLDHASH" <<<"$(sql m-example-test "SELECT user_pass FROM np_users WHERE user_login = '"'"'oldadmin'"'"'")"'
-OLDBIN="$(wpo db query "SELECT id, HEX(b), HEX(t), n IS NULL FROM np_bin ORDER BY id" --skip-column-names | tr '\t\n' ',;')"
-NEWBIN="$(sql m-example-test "SELECT id, HEX(b), HEX(t), n IS NULL FROM np_bin ORDER BY id" | python3 -c 'import json,sys; r=json.load(sys.stdin)["results"][0]["rows"]; print(";".join(",".join("NULL" if v is None else str(v) for v in x) for x in r)+";")' 2>/dev/null)"
-ok "binary, NULL and emoji rows identical" '[ -n "$OLDBIN" ] && [ "$OLDBIN" = "$NEWBIN" ]'
+OLDBIN="$(wpo db query "SELECT id, HEX(b), HEX(t), n IS NULL FROM np_bin ORDER BY id" --skip-column-names | grep -v '^$' | tr '\t' ',' | paste -sd ';')"
+NEWBIN="$(sql m-example-test "SELECT id, HEX(b), HEX(t), n IS NULL FROM np_bin ORDER BY id" | python3 -c 'import json,sys; r=json.load(sys.stdin)["results"][0]["rows"]; print(";".join(",".join("NULL" if v is None else str(v) for v in x) for x in r))' 2>/dev/null)"
+ok "binary, NULL and emoji rows identical" '[ -n "$OLDBIN" ] && [ "$OLDBIN" = "$NEWBIN" ]' || echo "    | old $OLDBIN new $NEWBIN"
 ok "table without a primary key copied whole, other apps' tables left out" 'grep -q "\"3\"" <<<"$(sql m-example-test "SELECT COUNT(*) FROM np_nopk")" && ! grep -q other_app <<<"$(sql m-example-test "SHOW TABLES")"'
 ok "large file (ranges) identical, link kept, cache left behind, drop-in moved aside" '[ "$(sha256sum < "$WPM/wp-content/uploads/2026/11/big.bin")" = "$(sha256sum < "$T/old/wp-content/uploads/2026/11/big.bin")" ] && [ "$(readlink "$WPM/wp-content/link-to-uploads")" = ../uploads ] && [ ! -e "$WPM/wp-content/cache/page.html" ] && [ -e "$WPM/wp-content/advanced-cache.php.nostek-off" ]'
 ok "files belong to www-data; the panel wp-config.php kept, the old one guarded" '[ "$(stat -c %u "$WPM/index.php")" = 33 ] && [ "$(cat "$WPM/wp-config.php")" = "$MCFG" ] && head -c 14 "$WPM/wp-config.old.php" | grep -q "<?php exit;" && [ "$(site_body m-example-test m-example-test.$ZONE /wp-config.old.php)" = "" ]'
 ok "prefix np_ carried in compose and site.json" 'grep -q "WORDPRESS_TABLE_PREFIX: np_" "$SM/compose.yml" && grep -q "\"table_prefix\": *\"np_\"" "$SM/site.json"'
-ok "the plugin and its key are gone on the new site" '[ ! -e "$WPM/wp-content/plugins/nostek-migrate" ] && [ -z "$(cli m-example-test "option get nostek_migrate_key")" ]'
+ok "the plugin and its key are gone on the new site" '[ ! -e "$WPM/wp-content/plugins/nostek-migrate" ] && grep -q "\"rows\":\[\[\"0\"\]\]" <<<"$(sql m-example-test "SELECT COUNT(*) FROM np_options WHERE option_name = '"'"'nostek_migrate_key'"'"'")"'
 ok "the key is gone on the old site after finish" '[ -z "$(wpo option get nostek_migrate_key)" ] && [ "$(PLUG -H "X-Nostek-Key: $KEY" https://old.example.test/wp-json/nostek-migrate/v1/info)" = 403 ]'
-ok "the key is not in the job, the audit log or the website folder" '! grep -rqF "$KEY" "$SITE01_TEST_ROOT/var/log/nostek-agent" "$SM/site.json" "$SM/compose.yml" && ! grep -qF "$KEY" <<<"$JOB"'
+ok "the key is not in the job, the audit log or the website folder" '! grep -rqF "$KEY" "$SITE01_TEST_ROOT/var/log/nostek-agent" "$SM/site.json" "$SM/compose.yml" && ! grep -qF "$KEY" <<<"$(JOB)"'
 
 api GET /v1/sites/m-example-test/backups
 BM="$(python3 -c 'import json,sys; print(next(b["name"] for b in json.load(sys.stdin)["backups"] if b["kind"]=="before-migrate"))' <<<"$BODY" 2>/dev/null)"
@@ -218,7 +220,7 @@ gzip -c "$T/oldwp.sql" > "$T/cpuser_wp.sql.gz"
 raw PUT "/v1/sites/m-example-test/migrate/upload?part=archive" "$T/cpanel-full.tar.gz"
 ok "cPanel full backup uploaded" '[ "$CODE" = 200 ]'
 api POST /v1/sites/m-example-test/migrate '{"way":"backup"}'; J="$(jobid)"
-ok "two WordPress folders: the job asks which one, before any change" '[ "$(wait_job "$J")" = failed ] && grep -q "choose one: backup-11.16.2026_10-00-00_cpuser/homedir/addon.example.test, backup-11.16.2026_10-00-00_cpuser/homedir/public_html" <<<"$JOB" && grep -q "<title>Situs M" <<<"$(site_body m-example-test m-example-test.$ZONE /)"'
+ok "two WordPress folders: the job asks which one, before any change" '[ "$(wait_job "$J")" = failed ] && grep -q "choose one: backup-11.16.2026_10-00-00_cpuser/homedir/addon.example.test, backup-11.16.2026_10-00-00_cpuser/homedir/public_html" <<<"$(JOB)" && grep -q "<title>Situs M" <<<"$(site_body m-example-test m-example-test.$ZONE /)"'
 api POST /v1/sites/m-example-test/migrate '{"way":"backup","root":"backup-11.16.2026_10-00-00_cpuser/homedir/public_html"}'; J="$(jobid)"
 ok "cPanel full backup moved with the chosen folder and its database" '[ "$(wait_job "$J" 400)" = done ] && grep -q "<title>Situs Lama" <<<"$(site_body m-example-test m-example-test.$ZONE /)" && [ "$(cli m-example-test "option get home")" = "https://m-example-test.$ZONE" ] && grep -q "WORDPRESS_TABLE_PREFIX: np_" "$SM/compose.yml"'
 ok "the uploaded backup is removed after the job" '[ ! -e "$SM/migrate/archive" ]'
@@ -233,6 +235,12 @@ api POST /v1/sites/m-example-test/migrate '{"way":"backup","link":"http://old.ex
 ok "a plain http link is refused" '[ "$CODE" = 400 ]'
 api POST /v1/sites/m-example-test/migrate '{"way":"ssh"}'
 ok "an unknown way is refused" '[ "$CODE" = 400 ]'
+
+# --- mutant: the plugin with its key check off must fail the key test above
+sed 's/hash_equals($opt\[.hash.\], hash(.sha256., $key))/true/' "$PLUGIN" > "$T/old/wp-content/plugins/nostek-migrate/nostek-migrate.php"
+ok "mutant applies (plugin key check off)" '! cmp -s "$PLUGIN" "$T/old/wp-content/plugins/nostek-migrate/nostek-migrate.php"'
+wpo eval 'Nostek_Migrate::new_key();' >/dev/null
+ok "mutant killed: a wrong key is let in, which the key test refuses" '[ "$(PLUG -H "X-Nostek-Key: wrong" https://old.example.test/wp-json/nostek-migrate/v1/info)" = 200 ]'
 
 cleanup; TMP_ALL="$(mktemp -d)"
 LEFT="$(docker ps -aq --filter name=np-site- --filter name=np-mig-old | wc -l)"

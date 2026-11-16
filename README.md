@@ -36,7 +36,7 @@ choose its own stack.
 | 🗄️ **Database control** | Create databases and users, open a database admin tool from the panel. |
 | 🔐 **Secure by default** | Two-factor login, automatic HTTPS, firewall, brute-force protection, no raw Docker socket in the web app. |
 | 💾 **Backups** | Encrypted, scheduled backups per site with one-click restore. |
-| 🚚 **WordPress migration** *(planned)* | Bring an existing WordPress site from another host into the panel. |
+| 🚚 **WordPress migration** | Bring an existing WordPress site from another host: with the Nostek Migrate plugin, or straight from a cPanel backup. |
 | 🕒 **Time zone aware** | Every time on screen shows its zone. |
 
 ## How it works

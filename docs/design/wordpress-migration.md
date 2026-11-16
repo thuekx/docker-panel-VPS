@@ -1,6 +1,6 @@
 # WordPress migration into Nostek Panel (MIG-01)
 
-Status: [DESIGN] 2026-11-16. Two ways, both in one release, chosen 2026-11-16 23:46-23:49 WIB:
+Status: [BUILT] v1.21.0, 2026-11-17. Two ways, both in one release, chosen 2026-11-16 23:46-23:49 WIB:
 1. **Plugin:** the "Nostek Migrate" plugin on the old site, which the panel pulls from over HTTPS.
 2. **cPanel backup:** a cPanel backup restored straight into the website. Most cPanel accounts have no SSH, so this
    replaces the SSH/SFTP idea.
@@ -154,3 +154,24 @@ Shared hosting limits are respected: every answer is bounded so it finishes well
     login, prefix `np_`, the before-migrate backup restores the fresh site;
   - the key is gone after finish.
 - Mutants: the URL guard off, search-replace skipped, prefix not carried, no safety backup, plugin key check off.
+
+## As built (v1.21.0)
+- Agent routes: `GET /v1/sites/{id}/migrate` (uploaded files and the newest migration job),
+  `PUT …/migrate/upload?part=archive|database`, `POST …/migrate/clear`, `POST …/migrate`
+  (`{"way":"plugin","code":…}` or `{"way":"backup","link":…,"root":…}`). Code in `agent/internal/sites/migrate.go`
+  and `migrate_net.go`.
+- Job steps: `download` (link only), `inspect`, `safety database`, `safety files`, `copy files`, `copy database`,
+  `load database`, `switch files`, `addresses`, `tidy`, `check`, then `done <summary>`. The job's `progress` field
+  says how far the current step is.
+- Several WordPress folders in a backup: the job fails with `choose: … choose one: a, b` before any change; the
+  panel lists them and runs the job again with `root`.
+- The old `wp-config.php` is kept as `wp-config.old.php`, headed by `<?php exit; ?>` so it never runs.
+- The copied plugin and its key option are removed on the new site; `finish` deletes the key on the old site.
+- A restore puts back the table prefix stored in the backup's `site.json` (finding MIG-01-F1).
+- Test harness only: `migrate_test_allow` (networks) and `migrate_test_ca` in the agent config let the harness reach
+  its old site on a private Docker network; a real server never sets them, and the agent warns when they are set.
+- Panel: tab **Migrate** (`/migrate/{id}`, WordPress websites only), plugin zip at
+  `/migrate-plugin/nostek-migrate.zip`, built from `panel/web/plugin/nostek-migrate.php` embedded in the binary.
+- Tests: `agent/internal/sites/migrate_test.go`, `agent/internal/api/migrate_test.go`,
+  `panel/internal/web/migrate_test.go`, harness `packages/site-01/tests/migrate.sh` (CI job `mig-01`), mutants in
+  `packages/site-01/tests/mutants.sh` and the plugin key mutant at the end of the harness.
