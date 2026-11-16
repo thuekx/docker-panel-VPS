@@ -408,6 +408,9 @@ func (m *Manager) Create(ctx context.Context, c spec.Create) (string, Site, erro
 }
 
 func (m *Manager) compose(ctx context.Context, id string, stdin io.Reader, args ...string) ([]byte, error) {
+	if err := m.dockerOnly(id); err != nil {
+		return nil, err
+	}
 	dir := m.dir(id)
 	full := append([]string{"compose", "--project-directory", dir, "-p", Project(id), "-f", filepath.Join(dir, "compose.yml")}, args...)
 	return m.run.Docker(ctx, dir, stdin, full...)
@@ -658,6 +661,12 @@ func (m *Manager) Logs(ctx context.Context, id, service string, lines int) (stri
 	}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
+	if s.IsNative() {
+		if m.native == nil {
+			return "", errNativeOff
+		}
+		return m.nativeLogs(ctx, s, service, lines)
+	}
 	out, err := m.compose(ctx, id, nil, "logs", "--no-color", "--timestamps", "--tail", fmt.Sprint(lines), service)
 	if err != nil {
 		return "", fmt.Errorf("logs failed: %s", tail(out))
@@ -667,7 +676,8 @@ func (m *Manager) Logs(ctx context.Context, id, service string, lines int) (stri
 
 // Delete stops the site and moves its folder to the trash (files and database are kept for TrashDays).
 func (m *Manager) Delete(ctx context.Context, id string) (string, error) {
-	if _, err := m.Get(id); err != nil {
+	s, err := m.Get(id)
+	if err != nil {
 		return "", err
 	}
 	if !m.mu.TryLock() {
@@ -676,7 +686,14 @@ func (m *Manager) Delete(ctx context.Context, id string) (string, error) {
 	defer m.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
-	if out, err := m.compose(ctx, id, nil, "--profile", "tools", "down", "--remove-orphans"); err != nil {
+	if s.IsNative() {
+		if m.native == nil {
+			return "", errNativeOff
+		}
+		if err := m.nativeTakeDown(ctx, s); err != nil {
+			return "", err
+		}
+	} else if out, err := m.compose(ctx, id, nil, "--profile", "tools", "down", "--remove-orphans"); err != nil {
 		return "", fmt.Errorf("stop failed: %s", tail(out))
 	}
 	if err := os.MkdirAll(m.trashDir(), 0o700); err != nil {
@@ -707,6 +724,13 @@ func (m *Manager) Restore(ctx context.Context, entry string) (string, error) {
 	if _, err := os.Stat(m.dir(id)); err == nil {
 		return "", fmt.Errorf("a site %s exists again; delete it first", id)
 	}
+	ts, err := readSite(src)
+	if err != nil {
+		return "", err
+	}
+	if ts.IsNative() && m.native == nil {
+		return "", errNativeOff
+	}
 	if err := os.MkdirAll(m.sitesDir(), 0o755); err != nil {
 		return "", err
 	}
@@ -715,6 +739,12 @@ func (m *Manager) Restore(ctx context.Context, entry string) (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
+	if ts.IsNative() {
+		if err := m.nativeBringBack(ctx, ts); err != nil {
+			return id, fmt.Errorf("restored, but %w", err)
+		}
+		return id, nil
+	}
 	if out, err := m.compose(ctx, id, nil, "up", "-d", "--wait", "--wait-timeout", "180"); err != nil {
 		return id, fmt.Errorf("restored, but start failed: %s", tail(out))
 	}
@@ -735,8 +765,19 @@ func (m *Manager) RemoveTrash(entry string) error {
 	if filepath.Dir(p) != m.trashDir() {
 		return ErrNotFound
 	}
-	if _, err := os.Stat(filepath.Join(p, "site.json")); err != nil {
+	ts, err := readSite(p)
+	if err != nil {
 		return ErrNotFound
+	}
+	if ts.IsNative() {
+		if m.native == nil {
+			return errNativeOff
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if err := m.nativeDrop(ctx, ts); err != nil {
+			return err
+		}
 	}
 	return os.RemoveAll(p)
 }
@@ -758,6 +799,17 @@ func (m *Manager) Purge() ([]string, error) {
 		p := filepath.Join(m.trashDir(), t.Entry)
 		if filepath.Dir(p) != m.trashDir() || trashRe.FindString(filepath.Base(p)) == "" {
 			continue
+		}
+		if t.IsNative() { // its database and Linux user go with it; without the native engine it waits
+			if m.native == nil {
+				continue
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			err := m.nativeDrop(ctx, t.Site)
+			cancel()
+			if err != nil {
+				return gone, err
+			}
 		}
 		if err := os.RemoveAll(p); err != nil {
 			return gone, err
@@ -792,6 +844,12 @@ type Stack struct {
 
 // services lists the services a site may have; anything else in the project is ignored.
 func services(s Site) []string {
+	if s.IsNative() { // the database is the host's MariaDB, shared: not a service of the website
+		if s.nativePHP() {
+			return []string{"web", "php"}
+		}
+		return []string{"web"}
+	}
 	if s.OneApp() {
 		if s.HasDB() {
 			return []string{"app", "db"}
@@ -882,6 +940,12 @@ func (m *Manager) Stack(ctx context.Context, id string) (Stack, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
+	if s.IsNative() {
+		if m.native == nil {
+			return Stack{}, errNativeOff
+		}
+		return m.nativeStack(ctx, s)
+	}
 	out, err := m.compose(ctx, id, nil, "ps", "--all", "--format", "json")
 	if err != nil {
 		return Stack{}, fmt.Errorf("cannot read containers: %s", tail(out))
@@ -992,6 +1056,21 @@ func (m *Manager) RestartService(ctx context.Context, id, svc string) error {
 	defer m.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
+	if s.IsNative() {
+		if m.native == nil {
+			return errNativeOff
+		}
+		if svc == "web" { // the host's Nginx is shared: reload it, never restart it for one website
+			if out, err := m.nginxReload(ctx); err != nil {
+				return fmt.Errorf("restart web failed: %s", tail(out))
+			}
+			return nil
+		}
+		if out, err := m.hostRun(ctx, nil, "systemctl", "restart", NativeUnit(s.ID)); err != nil {
+			return fmt.Errorf("restart %s failed: %s", svc, tail(out))
+		}
+		return nil
+	}
 	if out, err := m.compose(ctx, id, nil, "restart", svc); err != nil {
 		return fmt.Errorf("restart %s failed: %s", svc, tail(out))
 	}

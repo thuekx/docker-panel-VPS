@@ -340,6 +340,9 @@ func (m *Manager) dump(ctx context.Context, id, kind string) (string, error) {
 	site, _ := m.Get(id)
 	args := append([]string{"compose", "--project-directory", dir, "-p", Project(id), "-f", filepath.Join(dir, "compose.yml")},
 		m.dumpArgs(site, false)...)
+	if err := m.dockerOnly(id); err != nil {
+		return "", err
+	}
 	errOut, err := st.DockerTo(ctx, dir, nil, bw, args...)
 	err = errors.Join(err, bw.Flush(), gz.Close(), f.Close())
 	if err != nil {

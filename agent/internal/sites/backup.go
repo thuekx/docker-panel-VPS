@@ -307,6 +307,9 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 		sdir := m.dir(s.ID)
 		args := append([]string{"compose", "--project-directory", sdir, "-p", Project(s.ID), "-f", filepath.Join(sdir, "compose.yml")},
 			m.dumpArgs(s, true)...)
+		if err := m.dockerOnly(s.ID); err != nil {
+			return "", err
+		}
 		errOut, err := st.DockerTo(ctx, sdir, nil, bw, args...)
 		if err = errors.Join(err, bw.Flush()); err != nil {
 			if len(errOut) > 0 {

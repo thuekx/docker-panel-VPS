@@ -81,6 +81,7 @@ var hostBins = map[string]string{
 	"nginx":        "/usr/sbin/nginx",
 	"mariadb":      "/usr/bin/mariadb",
 	"mariadb-dump": "/usr/bin/mariadb-dump",
+	"journalctl":   "/usr/bin/journalctl",
 }
 
 // ExecHost runs the real programs.
@@ -129,6 +130,18 @@ func lookupUser(name string) (int, int, error) {
 
 // errNativeOff answers a change to a native website on a server where the native engine is not (or no longer) on.
 var errNativeOff = errors.New("the native engine is off on this server (NATIVE-01 not applied): the website cannot be changed")
+
+// ErrNativeUnsupported answers a Docker-only feature asked of a native website.
+var ErrNativeUnsupported = fmt.Errorf("%w: this is not available for a native website", ErrBadInput)
+
+// dockerOnly refuses a Docker command for a native website: every Docker path goes through it, so a native
+// website can never reach a compose call made for a stack it does not have.
+func (m *Manager) dockerOnly(id string) error {
+	if s, err := readSite(m.dir(id)); err == nil && s.IsNative() {
+		return ErrNativeUnsupported
+	}
+	return nil
+}
 
 // checkNative refuses a native website the server cannot run.
 func (m *Manager) checkNative(c spec.Create) error {

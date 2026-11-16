@@ -259,3 +259,122 @@ func TestLoadNative(t *testing.T) {
 		t.Errorf("wp %s %s", wpVersion("8.1"), wpVersion("8.4"))
 	}
 }
+
+func nativeReady(t *testing.T) (*Manager, *fakeRunner, *fakeHost, NativePaths, Site) {
+	t.Helper()
+	m, f, h, p := nativeTest(t)
+	job, s, err := m.Create(context.Background(), nativeReq(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := waitJob(t, m, job); v.State != "done" {
+		t.Fatalf("create %+v", v)
+	}
+	s, _ = m.Get(s.ID)
+	return m, f, h, p, s
+}
+
+func TestNativeLogs(t *testing.T) {
+	m, _, h, _, s := nativeReady(t)
+	var lines []string
+	for i := 0; i < 30; i++ {
+		lines = append(lines, "GET /line-"+string(rune('a'+i%26)))
+	}
+	if err := os.WriteFile(filepath.Join(m.dir(s.ID), "logs", "access.log"), []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := m.Logs(context.Background(), s.ID, "web", 5)
+	if err != nil || !strings.Contains(out, "==> access.log <==") || strings.Count(out, "GET /line-") != 5 {
+		t.Errorf("web logs %v\n%s", err, out)
+	}
+	if _, err := m.Logs(context.Background(), s.ID, "php", 50); err != nil || !strings.Contains(h.all(), "journalctl --no-pager --output=short-iso --lines 50 --unit "+NativeUnit(s.ID)) {
+		t.Errorf("php logs %v", err)
+	}
+	if _, err := m.Logs(context.Background(), s.ID, "db", 10); err == nil {
+		t.Error("the shared database is not a service of the website")
+	}
+}
+
+func TestNativeTrashRestoreRemove(t *testing.T) {
+	m, _, h, p, s := nativeReady(t)
+	entry, err := m.Delete(context.Background(), s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{p.unit(s.ID), p.fpmConf(s.ID), p.nginx(s.ID), p.edge(s.ID)} {
+		if _, err := os.Stat(f); err == nil {
+			t.Errorf("%s left after delete", f)
+		}
+	}
+	if !strings.Contains(h.all(), "systemctl disable --now "+NativeUnit(s.ID)) || strings.Contains(h.all(), "DROP DATABASE") || strings.Contains(h.all(), "userdel") {
+		t.Errorf("trash must stop the website and keep its database and user:\n%s", h.all())
+	}
+	if _, err := m.Restore(context.Background(), entry); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(p.edge(s.ID)); err != nil || m.Status(context.Background(), s.ID) != "running" {
+		t.Errorf("restore did not bring the website back: %v", err)
+	}
+	entry, _ = m.Delete(context.Background(), s.ID)
+	m.native = nil
+	if err := m.RemoveTrash(entry); err == nil {
+		t.Error("removed a native website without the native engine (its database would stay behind)")
+	}
+	m.native = testNative
+	if err := m.RemoveTrash(entry); err != nil {
+		t.Fatal(err)
+	}
+	sql := strings.Join(h.stdin, "\n")
+	if !strings.Contains(sql, "DROP DATABASE IF EXISTS `"+NativeDB(s.ID)+"`") || !strings.Contains(sql, "DROP USER IF EXISTS") || !strings.Contains(h.all(), "userdel "+NativeUser(s.ID)) {
+		t.Errorf("removal left the database or the user:\n%s\n%s", sql, h.all())
+	}
+}
+
+func TestNativeNeverReachesDocker(t *testing.T) {
+	m, f, h, _, s := nativeReady(t)
+	before := len(f.calls)
+	if st, err := m.Stack(context.Background(), s.ID); err != nil || len(st.Containers) != 2 || st.Containers[0].State != "running" || st.Containers[1].Name != NativeUnit(s.ID) {
+		t.Errorf("stack %+v %v", st, err)
+	}
+	if err := m.RestartService(context.Background(), s.ID, "php"); err != nil || !strings.Contains(h.all(), "systemctl restart "+NativeUnit(s.ID)) {
+		t.Errorf("restart php %v", err)
+	}
+	if err := m.RestartService(context.Background(), s.ID, "web"); err != nil || strings.Contains(h.all(), "systemctl restart nginx") {
+		t.Errorf("restart web must reload the shared Nginx: %v", err)
+	}
+	if len(f.calls) != before {
+		t.Errorf("docker called for a native website: %v", f.calls[before:])
+	}
+}
+
+func TestNativeLimits(t *testing.T) {
+	m, f, h, p, s := nativeReady(t)
+	l, err := m.Limits(s.ID)
+	if err != nil || len(l.Services) != 1 || l.Services[0].Service != "php" || l.Services[0].Standard != NativeMemory || l.PHP == nil || *l.PHP != PHPStandard {
+		t.Fatalf("limits %+v %v", l, err)
+	}
+	if !strings.Contains(mustRead(t, p.unit(s.ID)), "MemoryMax=512M") || !strings.Contains(mustRead(t, p.fpmConf(s.ID)), "memory_limit] = 256M") {
+		t.Error("standard limits not written")
+	}
+	php := PHPStandard
+	php.Memory, php.Upload = 512, 256
+	if err := m.SetLimits(context.Background(), s.ID, LimitChange{PHP: &php}); err != nil {
+		t.Fatal(err)
+	}
+	fpm, unit, ngx := mustRead(t, p.fpmConf(s.ID)), mustRead(t, p.unit(s.ID)), mustRead(t, p.nginx(s.ID))
+	if !strings.Contains(fpm, "memory_limit] = 512M") || !strings.Contains(fpm, "upload_max_filesize] = 256M") || !strings.Contains(unit, "MemoryMax=768M") || !strings.Contains(ngx, "client_max_body_size 256m;") {
+		t.Errorf("raised limits not written:\n%s\n%s\n%s", fpm, unit, ngx)
+	}
+	if !strings.Contains(h.all(), "systemctl restart "+NativeUnit(s.ID)) || strings.Contains(calls(f), "compose") {
+		t.Errorf("limits did not restart PHP, or reached Docker")
+	}
+	h.fail = "systemctl restart"
+	php.Memory = 1024
+	if err := m.SetLimits(context.Background(), s.ID, LimitChange{PHP: &php}); err == nil || !strings.Contains(err.Error(), "previous") {
+		t.Errorf("failure %v", err)
+	}
+	h.fail = ""
+	if got, _ := m.Get(s.ID); got.PHPLimits == nil || got.PHPLimits.Memory != 512 || !strings.Contains(mustRead(t, p.fpmConf(s.ID)), "memory_limit] = 512M") {
+		t.Errorf("previous limits not put back: %+v", got.PHPLimits)
+	}
+}
