@@ -628,3 +628,80 @@ func (c *Client) Limits(ctx context.Context, id string) (Limits, error) {
 func (c *Client) SetLimits(ctx context.Context, id string, ch LimitChange) error {
 	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/limits", ch, nil)
 }
+
+// DiskRow is one folder or file of a website's disk drill-down (DISK-01).
+type DiskRow struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Bytes int64  `json:"bytes"`
+	Files int    `json:"files"`
+}
+
+// BigFile is one of a website's largest files.
+type BigFile struct {
+	Path  string `json:"path"`
+	Bytes int64  `json:"bytes"`
+	MTime int64  `json:"mtime"`
+}
+
+// SiteDisk is the disk usage of a website and the drill-down of one of its folders.
+type SiteDisk struct {
+	Files      int64     `json:"files"`
+	Database   int64     `json:"database"`
+	Backups    int64     `json:"backups"`
+	Trash      int64     `json:"trash"`
+	Other      int64     `json:"other"`
+	Total      int64     `json:"total"`
+	Path       string    `json:"path"`
+	Rows       []DiskRow `json:"rows"`
+	More       int       `json:"more"`
+	Big        []BigFile `json:"big"`
+	Incomplete bool      `json:"incomplete"`
+}
+
+// SiteTotal is one website on the server's disk view.
+type SiteTotal struct {
+	ID     string `json:"id"`
+	Domain string `json:"domain"`
+	Bytes  int64  `json:"bytes"`
+}
+
+// DockerUse is one kind of thing Docker keeps on the disk.
+type DockerUse struct {
+	Kind        string `json:"kind"`
+	Count       int    `json:"count"`
+	Bytes       int64  `json:"bytes"`
+	Reclaimable int64  `json:"reclaimable"`
+}
+
+// ServerDisk is the disk view of the server.
+type ServerDisk struct {
+	DiskBytes  int64       `json:"disk_bytes"`
+	UsedBytes  int64       `json:"used_bytes"`
+	FreeBytes  int64       `json:"free_bytes"`
+	Sites      []SiteTotal `json:"sites"`
+	Trash      int64       `json:"trash"`
+	Docker     []DockerUse `json:"docker"`
+	DockerErr  string      `json:"docker_error"`
+	Incomplete bool        `json:"incomplete"`
+}
+
+// SiteDisk reads the disk usage of a website and the drill-down of folder p of its files.
+func (c *Client) SiteDisk(ctx context.Context, id, p string) (SiteDisk, error) {
+	var v SiteDisk
+	return v, c.call(ctx, "GET", "/v1/sites/"+url.PathEscape(id)+"/disk?path="+url.QueryEscape(p), nil, &v)
+}
+
+// ServerDisk reads the disk view of the server.
+func (c *Client) ServerDisk(ctx context.Context) (ServerDisk, error) {
+	var v ServerDisk
+	return v, c.call(ctx, "GET", "/v1/disk", nil, &v)
+}
+
+// CleanDocker removes what no website uses ("images" or "build-cache") and returns what was freed.
+func (c *Client) CleanDocker(ctx context.Context, what string) (string, error) {
+	var v struct {
+		Freed string `json:"freed"`
+	}
+	return v.Freed, c.call(ctx, "POST", "/v1/disk/clean", map[string]string{"what": what}, &v)
+}

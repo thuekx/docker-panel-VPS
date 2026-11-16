@@ -1,0 +1,36 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$csrf := .CSRF}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "disk.done.%s" .Flash) $d.Freed}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if $d.Err}}<p class="err" role="alert">{{$d.Err}}</p>{{else}}
+<section class="card wide tone c-violet" data-anim="card" id="disk-server">
+  <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-disk"}}</span>{{t $l "disk.server.title"}}</span><b class="ink">{{$d.UsedPct}}%</b></div>
+  <div class="bar"><i data-bar="{{$d.UsedPct}}"></i></div>
+  <p class="muted">{{t $l "disk.server.line" $d.Used $d.Disk $d.Free}}</p>
+  {{if $d.D.Incomplete}}<p class="banner warn">{{t $l "disk.incomplete"}}</p>{{end}}
+</section>
+<section class="card wide" data-anim="card" id="disk-sites">
+  <div class="stat-head"><span>{{t $l "disk.sites.title"}}</span></div>
+  {{if not $d.Sites}}<p class="muted">{{t $l "disk.sites.none"}}</p>{{else}}
+  <div class="table-wrap"><table class="disk-table"><thead><tr><th>{{t $l "sites.domain"}}</th><th>{{t $l "disk.size"}}</th></tr></thead><tbody>{{range $d.Sites}}
+    <tr><td><a href="/disk/{{.ID}}">{{.Domain}}</a><div class="bar thin"><i data-bar="{{.Pct}}"></i></div></td><td class="nowrap">{{.Size}}</td></tr>{{end}}
+    <tr><td class="muted">{{t $l "disk.trash"}}</td><td class="nowrap">{{$d.Trash}}</td></tr>
+  </tbody></table></div>{{end}}
+</section>
+<section class="card wide" data-anim="card" id="disk-docker">
+  <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-box"}}</span>{{t $l "disk.docker.title"}}</span></div>
+  <p class="muted">{{t $l "disk.docker.help"}}</p>
+  {{if $d.D.DockerErr}}<p class="banner warn">{{$d.D.DockerErr}}</p>{{else}}
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "disk.kind"}}</th><th>{{t $l "disk.count"}}</th><th>{{t $l "disk.size"}}</th><th>{{t $l "disk.freeable"}}</th></tr></thead><tbody>{{range $d.Docker}}
+    <tr><td>{{t $l (printf "disk.kind.%s" .Kind)}}</td><td>{{.Count}}</td><td class="nowrap">{{.Size}}</td><td class="nowrap">{{.Free}}</td></tr>{{end}}
+  </tbody></table></div>
+  <div class="row">
+    <form method="post" action="/disk"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="what" value="images">
+      <button class="primary" type="submit"{{if not $d.CanImages}} disabled{{end}} data-confirm="{{t $l "disk.clean.images.ask"}}" data-busy="{{t $l "disk.clean.busy"}}">{{t $l "disk.clean.images"}}</button></form>
+    <form method="post" action="/disk"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="what" value="build-cache">
+      <button class="ghost" type="submit"{{if not $d.CanBuildCache}} disabled{{end}} data-busy="{{t $l "disk.clean.busy"}}">{{t $l "disk.clean.build"}}</button></form>
+  </div>
+  <p class="muted">{{t $l "disk.clean.help"}}</p>{{end}}
+</section>
+{{end}}
+{{end}}

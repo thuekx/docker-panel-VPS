@@ -17,7 +17,8 @@ import (
 
 // queryRoute tells which routes take query parameters (each handler checks its own keys).
 func queryRoute(p string) bool {
-	return strings.HasSuffix(p, "/files") || strings.HasSuffix(p, "/files/content") || strings.HasSuffix(p, "/files/zip")
+	return strings.HasSuffix(p, "/files") || strings.HasSuffix(p, "/files/content") || strings.HasSuffix(p, "/files/zip") ||
+		(strings.HasPrefix(p, "/v1/sites/") && strings.HasSuffix(p, "/disk"))
 }
 
 // onlyKeys refuses any query parameter outside keys.

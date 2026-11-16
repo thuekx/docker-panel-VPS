@@ -19,7 +19,7 @@
     {{if eq (printf "%s" $s.DiskStatus) "unknown"}}<div class="stat-big">—</div>{{else}}
     <div class="stat-big"><span data-count="{{pct $s.DiskUsedGB $s.DiskTotalGB}}">{{pct $s.DiskUsedGB $s.DiskTotalGB}}</span>%</div>
     <div class="bar"><i data-bar="{{pct $s.DiskUsedGB $s.DiskTotalGB}}" class="b-{{$s.DiskStatus}}"></i></div>
-    <div class="muted">{{f1 $s.DiskUsedGB}} / {{f1 $s.DiskTotalGB}} GB</div>{{end}}
+    <div class="muted">{{f1 $s.DiskUsedGB}} / {{f1 $s.DiskTotalGB}} GB · <a href="/disk">{{t $l "disk.analyze"}}</a></div>{{end}}
   </article>
   <article class="card stat tone c-orange" data-anim="card">
     <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-pulse"}}</span>{{t $l "dash.load"}}</span>{{template "status" (dict2 $s.LoadStatus (t $l (printf "status.%s" $s.LoadStatus)))}}</div>

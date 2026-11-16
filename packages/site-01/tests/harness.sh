@@ -279,6 +279,17 @@ api POST /v1/sites/d-example-test/limits '{"ram":{"db":256}}'; ok "below the sta
 api POST /v1/sites/d-example-test/limits '{"ram":{"db":512,"php":512},"php":{"memory_mb":256,"upload_mb":128,"exec_seconds":120,"max_input_vars":1000}}'
 ok "back to the standard" '[ "$CODE" = 200 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-php-1)" = 536870912 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-db-1)" = 536870912 ] && [ "$(docker exec np-site-d-example-test-php-1 php -r "echo ini_get(\"memory_limit\");")" = 256M ] && grep -q "client_max_body_size 128m;" "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/nginx.conf"'
 
+# --- DISK-01 disk usage: per website with a drill-down, the server view, clean-ups that keep every website
+head -c 3000000 /dev/zero > "$T/big.bin"; raw PUT '/v1/sites/d-example-test/files/content?path=/big.bin' "$T/big.bin"
+api GET '/v1/sites/d-example-test/disk?path=/'
+ok "website disk: its files, database and backups, the largest file first" '[ "$CODE" = 200 ] && python3 -c "import json,sys; d=json.load(sys.stdin); assert d[\"files\"]>=3000000 and d[\"database\"]>0 and d[\"backups\"]>0, d; assert d[\"rows\"][0][\"name\"]==\"big.bin\", d[\"rows\"]; assert d[\"big\"][0][\"path\"]==\"/big.bin\", d[\"big\"]" <<<"$BODY"'
+api GET /v1/disk
+ok "server disk lists the websites and Docker images" '[ "$CODE" = 200 ] && python3 -c "import json,sys; d=json.load(sys.stdin); assert d[\"disk_bytes\"]>0 and len(d[\"sites\"])>=4, d; assert any(x[\"kind\"]==\"images\" and x[\"count\"]>0 for x in d[\"docker\"]), d" <<<"$BODY"'
+CLI_B="$(sed -n "/^  cli:/,/^  [a-z]/s/^    image: //p" "$CF_B" | head -1)"
+UP_BEFORE="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
+api POST /v1/disk/clean '{"what":"images"}'; C1="$CODE"; api POST /v1/disk/clean '{"what":"build-cache"}'
+ok "clean-ups keep every website running, the WP-CLI image a website names and the panel's own images" '[ "$C1" = 200 ] && [ "$CODE" = 200 ] && [ -n "$CLI_B" ] && docker image inspect "$CLI_B" >/dev/null 2>&1 && [ -n "$(docker image ls -q nostek/agent-build)" ] && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$UP_BEFORE" ]'
+
 # --- APP-01 Laravel (real build from the official images + Composer from packagist: needs outbound internet to
 # deb.debian.org, packagist.org and github.com). HARNESS_LARAVEL=0 skips only this part and says so in RESULT.
 api POST /v1/sites '{"app":"laravel","domain":"e.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"","title":""}'

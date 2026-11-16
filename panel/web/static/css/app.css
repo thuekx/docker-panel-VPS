@@ -408,3 +408,14 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 #limits .lim-php label{display:grid;gap:6px}
 #limits select{min-width:150px}
 #limits h3{margin:18px 0 4px;font-size:15px}
+/* DISK-01 disk usage */
+.disk-stack{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--line,rgba(127,127,127,.2));margin:10px 0}
+.disk-stack i{display:block;height:100%;width:0}
+.disk-legend{display:flex;flex-wrap:wrap;gap:8px 18px;list-style:none;padding:0;margin:6px 0 0}
+.disk-legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.dp-files{background:var(--c-teal)}.dp-database{background:var(--c-blue)}.dp-backups{background:var(--c-violet)}
+.dp-trash{background:var(--c-amber)}.dp-other{background:var(--c-rose)}
+.bar.thin{height:4px;margin-top:6px}
+.disk-table td:first-child{min-width:180px}
+.crumbs{margin:4px 0 10px;word-break:break-all}
+@media (max-width:640px){.hide-sm{display:none}}
