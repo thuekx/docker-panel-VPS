@@ -52,6 +52,8 @@ type Site struct {
 	PHPLimits *PHPSettings   `json:"php_limits,omitempty"`
 	// NATIVE-01: "" = Docker stack, native = host Nginx + PHP-FPM + MariaDB
 	Engine string `json:"engine,omitempty"`
+	// MIG-01: table prefix carried over from a migrated WordPress site ("" = wp_)
+	TablePrefix string `json:"table_prefix,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
@@ -337,13 +339,16 @@ networks:
 }
 
 func (s Site) wpServices(b *strings.Builder, p catalog.PHPVersion) {
-	wpEnv := indent([]string{
+	env := []string{
 		"WORDPRESS_DB_HOST: db",
 		"WORDPRESS_DB_NAME: wordpress",
 		"WORDPRESS_DB_USER: wordpress",
 		"WORDPRESS_DB_PASSWORD_FILE: /run/secrets/db_password",
-		wpConfigExtra,
-	}, 6)
+	}
+	if prefixRe.MatchString(s.TablePrefix) {
+		env = append(env, "WORDPRESS_TABLE_PREFIX: "+s.TablePrefix)
+	}
+	wpEnv := indent(append(env, wpConfigExtra), 6)
 	if s.Server == "apache" {
 		fmt.Fprintf(b, `  web:
     <<: *site

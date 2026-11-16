@@ -225,6 +225,7 @@ var jobKindSteps = map[string][]string{
 	"backup":  {"copy database", "copy files"},
 	"restore": {"safety database", "safety files", "restore database", "restore files", "switch files"},
 	"image":   {"pull new images", "copy database", "copy files", "recreate containers"},
+	"migrate": migrateSteps,
 }
 
 // createSteps is the order of the steps a create of this website runs, so the list is right from the first poll
@@ -343,11 +344,12 @@ func (s *Server) siteJobStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(struct {
-		State   string    `json:"state"`
-		Percent int       `json:"percent"`
-		Steps   []stepRow `json:"steps"`
-		Failed  bool      `json:"failed"`
-	}{j.State, pct, rows, j.State == "failed"})
+		State    string    `json:"state"`
+		Percent  int       `json:"percent"`
+		Steps    []stepRow `json:"steps"`
+		Failed   bool      `json:"failed"`
+		Progress string    `json:"progress,omitempty"`
+	}{j.State, pct, rows, j.State == "failed", j.Progress})
 }
 
 func (s *Server) siteJob(w http.ResponseWriter, r *http.Request) {

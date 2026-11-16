@@ -37,7 +37,7 @@ const (
 	KeepDefault = 7
 	// KeepMax is the most daily backups that can be kept.
 	KeepMax = 30
-	// keepSafety is how many before-restore (and before-update) copies are kept.
+	// keepSafety is how many before-restore (before-update, before-migrate) copies are kept.
 	keepSafety = 3
 	// DailyHour is the WIB hour of the daily backup (before the nightly off-site copy at 03:30).
 	DailyHour = 2
@@ -45,12 +45,12 @@ const (
 	BackupEvery = 10 * time.Minute
 )
 
-var backupRe = regexp.MustCompile(`^(manual|daily|before-restore|before-update)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
+var backupRe = regexp.MustCompile(`^(manual|daily|before-restore|before-update|before-migrate)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
 
 // Backup is one archive of a website.
 type Backup struct {
 	Name    string `json:"name"`
-	Kind    string `json:"kind"` // manual | daily | before-restore | before-update
+	Kind    string `json:"kind"` // manual | daily | before-restore | before-update | before-migrate
 	Size    int64  `json:"size"`
 	Created int64  `json:"created"`
 }
@@ -290,7 +290,7 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 	}
 
 	step := "copy" // the panel shows these step names; a restore's own safety copy has its own
-	if kind == "before-restore" {
+	if kind == "before-restore" || kind == "before-migrate" {
 		step = "safety"
 	}
 	// 1. the database, into a private temporary file (its size must be known for the archive header)
@@ -402,7 +402,7 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 	switch kind {
 	case "daily":
 		m.prune(s.ID, "daily", s.keep())
-	case "before-restore", "before-update":
+	case "before-restore", "before-update", "before-migrate":
 		m.prune(s.ID, kind, keepSafety)
 	}
 	return name, nil
@@ -611,6 +611,7 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 		}
 	}()
 	sawDB := false
+	prefix, sawSite := "", false // MIG-01: the table prefix the backed-up database uses
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
@@ -620,7 +621,15 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 			return fmt.Errorf("the backup is damaged: %w", err)
 		}
 		switch {
-		case h.Name == "manifest.json" || h.Name == "site.json":
+		case h.Name == "site.json":
+			var old struct {
+				TablePrefix string `json:"table_prefix"`
+			}
+			if json.NewDecoder(io.LimitReader(tr, 256<<10)).Decode(&old) == nil {
+				prefix, sawSite = old.TablePrefix, true
+			}
+			continue
+		case h.Name == "manifest.json":
 			continue
 		case h.Name == "database.sql":
 			sawDB = true
@@ -672,17 +681,59 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	if !sawDB && what != "files" {
 		return fmt.Errorf("%w: the backup has no database", ErrBadInput)
 	}
+	// the restored database keeps the prefix it had (a backup made before or after a migration)
+	newPrefix := sawSite && what != "files" && s.AppName() == "wordpress" && prefix != s.TablePrefix
+	if newPrefix {
+		if s, err = m.setPrefix(s, prefix); err != nil {
+			return err
+		}
+	}
 	if what == "database" {
-		return nil
+		if !newPrefix {
+			return nil
+		}
+		return m.applyPrefix(ctx, s)
 	}
 	if root == nil {
 		return fmt.Errorf("%w: the backup has no website files", ErrBadInput)
 	}
-	// swap the folders: the running containers keep the old folder mounted, so they are recreated on the new one
 	j.Step("switch files")
-	if s.IsNative() {
-		return m.nativeSwitch(ctx, s, stage, func() { stage = "" })
+	if err := m.switchFiles(ctx, s, stage, func() { stage = "" }); err != nil {
+		return err
 	}
+	if newPrefix && s.IsNative() {
+		return m.applyPrefix(ctx, s)
+	}
+	return nil
+}
+
+// applyPrefix makes a running WordPress website use the prefix in its settings: native through wp-config.php,
+// Docker by recreating the containers on the new compose.yml.
+func (m *Manager) applyPrefix(ctx context.Context, s Site) error {
+	if s.IsNative() {
+		p := s.TablePrefix
+		if p == "" {
+			p = "wp_"
+		}
+		r, err := m.wp(ctx, s.ID, nil, []string{"wp", "config", "set", "table_prefix", p, "--type=variable"})
+		if err != nil || r[0].RC != 0 {
+			return fmt.Errorf("setting the table prefix failed: %s", wpText(r, err))
+		}
+		return nil
+	}
+	if out, err := m.compose(ctx, s.ID, nil, "up", "-d", "--force-recreate", "--wait", "--wait-timeout", "180"); err != nil {
+		return fmt.Errorf("start with the restored table prefix failed: %s", tail(out))
+	}
+	return nil
+}
+
+// switchFiles puts a staged folder in place of the website's wp/ folder and starts the website on it. taken is
+// called once the stage is no longer the caller's to clean up.
+func (m *Manager) switchFiles(ctx context.Context, s Site, stage string, taken func()) error {
+	if s.IsNative() {
+		return m.nativeSwitch(ctx, s, stage, taken)
+	}
+	// the running containers keep the old folder mounted, so they are recreated on the new one
 	stop := []string{"stop", "web"} // the containers that mount the website folder
 	switch {
 	case s.OneApp(): // Node.js, Go, Python and ready apps: one app container, no web server
@@ -693,6 +744,7 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	if out, err := m.compose(ctx, s.ID, nil, stop...); err != nil {
 		return fmt.Errorf("stop failed: %s", tail(out))
 	}
+	sdir := m.dir(s.ID)
 	old := filepath.Join(sdir, "wp.old-"+randHex(4))
 	wp := m.wpDir(s.ID)
 	if err := os.Rename(wp, old); err != nil {
@@ -702,7 +754,7 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 		_ = os.Rename(old, wp)
 		return err
 	}
-	stage = ""
+	taken()
 	if out, err := m.compose(ctx, s.ID, nil, "up", "-d", "--force-recreate", "--wait", "--wait-timeout", "180"); err != nil {
 		return fmt.Errorf("start after restore failed: %s", tail(out))
 	}

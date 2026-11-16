@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -70,6 +71,10 @@ type Config struct {
 	PanelDomain string // never usable as a site host
 	PreviewZone string // e.g. preview.nostek.dev ("" = no preview addresses)
 	FileUID     int    // owner of files written by the file manager (0 = www-data, 33)
+	// MIG-01 harness only (never set on a real server): addresses a migration may reach although they are private,
+	// and an extra CA for the harness's throwaway HTTPS old site
+	MigrateTestAllow []netip.Prefix
+	MigrateTestCA    string
 }
 
 // Manager owns all site directories. One change runs at a time.

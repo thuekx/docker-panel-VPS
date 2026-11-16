@@ -116,6 +116,8 @@
         .then(function (d) {
           fails = 0;
           if (d.state === "running") setSteps(d.steps || []); // a finished job swaps in its own card
+          var pr = card.querySelector("[data-progress]");
+          if (pr) pr.textContent = d.progress || "";
           setBar(d.percent || 0);
           if (d.state === "running") { timer = setTimeout(poll, 1500); return; }
           setBar(d.state === "done" ? 100 : (d.percent || 0));

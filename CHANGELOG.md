@@ -3,6 +3,49 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.21.0] — 2026-11-17
+
+### Added
+- **Move a WordPress site into the panel** (MIG-01). A WordPress website gets a **Migrate** tab with two ways. Both
+  run on the website's preview address first, while the old site keeps running and is only read.
+  - **Way 1: the Nostek Migrate plugin.** Download `nostek-migrate.zip` from the tab, install and activate it on the
+    old site, copy the code from Tools → Nostek Migrate and paste it in the panel. The server then pulls the files
+    and the database over HTTPS. The plugin is one PHP file (MIT, PHP 7.4+, WordPress 5.6+):
+    - a 24-hour key, stored only as a hash, locked after 10 wrong tries in an hour;
+    - read-only routes in small pieces that fit a 30-second shared-hosting limit (files in tar batches of 64 MB,
+      large files in 32 MB ranges, tables in keyset pages);
+    - the key is deleted when the move is done.
+  - **Way 2: a cPanel backup**, for hosting without SSH. Upload the backup from the browser, or give an https
+    download link that the server fetches itself. Accepted:
+    - a cPanel full backup (the files in a nested `homedir.tar`, the databases in `mysql/`);
+    - a home directory backup with the database backup (`.sql.gz`) as a second file;
+    - a zip or tar.gz of the WordPress folder with a `.sql` dump.
+    When the backup holds several WordPress sites (addon domains), the job stops before any change and the tab
+    asks which one.
+  - **What the move does:**
+    - a `before-migrate` backup of the website first (one restore brings it back);
+    - the old files come in owned by the website, caches and other backup plugins' archives stay behind;
+    - the panel's own `wp-config.php` is kept, and the old one is saved as `wp-config.old.php`, which stops at once
+      if opened over the web;
+    - the database is loaded without `CREATE DATABASE`, `USE` or `DEFINER` lines, and the table prefix is carried;
+    - the addresses are rewritten with WP-CLI (serialized data included) to the new https address;
+    - caching drop-ins are moved aside;
+    - at the end it checks that the site loads on the new address and has an administrator.
+- The job card shows how far the current step is (for example `120/340 MB`).
+
+### Security
+- The server reaches the old site and the download link over HTTPS only, and only public internet addresses. Every
+  connection is checked after DNS, so a redirect or a name that changes its answer cannot reach loopback, private
+  networks or the server itself.
+- The audit log names the way and the old host only, never the migration code or the link's query.
+
+### Fixed
+- Restoring a backup now puts back the WordPress table prefix it was made with. Restoring a `before-migrate` backup
+  returns to the fresh website.
+
+### Not in this release
+- Multisite, databases other than MariaDB/MySQL, e-mail, and switching DNS.
+
 ## [1.20.0] — 2026-11-16
 
 ### Added

@@ -391,6 +391,7 @@ type Job struct {
 	Steps     []string `json:"steps"`
 	Error     string   `json:"error"`
 	HasSecret bool     `json:"has_secret"`
+	Progress  string   `json:"progress"` // how far the current step is (MIG-01)
 }
 
 // Health checks the agent and returns its version.

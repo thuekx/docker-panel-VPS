@@ -110,6 +110,18 @@ GO_MUTANTS=(
 	}
 	return nil'   # NATIVE-01: a Docker command runs for a native website
   'internal/sites/native_engine.go|	a := append([]string{"--defaults-extra-file=" + m.nativeMyCnf(s.ID), "--protocol=socket"|	a := append([]string{"--protocol=socket"'   # NATIVE-01: the Database page runs as MariaDB root
+  'internal/sites/migrate_net.go|!m.publicAddr(ap.Addr()) {|false {'   # MIG-01: the pull reaches private addresses and this server
+  'internal/sites/migrate_net.go|	if r.URL.Scheme != "https" {
+		return nil, errors.New("only https|	if false {
+		return nil, errors.New("only https'   # MIG-01: the code or a backup travels over plain http
+  'internal/sites/migrate.go|	res, err := m.wp(ctx, s.ID, nil, cmds...)|	res, err := []wpOut(nil), error(nil)'   # MIG-01: addresses not rewritten
+  'internal/sites/migrate.go|	next, err := m.setPrefix(s, mg.prefix)|	next, err := s, error(nil)'   # MIG-01: table prefix not carried
+  'internal/sites/migrate.go|	name, err := mg.m.backup(ctx, mg.j, mg.s, "before-migrate")|	name, err := "", error(nil)'   # MIG-01: no safety backup before the move
+  'internal/sites/migrate.go|		if createDBRe.Match(line) {|		if false {'   # MIG-01: the dump switches to the old database name
+  'internal/sites/migrate.go|		b = append([]byte(oldConfigGuard), b...)|		b = b[:]'   # MIG-01: the old wp-config.php runs over the web
+  'internal/sites/migrate.go|		if part == ".." || part == "" {|		if part == "" {'   # MIG-01: an archive path leaves the website
+  'internal/sites/backup.go|	newPrefix := sawSite && what != "files"|	newPrefix := false && sawSite && what != "files"'   # MIG-01: restoring the before-migrate backup keeps the moved prefix
+  'internal/api/migrate.go|			return "plugin from " + c.Home.Hostname()|			return "plugin " + a.Code'   # MIG-01: the migration key in the audit log
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"

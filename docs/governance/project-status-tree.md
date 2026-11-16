@@ -21,10 +21,10 @@ Nostek Panel
 │   ├── APP-01 one-click apps: PHP + static ✓ v1.8.0 2026-11-12; Laravel ✓ v1.9.0/v1.9.1 2026-11-12; APP-02a Node.js ✓ v1.10.0 2026-11-12; APP-02b Go/Python/env ✱ now
 │   ├── IMG-01 update image button ● LIVE v1.16.0 2026-11-14 22:29 WIB (PR #23)
 │   ├── APP-03 ready-app catalogue: wave 1 Uptime Kuma + n8n ● LIVE v1.17.0 2026-11-16 01:38 WIB; wave 2 Ghost needs MySQL 8 ○
-│   ├── RES-01 resource limits per website (RAM, PHP INI) ● BUILT v1.18.0
-│   ├── DISK-01 disk usage + disk analyzer ● BUILT v1.19.0
-│   ├── NATIVE-01 optional native site engine ● BUILT v1.20.0
-│   ├── MIG-01 WordPress migration ........................ ○
+│   ├── RES-01 resource limits per website (RAM, PHP INI) ● LIVE v1.18.0 2026-11-16
+│   ├── DISK-01 disk usage + disk analyzer ● LIVE v1.19.0 2026-11-16
+│   ├── NATIVE-01 optional native site engine ● LIVE v1.20.0 2026-11-16
+│   ├── MIG-01 WordPress migration (plugin + cPanel backup) ● BUILT v1.21.0
 │   ├── DOM-01 domains, redirects, DNS check ............. ○
 │   ├── SEC-01 IP blocker, folder password, hotlink, WAF, malware scan ○
 │   ├── SFTP-01 SFTP per website ......................... ○
