@@ -147,7 +147,7 @@ func TestNativeWordPress(t *testing.T) {
 		}
 	}
 	unit := mustRead(t, p.unit(s.ID))
-	for _, want := range []string{"User=" + user + "\n", "Group=" + user + "\n", "ExecStart=/usr/sbin/php-fpm8.4 ", "IPAddressDeny=localhost link-local multicast 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16",
+	for _, want := range []string{"User=" + user + "\n", "Group=" + user + "\n", "ExecStart=/usr/sbin/php-fpm8.4 ", "IPAddressDeny=127.0.0.0/8 ::1/128 169.254.0.0/16 fe80::/10 224.0.0.0/4 ff00::/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16",
 		"NoNewPrivileges=yes", "ProtectSystem=strict", "TemporaryFileSystem=" + m.cfg.Data + ":ro", "InaccessiblePaths=-/run/nostek-agent -/run/docker.sock", "CapabilityBoundingSet=\n"} {
 		if !strings.Contains(unit, want) {
 			t.Errorf("unit lacks %q:\n%s", want, unit)

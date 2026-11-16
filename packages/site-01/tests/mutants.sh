@@ -101,7 +101,7 @@ GO_MUTANTS=(
 		// a ready app|	if false {
 		// a ready app'   # APP-03: a ready app is copied while it writes its SQLite database
   'internal/sites/native.go|User=%[3]s|User=root'   # NATIVE-01: a website's PHP runs as root
-  'internal/sites/native.go|		"IPAddressDeny=localhost link-local multicast 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7",|		"IPAddressDeny=link-local",'   # NATIVE-01: a website's PHP reaches the server and private networks
+  'internal/sites/native.go|		"IPAddressDeny=127.0.0.0/8 ::1/128 169.254.0.0/16 fe80::/10 224.0.0.0/4 ff00::/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7",|		"IPAddressDeny=169.254.0.0/16",'   # NATIVE-01: a website's PHP reaches the server and private networks
   'internal/sites/native.go|php_admin_value[open_basedir] = %[4]s/wp:%[4]s/tmp:/usr/share/php|; open_basedir off'   # NATIVE-01: PHP reads outside its website
   'internal/sites/native.go|		"TemporaryFileSystem=" + p.Data + ":ro",|		"ProtectProc=default",'   # NATIVE-01: other websites visible inside the sandbox
   'internal/sites/native_engine.go|		return ErrNativeUnsupported

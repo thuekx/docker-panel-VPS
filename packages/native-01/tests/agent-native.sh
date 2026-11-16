@@ -80,8 +80,8 @@ chown "$WPU:$WPU" "/srv/nostek/sites/$WPID/wp/np-probe.php"
 PROBE="$(served "$WPH" /np-probe.php; echo; cat /tmp/np-native-page)"; OUT="$PROBE"
 ok "the website's PHP cannot read the agent, other websites or the system, reach private addresses or run programs" 'grep -q "\"agent_config\":false,\"other_site\":false,\"passwd_write\":false,\"private_net\":false,\"loopback\":false,\"shell\":false" <<<"$PROBE" && ! grep -q "\"uid\":0," <<<"$PROBE" && ! grep -q "\"uid\":33," <<<"$PROBE"'
 PID="$(systemctl show -p MainPID --value "nostek-php-$WPID.service")"
-OUT="$(nsenter -t "$PID" -m ls /srv/nostek/sites 2>&1; nsenter -t "$PID" -m ls /run/nostek-agent 2>&1)"
-ok "inside its sandbox only its own website folder exists, the agent is out of reach" '[ "$(nsenter -t "$PID" -m ls /srv/nostek/sites)" = "$WPID" ] && ! nsenter -t "$PID" -m ls /run/nostek-agent >/dev/null 2>&1'
+OUT="$(nsenter -t "$PID" -m ls /srv/nostek/sites 2>&1; nsenter -t "$PID" -m stat -c "%a %U" /run/nostek-agent 2>&1)"
+ok "inside its sandbox only its own website folder exists, the agent is out of reach" '[ "$(nsenter -t "$PID" -m ls /srv/nostek/sites)" = "$WPID" ] && [ "$(nsenter -t "$PID" -m stat -c %a /run/nostek-agent)" = 0 ]'
 rm -f "/srv/nostek/sites/$WPID/wp/np-probe.php"; kill "$LOOP" 2>/dev/null
 
 api GET "/v1/sites/$WPID/wp"; OUT="$BODY"
