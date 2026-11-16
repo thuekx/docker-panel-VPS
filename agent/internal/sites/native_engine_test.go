@@ -147,8 +147,20 @@ func TestNativeWordPress(t *testing.T) {
 		}
 	}
 	unit := mustRead(t, p.unit(s.ID))
-	if !strings.Contains(unit, "User="+user) || !strings.Contains(unit, "ExecStart=/usr/sbin/php-fpm8.4 ") || !strings.Contains(unit, "IPAddressDeny=localhost") {
-		t.Errorf("unit %s", unit)
+	for _, want := range []string{"User=" + user + "\n", "Group=" + user + "\n", "ExecStart=/usr/sbin/php-fpm8.4 ", "IPAddressDeny=localhost link-local multicast 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16",
+		"NoNewPrivileges=yes", "ProtectSystem=strict", "TemporaryFileSystem=" + m.cfg.Data + ":ro", "InaccessiblePaths=-/run/nostek-agent -/run/docker.sock", "CapabilityBoundingSet=\n"} {
+		if !strings.Contains(unit, want) {
+			t.Errorf("unit lacks %q:\n%s", want, unit)
+		}
+	}
+	fpm := mustRead(t, p.fpmConf(s.ID))
+	for _, want := range []string{"php_admin_value[open_basedir] = " + m.dir(s.ID) + "/wp:" + m.dir(s.ID) + "/tmp", "php_admin_value[disable_functions] = exec,passthru,shell_exec,system,proc_open,popen", "listen.mode = 0660", "clear_env = yes"} {
+		if !strings.Contains(fpm, want) {
+			t.Errorf("pool lacks %q:\n%s", want, fpm)
+		}
+	}
+	if _, err := m.compose(context.Background(), s.ID, nil, "ps"); !errors.Is(err, ErrNativeUnsupported) {
+		t.Errorf("a compose call for a native website was not refused: %v", err)
 	}
 	edge := mustRead(t, p.edge(s.ID))
 	if !strings.Contains(edge, "http://172.18.0.1:8088") || !strings.Contains(edge, "Host(`voltix.id`)") {

@@ -100,6 +100,16 @@ GO_MUTANTS=(
   'internal/sites/backup.go|	if s.IsReady() {
 		// a ready app|	if false {
 		// a ready app'   # APP-03: a ready app is copied while it writes its SQLite database
+  'internal/sites/native.go|User=%[3]s|User=root'   # NATIVE-01: a website's PHP runs as root
+  'internal/sites/native.go|		"IPAddressDeny=localhost link-local multicast 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7",|		"IPAddressDeny=link-local",'   # NATIVE-01: a website's PHP reaches the server and private networks
+  'internal/sites/native.go|php_admin_value[open_basedir] = %[4]s/wp:%[4]s/tmp:/usr/share/php|; open_basedir off'   # NATIVE-01: PHP reads outside its website
+  'internal/sites/native.go|		"TemporaryFileSystem=" + p.Data + ":ro",|		"ProtectProc=default",'   # NATIVE-01: other websites visible inside the sandbox
+  'internal/sites/native_engine.go|		return ErrNativeUnsupported
+	}
+	return nil|		return nil
+	}
+	return nil'   # NATIVE-01: a Docker command runs for a native website
+  'internal/sites/native_engine.go|	a := append([]string{"--defaults-extra-file=" + m.nativeMyCnf(s.ID), "--protocol=socket"|	a := append([]string{"--protocol=socket"'   # NATIVE-01: the Database page runs as MariaDB root
 )
 for m in "${GO_MUTANTS[@]}"; do
   n=$((n+1)); file="${m%%|*}"; rest="${m#*|}"; old="${rest%%|*}"; new="${rest#*|}"
