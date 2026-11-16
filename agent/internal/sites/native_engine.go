@@ -206,7 +206,8 @@ func (m *Manager) nativeWP(ctx context.Context, s Site, stdin io.Reader, args ..
 // nativeWPArgs is the systemd-run command line of one WP-CLI run: the website's user, its sandbox, its PHP.
 func (m *Manager) nativeWPArgs(s Site, env map[string]string, args []string) []string {
 	u := NativeUser(s.ID)
-	a := []string{"--quiet", "--pipe", "--wait", "--collect", "--uid=" + u, "--gid=" + u, "--working-directory=" + m.npaths.docroot(s.ID)}
+	// no $VAR expansion: WP-CLI eval code holds PHP variables
+	a := []string{"--quiet", "--pipe", "--wait", "--collect", "--expand-environment=no", "--uid=" + u, "--gid=" + u, "--working-directory=" + m.npaths.docroot(s.ID)}
 	for _, p := range s.nativeSandbox(m.npaths) {
 		a = append(a, "-p", p)
 	}

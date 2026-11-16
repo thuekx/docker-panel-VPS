@@ -187,7 +187,8 @@ Description=Nostek website %[1]s (PHP %[2]s)
 After=network-online.target mariadb.service
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
 User=%[3]s
 Group=%[3]s
 RuntimeDirectory=nostek-php/%[1]s

@@ -56,7 +56,8 @@ ok "its PHP-FPM service runs as its own user, never root or www-data" 'systemctl
 ok "the host Nginx serves it (WordPress home page)" '[ "$(served "$WPH" /)" = 200 ] && grep -q "wp-content" /tmp/np-native-page'
 ok "the edge entry sends its hosts to the host Nginx" 'grep -q "http://$GW:8088" /srv/nostek/edge/dynamic/site-$WPID.yml && grep -q "Host(\`$WPH\`)" /srv/nostek/edge/dynamic/site-$WPID.yml'
 ok "its files belong to its user, unreadable to others" '[ "$(stat -c "%U %a" /srv/nostek/sites/$WPID/wp)" = "$WPU 750" ] && [ "$(stat -c %U /srv/nostek/sites/$WPID/wp/wp-config.php)" = "$WPU" ]'
-ok "its database lives in the host MariaDB, reachable by its own user only" 'mariadb -N -e "SHOW GRANTS FOR \`np_wpn_example_test\`@localhost" | grep -q "ON \`np_wpn_example_test\`.\*" && ! mariadb -N -e "SHOW GRANTS FOR \`np_wpn_example_test\`@localhost" | grep -q "ON \*\.\*"'
+OUT="$(mariadb -N -e "SHOW GRANTS FOR \`np_wpn_example_test\`@localhost" 2>&1 | sed "s/IDENTIFIED.*//")"
+ok "its database lives in the host MariaDB, reachable by its own user only" 'mariadb -N -e "SHOW GRANTS FOR \`np_wpn_example_test\`@localhost" | grep -q "ON \`np_wpn_example_test\`.\*" && ! mariadb -N -e "SHOW GRANTS FOR \`np_wpn_example_test\`@localhost" | grep "ON \*\.\*" | grep -qv "^GRANT USAGE ON"'
 
 api POST /v1/sites '{"domain":"sta.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"","app":"static","engine":"native"}'
 JS="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
@@ -88,7 +89,7 @@ api GET "/v1/sites/$WPID/wp"; OUT="$BODY"
 ok "WordPress Tools read plugins and themes through WP-CLI" '[ "$CODE" = 200 ] && grep -q "\"themes\":\[{" <<<"$BODY"'
 api GET "/v1/sites/$WPID/db"; OUT="$BODY"
 ok "the Database page lists the WordPress tables as the website's database user" '[ "$CODE" = 200 ] && grep -q "wp_posts" <<<"$BODY"'
-api POST "/v1/sites/$WPID/limits" '{"php":{"memory_mb":512,"upload_mb":256,"exec_seconds":120,"max_input_vars":1000}}'; OUT="$BODY"
+api POST "/v1/sites/$WPID/limits" '{"php":{"memory_mb":512,"upload_mb":256,"exec_seconds":120,"max_input_vars":1000}}'; OUT="$BODY $(systemctl show -p MemoryMax nostek-php-$WPID.service) $(served "$WPH" /)"
 ok "raising PHP memory raises the service limit and restarts PHP" '[ "$CODE" = 200 ] || [ "$CODE" = 204 ]; [ "$(systemctl show -p MemoryMax --value nostek-php-$WPID.service)" = $((768*1024*1024)) ] && [ "$(served "$WPH" /)" = 200 ]'
 
 api POST "/v1/sites/$WPID/backups"; JB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
@@ -101,7 +102,7 @@ ok "restore brings back the database and the files, owned by the website user" '
 
 api POST "/v1/sites/$WPID/delete"; ENTRY="$(grep -o '"trash":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "delete stops it and takes it off Nginx, keeping its user and database" '[ -n "$ENTRY" ] && ! systemctl is-active -q nostek-php-$WPID.service && [ "$(served "$WPH" /)" != 200 ] && id "$WPU" >/dev/null 2>&1 && mariadb -N -e "SHOW DATABASES" | grep -qx np_wpn_example_test'
-api POST "/v1/trash/$ENTRY/restore"; OUT="$BODY"
+api POST "/v1/trash/$ENTRY/restore"; OUT="$BODY $(systemctl is-active nostek-php-$WPID.service) $(served "$WPH" /)"
 ok "restore from the trash serves it again" '[ "$CODE" = 200 ] && systemctl is-active -q nostek-php-$WPID.service && [ "$(served "$WPH" /)" = 200 ]'
 api POST "/v1/sites/$WPID/delete"; ENTRY="$(grep -o '"trash":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 api POST "/v1/trash/$ENTRY/remove"; OUT="$BODY"
