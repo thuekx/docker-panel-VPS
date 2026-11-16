@@ -37,7 +37,7 @@ const (
 	KeepDefault = 7
 	// KeepMax is the most daily backups that can be kept.
 	KeepMax = 30
-	// keepSafety is how many before-restore (and before-update) copies are kept.
+	// keepSafety is how many before-restore (before-update, before-migrate) copies are kept.
 	keepSafety = 3
 	// DailyHour is the WIB hour of the daily backup (before the nightly off-site copy at 03:30).
 	DailyHour = 2
@@ -45,12 +45,12 @@ const (
 	BackupEvery = 10 * time.Minute
 )
 
-var backupRe = regexp.MustCompile(`^(manual|daily|before-restore|before-update)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
+var backupRe = regexp.MustCompile(`^(manual|daily|before-restore|before-update|before-migrate)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
 
 // Backup is one archive of a website.
 type Backup struct {
 	Name    string `json:"name"`
-	Kind    string `json:"kind"` // manual | daily | before-restore | before-update
+	Kind    string `json:"kind"` // manual | daily | before-restore | before-update | before-migrate
 	Size    int64  `json:"size"`
 	Created int64  `json:"created"`
 }
@@ -402,7 +402,7 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 	switch kind {
 	case "daily":
 		m.prune(s.ID, "daily", s.keep())
-	case "before-restore", "before-update":
+	case "before-restore", "before-update", "before-migrate":
 		m.prune(s.ID, kind, keepSafety)
 	}
 	return name, nil
@@ -678,11 +678,17 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	if root == nil {
 		return fmt.Errorf("%w: the backup has no website files", ErrBadInput)
 	}
-	// swap the folders: the running containers keep the old folder mounted, so they are recreated on the new one
 	j.Step("switch files")
+	return m.switchFiles(ctx, s, stage, func() { stage = "" })
+}
+
+// switchFiles puts a staged folder in place of the website's wp/ folder and starts the website on it. taken is
+// called once the stage is no longer the caller's to clean up.
+func (m *Manager) switchFiles(ctx context.Context, s Site, stage string, taken func()) error {
 	if s.IsNative() {
-		return m.nativeSwitch(ctx, s, stage, func() { stage = "" })
+		return m.nativeSwitch(ctx, s, stage, taken)
 	}
+	// the running containers keep the old folder mounted, so they are recreated on the new one
 	stop := []string{"stop", "web"} // the containers that mount the website folder
 	switch {
 	case s.OneApp(): // Node.js, Go, Python and ready apps: one app container, no web server
@@ -693,6 +699,7 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	if out, err := m.compose(ctx, s.ID, nil, stop...); err != nil {
 		return fmt.Errorf("stop failed: %s", tail(out))
 	}
+	sdir := m.dir(s.ID)
 	old := filepath.Join(sdir, "wp.old-"+randHex(4))
 	wp := m.wpDir(s.ID)
 	if err := os.Rename(wp, old); err != nil {
@@ -702,7 +709,7 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 		_ = os.Rename(old, wp)
 		return err
 	}
-	stage = ""
+	taken()
 	if out, err := m.compose(ctx, s.ID, nil, "up", "-d", "--force-recreate", "--wait", "--wait-timeout", "180"); err != nil {
 		return fmt.Errorf("start after restore failed: %s", tail(out))
 	}

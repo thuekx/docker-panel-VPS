@@ -1,10 +1,11 @@
 # WordPress migration into Nostek Panel (MIG-01)
 
-Status: [DESIGN] 2026-11-16. Two ways, chosen 2026-11-16 23:46 WIB:
-1. **Plugin** (wave 1): the "Nostek Migrate" plugin on the old site, which the panel pulls from over HTTPS.
-2. **SSH/SFTP pull** (wave 2): the panel copies from the old host over an SSH/SFTP login.
+Status: [DESIGN] 2026-11-16. Two ways, both in one release, chosen 2026-11-16 23:46-23:49 WIB:
+1. **Plugin:** the "Nostek Migrate" plugin on the old site, which the panel pulls from over HTTPS.
+2. **cPanel backup:** a cPanel backup restored straight into the website. Most cPanel accounts have no SSH, so this
+   replaces the SSH/SFTP idea.
 
-Both share one import core. Uploading an archive stays a later fallback. Roadmap slot MIG-01, after NATIVE-01.
+Both share one import core. Roadmap slot MIG-01, after NATIVE-01.
 
 Goal: move an existing WordPress site from an old host into the panel with as few steps as possible. It runs on a
 preview address first, before DNS is switched, and the old site keeps running the whole time (read only).
@@ -14,8 +15,9 @@ preview address first, before DNS is switched, and the old site keeps running th
 2. Open its **Migrate** tab and pick a way:
    - **Plugin:** download `nostek-migrate.zip`, install and activate it on the old site (Plugins → Add New →
      Upload). Its page (Tools → Nostek Migrate) shows a **migration code**. Paste the code and press **Start**.
-   - **SSH/SFTP:** enter the host, port, user, password or key, and the WordPress folder (for example
-     `public_html`). The panel reads the database login from the old `wp-config.php`.
+   - **cPanel backup:** upload the backup from the browser, or paste a download link to it. Either a full backup,
+     or a home directory backup plus the database backup (`.sql.gz`). A plain zip/tar.gz of the WordPress folder
+     with a `.sql` dump also works.
 3. The job page shows every step with files and tables done. In the end, it shows the old site's title, version and
    administrators, on the new preview address.
 4. Check the preview, then point the domain at the server (website domain settings; DOM-01 later shows the DNS check).
@@ -58,14 +60,38 @@ Shared hosting limits are respected: every answer is bounded so it finishes well
 - Tables stream into `migrate/dump.sql` (0600), filtered as below.
 - The key is never logged. The job and audit show only the old host name.
 
-## Way 2: SSH/SFTP pull (wave 2)
-- Login with a password or a private key, sent once in the job request and kept only in memory. The host key is
-  shown in the job for confirmation (fingerprint) and never pinned. Connections are public addresses only, as above.
-- Files over SFTP (Go `x/crypto/ssh` + `pkg/sftp`, pinned), resuming by size.
-- Database:
-  - first `mysqldump` over SSH, when the host allows commands;
-  - else a plain SQL pull through an SSH tunnel to the database host named in `wp-config.php`;
-  - for SFTP-only hosts, the plugin way.
+## Way 2: restore from a cPanel backup
+**Accepted files**
+- A cPanel **full backup** (`backup-<date>_<user>.tar.gz`):
+  - the files are under `backup-…/homedir/`, or inside a nested `homedir.tar`, which is read as a stream within
+    the stream;
+  - the databases are `backup-…/mysql/<db>.sql`.
+- A cPanel **home directory backup** (`backup-<domain>-<date>.tar.gz`), plus the database backup from the same page
+  (`<db>.sql.gz`) as a second file.
+- A plain `.zip`, `.tar` or `.tar.gz` of the WordPress folder, with a `.sql`/`.sql.gz` inside or as a second file.
+
+**Getting the files onto the server**
+- **Upload** from the browser, streamed to the agent (`PUT /v1/sites/{id}/migrate/upload?part=archive|database`).
+  The files are stored in `migrate/` (0600, outside `wp/`). There is no per-file limit other than 20 GB and the
+  free disk (at least 2.5× the size).
+- **Download link**: an `https://` address the agent fetches itself, for example the backup file placed for a
+  moment under the old site's `public_html`, or a cloud storage link.
+  - The address goes through the same public-address guard as the plugin pull.
+  - Same size limit; 60 minutes at most.
+- Uploaded files are removed after the job, or after a day without a job.
+
+**Finding the website in the archive**
+- Every folder holding `wp-includes/version.php` is a candidate. A cPanel account often holds several (addon
+  domains).
+- With one candidate the job goes on. With several, the job stops before any change and lists them; the panel
+  then asks which one, and the job runs again with that folder.
+- The database dump: the second uploaded file if there is one. Otherwise the `mysql/<db>.sql` whose name matches
+  `DB_NAME` in that folder's `wp-config.php` (read as text, never run), or the only `.sql`/`.sql.gz` in the archive.
+- Archive entries go through the backup restore rules:
+  - no absolute names or `..`;
+  - links stored as links;
+  - device files skipped;
+  - at most 1 000 000 entries.
 
 ## Import core (both ways)
 1. **Inspect.** The WordPress root is the folder that holds `wp-includes/version.php`. From the old `wp-config.php`
@@ -108,7 +134,7 @@ Shared hosting limits are respected: every answer is bounded so it finishes well
 - Switching DNS for you.
 
 ## Tests
-- Plugin (PHPUnit-free, a PHP script in the harness):
+- Plugin (a PHP script in the harness):
   - wrong, expired and missing keys refused;
   - path escape refused;
   - tar stream readable by Go;
@@ -121,6 +147,8 @@ Shared hosting limits are respected: every answer is bounded so it finishes well
   - the search-replace commands;
   - the import core with a fake host.
 - Harness (real Docker and the native engine):
+  - cPanel layouts built in the harness: a full backup with a nested `homedir.tar` and two WordPress folders (the
+    job lists both, then runs with the chosen one), and a home backup with a separate `.sql.gz`;
   - an "old site" WordPress container with the plugin, behind a throwaway HTTPS proxy;
   - migrate it into a new website: title, posts, a serialized option with the new address, the old administrator's
     login, prefix `np_`, the before-migrate backup restores the fresh site;

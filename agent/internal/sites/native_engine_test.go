@@ -19,6 +19,7 @@ type fakeHost struct {
 	stdin  []string
 	active map[string]bool
 	fail   string
+	wp     func(cmd string) (int, string) // answers WP-CLI calls (after --path=…); nil = the dump text
 }
 
 func (f *fakeHost) Host(_ context.Context, stdin io.Reader, bin string, args ...string) ([]byte, error) {
@@ -62,6 +63,15 @@ func (f *fakeHost) HostTo(ctx context.Context, stdin io.Reader, w io.Writer, bin
 	out, err := f.Host(ctx, stdin, bin, args...)
 	if err != nil {
 		return out, err
+	}
+	if f.wp != nil && bin == "systemd-run" {
+		for i, a := range args {
+			if strings.HasPrefix(a, "--path=") {
+				_, o := f.wp("wp " + strings.Join(args[i+1:], " "))
+				_, err = io.WriteString(w, o)
+				return nil, err
+			}
+		}
 	}
 	_, err = io.WriteString(w, "-- native dump\nCREATE TABLE wp_posts (id int);\n")
 	return nil, err

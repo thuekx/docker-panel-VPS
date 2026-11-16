@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -36,6 +37,10 @@ type Config struct {
 	SocketGID   int    `json:"socket_gid"`
 	AllowedUIDs []int  `json:"allowed_uids"`
 	Audit       string `json:"audit"`
+	// MIG-01 test harness only: networks a migration may reach although they are private, and a CA it trusts.
+	// A real server never sets them.
+	MigrateTestAllow []string `json:"migrate_test_allow,omitempty"`
+	MigrateTestCA    string   `json:"migrate_test_ca,omitempty"`
 }
 
 func loadConfig(path string) (Config, error) {
@@ -66,6 +71,14 @@ func loadConfig(path string) (Config, error) {
 	if len(c.AllowedUIDs) == 0 {
 		return c, errors.New("config: allowed_uids is empty")
 	}
+	for _, p := range c.MigrateTestAllow {
+		if _, err := netip.ParsePrefix(p); err != nil {
+			return c, fmt.Errorf("config: migrate_test_allow: %w", err)
+		}
+	}
+	if c.MigrateTestCA != "" && !filepath.IsAbs(c.MigrateTestCA) {
+		return c, errors.New("config: migrate_test_ca must be an absolute path")
+	}
 	return c, nil
 }
 
@@ -87,8 +100,15 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	m := sites.New(sites.Config{Data: cfg.Data, PublicIPv4: cfg.PublicIPv4, PanelDomain: cfg.PanelDomain,
-		PreviewZone: cfg.PreviewZone}, sites.ExecRunner{}, nil)
+	sc := sites.Config{Data: cfg.Data, PublicIPv4: cfg.PublicIPv4, PanelDomain: cfg.PanelDomain,
+		PreviewZone: cfg.PreviewZone, MigrateTestCA: cfg.MigrateTestCA}
+	for _, p := range cfg.MigrateTestAllow {
+		sc.MigrateTestAllow = append(sc.MigrateTestAllow, netip.MustParsePrefix(p))
+	}
+	if len(sc.MigrateTestAllow) > 0 || sc.MigrateTestCA != "" {
+		fmt.Fprintln(os.Stderr, "warning: migrate_test_allow / migrate_test_ca are set: test harness only")
+	}
+	m := sites.New(sc, sites.ExecRunner{}, nil)
 	// NATIVE-01: native.json next to the config turns the native engine on; a broken one leaves Docker only
 	if nc, err := sites.LoadNative(filepath.Join(filepath.Dir(cfgPath), "native.json")); err != nil {
 		fmt.Fprintln(os.Stderr, "native engine off:", err)
