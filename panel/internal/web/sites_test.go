@@ -47,6 +47,8 @@ type fakeAgent struct {
 	diskPaths []string // DISK-01: drill-down paths asked
 	native    bool     // NATIVE-01: the server has the native engine
 	engine    string   // NATIVE-01: engine of the fake site
+	migCalls  []string // MIG-01: "method path body" of every migrate call
+	migJob    *agent.Job
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +85,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/backups") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jbac") {
 		f.backups(w, r, write)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/migrate") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jmig") {
+		f.migrate(w, r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/wp") {

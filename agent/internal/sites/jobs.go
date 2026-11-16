@@ -12,6 +12,7 @@ type JobView struct {
 	Site      string    `json:"site"`
 	State     string    `json:"state"` // running | done | failed
 	Steps     []string  `json:"steps"`
+	Progress  string    `json:"progress,omitempty"` // how far the current step is (MIG-01), e.g. "120/340 MB"
 	Error     string    `json:"error,omitempty"`
 	HasSecret bool      `json:"has_secret"`
 	Started   time.Time `json:"started"`
@@ -32,6 +33,14 @@ func (j *Job) Step(s string) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	j.v.Steps = append(j.v.Steps, s)
+	j.v.Progress = ""
+}
+
+// Progress says how far the current step is; a new step clears it.
+func (j *Job) Progress(s string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.v.Progress = s
 }
 
 // Fail ends the job with an error.

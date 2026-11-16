@@ -50,8 +50,9 @@ type MigrateRequest struct {
 
 // MigrateFiles tells the panel what was uploaded for a backup migration.
 type MigrateFiles struct {
-	Archive  int64 `json:"archive"`  // bytes, 0 = none
-	Database int64 `json:"database"` // bytes, 0 = none
+	Archive  int64    `json:"archive"`       // bytes, 0 = none
+	Database int64    `json:"database"`      // bytes, 0 = none
+	Job      *JobView `json:"job,omitempty"` // the running migration, else the newest one still kept
 }
 
 // skipDirs are left behind: caches and other backup plugins' archives (they are rebuilt or not wanted).
@@ -158,6 +159,12 @@ func (m *Manager) MigrateStatus(id string) (MigrateFiles, error) {
 		return MigrateFiles{}, err
 	}
 	var f MigrateFiles
+	for _, v := range m.jobs.List() {
+		if v.Site == id && v.Kind == "migrate" && (f.Job == nil || f.Job.State != "running" && (v.State == "running" || v.Started.After(f.Job.Started))) {
+			v := v
+			f.Job = &v
+		}
+	}
 	if fi, err := os.Stat(filepath.Join(m.migrateDir(id), "archive")); err == nil {
 		f.Archive = fi.Size()
 	}
@@ -393,7 +400,7 @@ func (mg *migration) put(rel string, typ byte, mode fs.FileMode, mtime time.Time
 // ---------- way 1: the plugin ----------
 
 func (mg *migration) fromPlugin(ctx context.Context, code MigrateCode) error {
-	mg.j.Step("connect")
+	mg.j.Step("inspect")
 	p, info, err := mg.m.connectPlugin(ctx, code)
 	if err != nil {
 		return err
@@ -492,13 +499,13 @@ func (mg *migration) fromPlugin(ctx context.Context, code MigrateCode) error {
 			}
 		}
 		small = small[done:]
-		mg.j.Step(fmt.Sprintf("copy files %d/%d MB", mg.bytes>>20, total>>20))
+		mg.j.Progress(fmt.Sprintf("%d/%d MB", mg.bytes>>20, total>>20))
 	}
 	for _, e := range large {
 		if err := mg.fetchLarge(ctx, p, e); err != nil {
 			return err
 		}
-		mg.j.Step(fmt.Sprintf("copy files %d/%d MB", mg.bytes>>20, total>>20))
+		mg.j.Progress(fmt.Sprintf("%d/%d MB", mg.bytes>>20, total>>20))
 	}
 
 	// database: every table with the site's prefix, piece by piece
@@ -521,7 +528,7 @@ func (mg *migration) fromPlugin(ctx context.Context, code MigrateCode) error {
 		}
 		rows += n
 		mg.tables++
-		mg.j.Step(fmt.Sprintf("copy database %d tables", mg.tables))
+		mg.j.Progress(fmt.Sprintf("%d/%d tables", mg.tables, len(info.Tables)))
 	}
 	fmt.Fprintf(w, "SET FOREIGN_KEY_CHECKS=1;\n")
 	if err := errors.Join(w.Flush(), f.Close()); err != nil {
@@ -853,7 +860,7 @@ func (mg *migration) fromBackup(ctx context.Context, link *url.URL, want string)
 			return fmt.Errorf("unpacking %s: %w", rel, err)
 		}
 		if mg.files%2000 == 0 && e.typ == tar.TypeReg {
-			mg.j.Step(fmt.Sprintf("copy files %d", mg.files))
+			mg.j.Progress(fmt.Sprintf("%d files", mg.files))
 		}
 		return nil
 	})
@@ -941,7 +948,7 @@ func (mg *migration) download(ctx context.Context, link *url.URL, dst string) er
 	if n > MaxMigrate {
 		return ErrTooBig
 	}
-	mg.j.Step(fmt.Sprintf("download %d MB", n>>20))
+	mg.j.Progress(fmt.Sprintf("%d MB", n>>20))
 	return os.Rename(tmp, dst)
 }
 
@@ -1006,23 +1013,8 @@ func (mg *migration) install(ctx context.Context) error {
 	mg.root = nil
 
 	// carry the table prefix: Docker reads it from compose (WORDPRESS_TABLE_PREFIX), native from wp-config.php
-	next := s
-	next.TablePrefix = mg.prefix
-	if next.TablePrefix == "wp_" {
-		next.TablePrefix = ""
-	}
-	if !s.IsNative() {
-		cf, err := next.Compose()
-		if err != nil {
-			return err
-		}
-		prev, _ := os.ReadFile(filepath.Join(m.dir(s.ID), "compose.yml"))
-		cf = keepImages(cf, string(prev))
-		if err := writeFile(filepath.Join(m.dir(s.ID), "compose.yml"), []byte(cf), 0o644); err != nil {
-			return err
-		}
-	}
-	if err := writeSite(m.dir(s.ID), next); err != nil {
+	next, err := m.setPrefix(s, mg.prefix)
+	if err != nil {
 		return err
 	}
 	mg.s, s = next, next
@@ -1059,8 +1051,8 @@ func (mg *migration) install(ctx context.Context) error {
 		return err
 	}
 	if s.IsNative() {
-		if r, err := m.wp(ctx, s.ID, nil, []string{"wp", "config", "set", "table_prefix", mg.prefix, "--type=variable"}); err != nil || r[0].RC != 0 {
-			return fmt.Errorf("setting the table prefix failed: %s", wpText(r, err))
+		if err := m.applyPrefix(ctx, s); err != nil {
+			return err
 		}
 	}
 
@@ -1118,6 +1110,31 @@ func (mg *migration) install(ctx context.Context) error {
 		return errors.New("the check failed: the moved site has no administrator")
 	}
 	return nil
+}
+
+// setPrefix records a WordPress website's table prefix ("wp_" is stored as ""): in site.json, and for Docker in
+// compose.yml (WORDPRESS_TABLE_PREFIX), which takes effect when the containers are next recreated.
+func (m *Manager) setPrefix(s Site, prefix string) (Site, error) {
+	if prefix == "wp_" {
+		prefix = ""
+	}
+	if prefix != "" && !prefixRe.MatchString(prefix) {
+		return s, fmt.Errorf("%w: table prefix %q cannot be used", ErrBadInput, prefix)
+	}
+	next := s
+	next.TablePrefix = prefix
+	if !s.IsNative() {
+		cf, err := next.Compose()
+		if err != nil {
+			return s, err
+		}
+		prev, _ := os.ReadFile(filepath.Join(m.dir(s.ID), "compose.yml"))
+		cf = keepImages(cf, string(prev))
+		if err := writeFile(filepath.Join(m.dir(s.ID), "compose.yml"), []byte(cf), 0o644); err != nil {
+			return s, err
+		}
+	}
+	return next, writeSite(m.dir(s.ID), next)
 }
 
 // replaceCmds rewrites the old address to the new one everywhere (WP-CLI handles serialized data): the

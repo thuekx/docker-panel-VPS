@@ -432,6 +432,24 @@ func TestMigrateFromCPanelBackup(t *testing.T) {
 	if _, err := os.Stat(m.migrateDir(s.ID)); !os.IsNotExist(err) {
 		t.Error("uploaded files kept after the job")
 	}
+
+	// the before-migrate backup brings the fresh website back, with its own table prefix
+	b, _ := m.ListBackups(s.ID)
+	job, err = m.StartRestore(s.ID, b.Backups[0].Name, "all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := waitJob(t, m, job); v.State != "done" {
+		t.Fatalf("restore: %+v", v)
+	}
+	got, _ := m.Get(s.ID)
+	cf, _ := os.ReadFile(filepath.Join(m.dir(s.ID), "compose.yml"))
+	if got.TablePrefix != "" || strings.Contains(string(cf), "WORDPRESS_TABLE_PREFIX") {
+		t.Errorf("prefix after restore %q", got.TablePrefix)
+	}
+	if b, _ := os.ReadFile(filepath.Join(m.wpDir(s.ID), "index.php")); string(b) != "<?php // fresh" {
+		t.Errorf("index.php after restore %q", b)
+	}
 }
 
 func TestMigrateHomeBackupWithSeparateDatabase(t *testing.T) {

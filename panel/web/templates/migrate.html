@@ -1,0 +1,79 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "mig.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (tabs $l $s "migrate")}}
+{{with $d.Job}}{{$j := .}}
+{{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
+<section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
+  <div class="stat-head"><span><b class="ink">{{t $l "mig.job"}}</b></span>
+  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else if $d.Choose}}<span class="pill s-warn">{{t $l "mig.job.choose"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
+  {{if not $d.Choose}}
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l "mig.job"}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <ol class="stepper">{{range $d.Steps}}
+    <li class="st-{{.State}}" data-step="{{.Key}}">
+      <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
+      <span class="txt"><span class="now">{{t $l (printf "mig.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "mig.step.%s" .Key)}}</span></span>
+    </li>{{end}}
+  </ol>{{end}}
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "mig.job.wait"}} <b data-progress>{{$j.Progress}}</b> <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p class="banner ok">{{t $l "mig.job.done"}}</p>
+  <p class="mono">{{$d.Result}}</p>
+  <p class="row"><a class="primary btn" href="{{$s.URL}}" target="_blank" rel="noopener">{{t $l "mig.open"}}</a><a class="secondary btn" href="/wp/{{$s.ID}}">WordPress</a><a class="ghost btn" href="/sites/{{$s.ID}}">{{t $l "mig.domains"}}</a></p>
+  <p class="muted">{{t $l "mig.job.next"}}</p>{{end}}
+  {{if $d.Choose}}
+  <p class="banner warn">{{t $l "mig.choose.help"}}</p>
+  <form method="post" action="/migrate/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="choose"><input type="hidden" name="confirm" value="1">
+    <fieldset class="opts"><legend>{{t $l "mig.choose.which"}}</legend>
+      {{range $i, $c := $d.Choose}}<label class="check"><input type="radio" name="root" value="{{$c}}"{{if eq $i 0}} checked{{end}}> <span class="mono">{{$c}}</span></label>{{end}}</fieldset>
+    <div class="row"><button class="primary" type="submit" data-busy="{{t $l "mig.busy"}}">{{t $l "mig.choose.go"}}</button></div>
+  </form>
+  {{else if $j.Error}}<p class="banner warn">{{t $l "mig.job.fail"}}</p>
+  <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>
+  <p><a href="/backup/{{$s.ID}}">{{t $l "mig.job.backups"}}</a></p>{{end}}
+</section>
+{{end}}
+<section class="card wide tone c-teal" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-layers"}}</span>{{t $l "mig.title"}}</h2>
+  <p class="muted">{{t $l "mig.help" $s.URL}}</p>
+  <p class="banner warn">{{t $l "mig.warn"}}</p>
+</section>
+<section class="grid pair">
+<article class="card tone c-blue" data-anim="card" id="plugin">
+  <h2>{{t $l "mig.plugin.title"}}</h2>
+  <ol class="mig-steps">
+    <li>{{t $l "mig.plugin.s1"}} <a class="secondary btn" href="/migrate-plugin/nostek-migrate.zip" download>{{t $l "mig.plugin.download"}}</a></li>
+    <li>{{t $l "mig.plugin.s2"}}</li>
+    <li>{{t $l "mig.plugin.s3"}}</li>
+  </ol>
+  <form method="post" action="/migrate/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="plugin">
+    <label>{{t $l "mig.code"}}<textarea name="code" rows="3" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="2048" required placeholder="nm1.…"></textarea></label>
+    <label class="check"><input type="checkbox" name="confirm" value="1" required> {{t $l "mig.confirm" $s.Domain}}</label>
+    <button class="primary" type="submit" data-busy="{{t $l "mig.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "mig.start"}}</button>
+  </form>
+  <p class="muted">{{t $l "mig.plugin.https"}}</p>
+</article>
+<article class="card tone c-violet" data-anim="card" id="backup">
+  <h2>{{t $l "mig.backup.title"}}</h2>
+  <p class="muted">{{t $l "mig.backup.help"}}</p>
+  <form method="post" action="/migrate/{{$s.ID}}/upload" enctype="multipart/form-data" class="form"><input type="hidden" name="csrf" value="{{$csrf}}">
+    <label class="check"><input type="checkbox" name="confirm" value="1" required> {{t $l "mig.confirm" $s.Domain}}</label>
+    <label>{{t $l "mig.backup.archive"}}<input type="file" name="archive" accept=".gz,.tgz,.tar,.zip" required></label>
+    <label>{{t $l "mig.backup.database"}}<input type="file" name="database" accept=".sql,.gz"></label>
+    <button class="primary" type="submit" data-busy="{{t $l "mig.upload.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "mig.upload"}}</button>
+  </form>
+  <details class="tech"><summary>{{t $l "mig.link.title"}}</summary>
+  <form method="post" action="/migrate/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="link">
+    <label>{{t $l "mig.link"}}<input type="url" name="link" placeholder="https://…/backup.tar.gz" autocomplete="off" spellcheck="false" maxlength="4096" required></label>
+    <label class="check"><input type="checkbox" name="confirm" value="1" required> {{t $l "mig.confirm" $s.Domain}}</label>
+    <p class="muted">{{t $l "mig.link.help"}}</p>
+    <button class="secondary" type="submit" data-busy="{{t $l "mig.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "mig.link.go"}}</button>
+  </form></details>
+  {{if or $d.Archive $d.Database}}<form method="post" action="/migrate/{{$s.ID}}" class="form row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="clear">
+    <span class="muted">{{t $l "mig.uploaded" (or $d.Archive "-") (or $d.Database "-")}}</span>
+    <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "mig.clear"}}</button></form>{{end}}
+</article>
+</section>
+{{if $d.Err}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
+<p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
+{{end}}

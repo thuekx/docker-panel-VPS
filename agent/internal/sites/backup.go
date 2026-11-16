@@ -290,7 +290,7 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 	}
 
 	step := "copy" // the panel shows these step names; a restore's own safety copy has its own
-	if kind == "before-restore" {
+	if kind == "before-restore" || kind == "before-migrate" {
 		step = "safety"
 	}
 	// 1. the database, into a private temporary file (its size must be known for the archive header)
@@ -611,6 +611,7 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 		}
 	}()
 	sawDB := false
+	prefix, sawSite := "", false // MIG-01: the table prefix the backed-up database uses
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
@@ -620,7 +621,15 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 			return fmt.Errorf("the backup is damaged: %w", err)
 		}
 		switch {
-		case h.Name == "manifest.json" || h.Name == "site.json":
+		case h.Name == "site.json":
+			var old struct {
+				TablePrefix string `json:"table_prefix"`
+			}
+			if json.NewDecoder(io.LimitReader(tr, 256<<10)).Decode(&old) == nil {
+				prefix, sawSite = old.TablePrefix, true
+			}
+			continue
+		case h.Name == "manifest.json":
 			continue
 		case h.Name == "database.sql":
 			sawDB = true
@@ -672,14 +681,50 @@ func (m *Manager) restore(ctx context.Context, j *Job, s Site, src, what string)
 	if !sawDB && what != "files" {
 		return fmt.Errorf("%w: the backup has no database", ErrBadInput)
 	}
+	// the restored database keeps the prefix it had (a backup made before or after a migration)
+	newPrefix := sawSite && what != "files" && s.AppName() == "wordpress" && prefix != s.TablePrefix
+	if newPrefix {
+		if s, err = m.setPrefix(s, prefix); err != nil {
+			return err
+		}
+	}
 	if what == "database" {
-		return nil
+		if !newPrefix {
+			return nil
+		}
+		return m.applyPrefix(ctx, s)
 	}
 	if root == nil {
 		return fmt.Errorf("%w: the backup has no website files", ErrBadInput)
 	}
 	j.Step("switch files")
-	return m.switchFiles(ctx, s, stage, func() { stage = "" })
+	if err := m.switchFiles(ctx, s, stage, func() { stage = "" }); err != nil {
+		return err
+	}
+	if newPrefix && s.IsNative() {
+		return m.applyPrefix(ctx, s)
+	}
+	return nil
+}
+
+// applyPrefix makes a running WordPress website use the prefix in its settings: native through wp-config.php,
+// Docker by recreating the containers on the new compose.yml.
+func (m *Manager) applyPrefix(ctx context.Context, s Site) error {
+	if s.IsNative() {
+		p := s.TablePrefix
+		if p == "" {
+			p = "wp_"
+		}
+		r, err := m.wp(ctx, s.ID, nil, []string{"wp", "config", "set", "table_prefix", p, "--type=variable"})
+		if err != nil || r[0].RC != 0 {
+			return fmt.Errorf("setting the table prefix failed: %s", wpText(r, err))
+		}
+		return nil
+	}
+	if out, err := m.compose(ctx, s.ID, nil, "up", "-d", "--force-recreate", "--wait", "--wait-timeout", "180"); err != nil {
+		return fmt.Errorf("start with the restored table prefix failed: %s", tail(out))
+	}
+	return nil
 }
 
 // switchFiles puts a staged folder in place of the website's wp/ folder and starts the website on it. taken is
