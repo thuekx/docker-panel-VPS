@@ -39,8 +39,13 @@ PHP per site only while it serves requests (`pm = ondemand`): a quiet site costs
 - **Switching** a site between Docker and native is a backup and restore into a new site (MIG-01 shares the code).
 
 ## Work
-1. Host: SITE-01 APPLY gains `--native` (installs Nginx, PHP-FPM from the PPA, MariaDB; nftables; ufw rule from
-   the edge subnet), VERIFY checks it; REVERT leaves native sites' files in place.
+1. Host: its own package `packages/native-01/native-01-host.sh` (PREFLIGHT/APPLY/VERIFY/REVERT), so SITE-01 and
+   every Docker-only server stay as they are. APPLY installs Nginx, PHP-FPM 8.1-8.5 from the PPA (the distribution
+   pools stay off), MariaDB (socket only) and WP-CLI 2.12.0 (sha512 pinned), lets only the edge subnet reach
+   `<gateway>:8088` (ufw) and writes `/etc/nostek-agent/native.json`, which is how the agent learns the engine
+   exists. REVERT refuses while a native website exists and keeps the packages. The network limits per website come
+   from its systemd service (`IPAddressDeny`, `InaccessiblePaths`) instead of a separate nftables rule set.
+   Harness: the real install on the CI runner VM.
 2. Core: Traefik gets the file provider (`/srv/nostek/edge/dynamic`, read-only) next to the Docker provider.
 3. Agent: a second engine behind the same site API (create, start/stop, logs, PHP settings, backups, restore,
    delete, WordPress Tools via WP-CLI as the site user, Database page over the socket).
