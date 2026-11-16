@@ -211,6 +211,9 @@ var composeMu sync.Mutex
 // container got outbound internet in v1.6.0). Running containers are not touched: changes to web, php or db apply
 // at the next start of the website. The images stay those of the file: newer ones come only with "Update image".
 func (m *Manager) syncCompose(s Site) error {
+	if s.IsNative() { // no compose file: its files are written by the native engine
+		return nil
+	}
 	cf, err := s.Compose()
 	if err != nil {
 		return nil // an old site the catalogue no longer knows keeps its file
@@ -242,6 +245,9 @@ func (m *Manager) wpSite(id string) (Site, error) {
 
 // wp runs a batch of WP-CLI commands (argument lists, never a shell line from outside) in one cli container.
 func (m *Manager) wp(ctx context.Context, id string, env map[string]string, cmds ...[]string) ([]wpOut, error) {
+	if s, err := m.Get(id); err == nil && s.IsNative() {
+		return m.nativeWPBatch(ctx, s, env, cmds)
+	}
 	mark := "@@np-" + randHex(6)
 	args := []string{"run", "--rm", "-T", "--no-deps"}
 	for k, v := range env {
@@ -832,6 +838,18 @@ func (m *Manager) RunCron(ctx context.Context) []string {
 	var errs []string
 	for _, s := range list {
 		if !s.SystemCron || s.Phase != "ready" {
+			continue
+		}
+		if s.IsNative() {
+			if m.native == nil {
+				continue
+			}
+			c, cancel := context.WithTimeout(ctx, 4*time.Minute)
+			out, err := m.nativeWP(c, s, nil, "cron", "event", "run", "--due-now", "--quiet")
+			cancel()
+			if err != nil {
+				errs = append(errs, s.ID+": "+tail(out))
+			}
 			continue
 		}
 		svc := "web"

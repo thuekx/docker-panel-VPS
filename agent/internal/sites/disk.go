@@ -103,7 +103,8 @@ func (m *Manager) Disk(ctx context.Context, id, p string) (SiteDisk, error) {
 	if err != nil {
 		return SiteDisk{}, err
 	}
-	if _, err := m.Get(id); err != nil {
+	site, err := m.Get(id)
+	if err != nil {
 		return SiteDisk{}, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, DiskWalkTime)
@@ -119,6 +120,10 @@ func (m *Manager) Disk(ctx context.Context, id, p string) (SiteDisk, error) {
 	}
 	total, c := dirSize(ctx, m.dir(id))
 	out.Total, cut = total, cut || c
+	if site.IsNative() && site.HasDB() && m.native != nil { // the database lives in the host's MariaDB
+		out.Database = m.nativeDBSize(ctx, site)
+		out.Total += out.Database
+	}
 
 	r, err := m.openWP(id)
 	if err != nil {

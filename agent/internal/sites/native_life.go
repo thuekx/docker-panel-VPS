@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -212,4 +213,72 @@ func (m *Manager) nativeLimits(ctx context.Context, s Site) error {
 		return fmt.Errorf("the website did not start with the new limits, it runs with the previous ones again: %s", tail(out))
 	}
 	return nil
+}
+
+// nativeDBSize is what the website's database takes in the host's MariaDB (data and indexes), 0 when unknown.
+func (m *Manager) nativeDBSize(ctx context.Context, s Site) int64 {
+	out, err := m.nativeSQL(ctx, fmt.Sprintf("SELECT COALESCE(SUM(data_length+index_length),0) FROM information_schema.tables WHERE table_schema='%s';\n", NativeDB(s.ID)))
+	if err != nil {
+		return 0
+	}
+	n, _ := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+	return n
+}
+
+// nativeDumpTo writes the website's database as SQL to w (backups: with routines and events).
+func (m *Manager) nativeDumpTo(ctx context.Context, s Site, full bool, w io.Writer) ([]byte, error) {
+	st, ok := m.host.(HostStreamer)
+	if !ok {
+		return nil, errors.New("database copy is not available")
+	}
+	args := []string{"--protocol=socket", "--socket=" + m.native.MariaDBSocket, "--single-transaction", "--quick", "--no-tablespaces", "--default-character-set=utf8mb4", "--add-drop-table"}
+	if full {
+		args = append(args, "--routines", "--events")
+	}
+	return st.HostTo(ctx, nil, w, "mariadb-dump", append(args, NativeDB(s.ID))...)
+}
+
+// nativeLoad empties the website's database and loads SQL from r into it (restore, import).
+func (m *Manager) nativeLoad(ctx context.Context, s Site, r io.Reader) ([]byte, error) {
+	db := NativeDB(s.ID)
+	if out, err := m.nativeSQL(ctx, "DROP DATABASE IF EXISTS `"+db+"`;\nCREATE DATABASE `"+db+"` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n"); err != nil {
+		return out, err
+	}
+	return m.hostRun(ctx, r, "mariadb", "--protocol=socket", "--socket="+m.native.MariaDBSocket, "--batch", "--default-character-set=utf8mb4", db)
+}
+
+// nativeSwitch puts restored files in place of the website's folder: PHP stops for the swap, the files become the
+// website user's again (the backup may come from before a move), and PHP starts on the new folder.
+func (m *Manager) nativeSwitch(ctx context.Context, s Site, stage string, taken func()) error {
+	uid, gid, err := m.lookupUser(NativeUser(s.ID))
+	if err != nil {
+		return err
+	}
+	if err := chownTree(stage, uid, gid); err != nil {
+		return err
+	}
+	if err := os.Chmod(stage, 0o750); err != nil {
+		return err
+	}
+	if s.nativePHP() {
+		if out, err := m.hostRun(ctx, nil, "systemctl", "stop", NativeUnit(s.ID)); err != nil {
+			return fmt.Errorf("stop failed: %s", tail(out))
+		}
+	}
+	wp := m.wpDir(s.ID)
+	old := filepath.Join(m.dir(s.ID), "wp.old-"+randHex(4))
+	if err := os.Rename(wp, old); err != nil {
+		return err
+	}
+	if err := os.Rename(stage, wp); err != nil {
+		_ = os.Rename(old, wp)
+		return err
+	}
+	taken()
+	if s.nativePHP() {
+		if out, err := m.hostRun(ctx, nil, "systemctl", "start", NativeUnit(s.ID)); err != nil {
+			return fmt.Errorf("start after restore failed: %s", tail(out))
+		}
+	}
+	return os.RemoveAll(old)
 }

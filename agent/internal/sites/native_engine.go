@@ -84,8 +84,28 @@ var hostBins = map[string]string{
 	"journalctl":   "/usr/bin/journalctl",
 }
 
+// HostStreamer is a HostRunner that can send a program's output to a writer (database dumps of any size).
+type HostStreamer interface {
+	HostTo(ctx context.Context, stdin io.Reader, w io.Writer, bin string, args ...string) ([]byte, error)
+}
+
 // ExecHost runs the real programs.
 type ExecHost struct{}
+
+// HostTo runs bin with stdout going to w; it returns stderr.
+func (ExecHost) HostTo(ctx context.Context, stdin io.Reader, w io.Writer, bin string, args ...string) ([]byte, error) {
+	path, ok := hostBins[bin]
+	if !ok {
+		return nil, fmt.Errorf("host program %q is not allowed", bin)
+	}
+	cmd := exec.CommandContext(ctx, path, args...)
+	cmd.Stdin = stdin
+	cmd.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
+	var errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = w, &errb
+	err := cmd.Run()
+	return errb.Bytes(), err
+}
 
 // Host runs bin with args and returns stdout+stderr.
 func (ExecHost) Host(ctx context.Context, stdin io.Reader, bin string, args ...string) ([]byte, error) {
@@ -181,13 +201,74 @@ func (m *Manager) hostRun(ctx context.Context, stdin io.Reader, bin string, args
 
 // nativeWP runs WP-CLI as the website's user, in the website's sandbox.
 func (m *Manager) nativeWP(ctx context.Context, s Site, stdin io.Reader, args ...string) ([]byte, error) {
+	return m.hostRun(ctx, stdin, "systemd-run", m.nativeWPArgs(s, nil, args)...)
+}
+
+// nativeWPArgs is the systemd-run command line of one WP-CLI run: the website's user, its sandbox, its PHP.
+func (m *Manager) nativeWPArgs(s Site, env map[string]string, args []string) []string {
 	u := NativeUser(s.ID)
 	a := []string{"--quiet", "--pipe", "--wait", "--collect", "--uid=" + u, "--gid=" + u, "--working-directory=" + m.npaths.docroot(s.ID)}
 	for _, p := range s.nativeSandbox(m.npaths) {
 		a = append(a, "-p", p)
 	}
+	keys := make([]string, 0, len(env))
+	for k := range env {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		a = append(a, "--setenv="+k+"="+env[k])
+	}
 	a = append(a, "--", "/usr/bin/php"+s.PHP, m.native.WPCLI, "--path="+m.npaths.docroot(s.ID))
-	return m.hostRun(ctx, stdin, "systemd-run", append(a, args...)...)
+	return append(a, args...)
+}
+
+// nativeWPBatch runs WP-CLI commands one after the other for the WordPress Tools, each with its own output and
+// exit code (the Docker way runs them in one shell in the CLI container).
+func (m *Manager) nativeWPBatch(ctx context.Context, s Site, env map[string]string, cmds [][]string) ([]wpOut, error) {
+	if m.native == nil {
+		return nil, errNativeOff
+	}
+	st, ok := m.host.(HostStreamer)
+	if !ok {
+		return nil, errors.New("WP-CLI is not available")
+	}
+	res := make([]wpOut, len(cmds))
+	for i, c := range cmds {
+		if len(c) == 0 || c[0] != "wp" {
+			return nil, fmt.Errorf("not a WP-CLI command: %v", c)
+		}
+		var out bytes.Buffer
+		errOut, err := st.HostTo(ctx, nil, &out, "systemd-run", m.nativeWPArgs(s, env, c[1:])...)
+		res[i] = wpOut{Out: out.String(), Err: string(errOut)}
+		var ee *exec.ExitError
+		switch {
+		case err == nil:
+		case errors.As(err, &ee):
+			res[i].RC = ee.ExitCode()
+		case errors.Is(ctx.Err(), context.DeadlineExceeded):
+			return nil, errors.New("WP-CLI took too long and was stopped")
+		default:
+			res[i].RC = 1
+			if res[i].Err == "" {
+				res[i].Err = err.Error()
+			}
+		}
+	}
+	return res, nil
+}
+
+// nativeMyCnf is the website's own database login (0600, in its 0700 secrets folder, readable by root only).
+func (m *Manager) nativeMyCnf(id string) string { return filepath.Join(m.dir(id), "secrets", "my.cnf") }
+
+// nativeClient runs the MariaDB client as the website's own database user, on its own database: the Database page
+// can reach nothing else on the shared server.
+func (m *Manager) nativeClient(ctx context.Context, s Site, stdin io.Reader, args ...string) ([]byte, error) {
+	if m.native == nil {
+		return nil, errNativeOff
+	}
+	a := append([]string{"--defaults-extra-file=" + m.nativeMyCnf(s.ID), "--protocol=socket", "--socket=" + m.native.MariaDBSocket}, args...)
+	return m.hostRun(ctx, stdin, "mariadb", append(a, NativeDB(s.ID))...)
 }
 
 // nativeSQL runs SQL on the host's MariaDB as root over its socket (the statement on stdin, never in argv).
@@ -298,6 +379,15 @@ func (m *Manager) createNative(ctx context.Context, j *Job, s Site, fail func(st
 	if s.HasDB() {
 		j.Step("database")
 		db := NativeDB(s.ID)
+		// the website's own database login, for the Database page (never root, never in a command line)
+		if err := os.MkdirAll(filepath.Join(dir, "secrets"), 0o700); err != nil {
+			fail("database", err, nil)
+			return
+		}
+		if err := writeFile(m.nativeMyCnf(s.ID), []byte("[client]\nuser="+db+"\npassword="+pw+"\n"), 0o600); err != nil {
+			fail("database", err, nil)
+			return
+		}
 		sql := fmt.Sprintf("CREATE DATABASE `%[1]s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\nCREATE USER '%[1]s'@'localhost' IDENTIFIED BY '%[2]s';\nGRANT ALL PRIVILEGES ON `%[1]s`.* TO '%[1]s'@'localhost';\n", db, pw)
 		if out, err := m.nativeSQL(ctx, sql); err != nil {
 			fail("database", err, out)
@@ -330,7 +420,7 @@ func (m *Manager) createNative(ctx context.Context, j *Job, s Site, fail func(st
 			stdin string
 			args  []string
 		}{
-			{"", []string{"core", "download", "--version=" + wpVersion(s.PHP), "--skip-content"}},
+			{"", []string{"core", "download", "--version=" + wpVersion(s.PHP)}},
 			{pw + "\n", []string{"config", "create", "--dbname=" + db, "--dbuser=" + db, "--dbhost=localhost:" + m.native.MariaDBSocket, "--prompt=dbpass", "--skip-check"}},
 		}
 		admin := Password()

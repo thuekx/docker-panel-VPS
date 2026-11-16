@@ -58,6 +58,15 @@ func (f *fakeHost) Host(_ context.Context, stdin io.Reader, bin string, args ...
 	return nil, nil
 }
 
+func (f *fakeHost) HostTo(ctx context.Context, stdin io.Reader, w io.Writer, bin string, args ...string) ([]byte, error) {
+	out, err := f.Host(ctx, stdin, bin, args...)
+	if err != nil {
+		return out, err
+	}
+	_, err = io.WriteString(w, "-- native dump\nCREATE TABLE wp_posts (id int);\n")
+	return nil, err
+}
+
 func (f *fakeHost) all() string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -376,5 +385,77 @@ func TestNativeLimits(t *testing.T) {
 	h.fail = ""
 	if got, _ := m.Get(s.ID); got.PHPLimits == nil || got.PHPLimits.Memory != 512 || !strings.Contains(mustRead(t, p.fpmConf(s.ID)), "memory_limit] = 512M") {
 		t.Errorf("previous limits not put back: %+v", got.PHPLimits)
+	}
+}
+
+func TestNativeBackupRestore(t *testing.T) {
+	m, f, h, _, s := nativeReady(t)
+	if err := os.WriteFile(filepath.Join(m.dir(s.ID), "wp", "index.php"), []byte("<?php // v1"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	job, err := m.StartBackup(s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := waitJob(t, m, job); v.State != "done" {
+		t.Fatalf("backup %+v", v)
+	}
+	if !strings.Contains(h.all(), "mariadb-dump --protocol=socket --socket=/run/mysqld/mysqld.sock --single-transaction") || !strings.Contains(h.all(), "--routines --events "+NativeDB(s.ID)) {
+		t.Errorf("dump not from the host MariaDB:\n%s", h.all())
+	}
+	b, _ := m.ListBackups(s.ID)
+	if len(b.Backups) != 1 {
+		t.Fatalf("backups %+v", b)
+	}
+	if err := os.WriteFile(filepath.Join(m.dir(s.ID), "wp", "index.php"), []byte("<?php // v2"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	job, err = m.StartRestore(s.ID, b.Backups[0].Name, "all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := waitJob(t, m, job); v.State != "done" {
+		t.Fatalf("restore %+v\n%s", v, h.all())
+	}
+	if got := mustRead(t, filepath.Join(m.dir(s.ID), "wp", "index.php")); got != "<?php // v1" {
+		t.Errorf("files not restored: %q", got)
+	}
+	sql := strings.Join(h.stdin, "\n")
+	if !strings.Contains(sql, "DROP DATABASE IF EXISTS `"+NativeDB(s.ID)+"`") || !strings.Contains(sql, "CREATE TABLE wp_posts") {
+		t.Errorf("database not reset and loaded:\n%s", sql)
+	}
+	if !strings.Contains(h.all(), "systemctl stop "+NativeUnit(s.ID)) || !strings.Contains(h.all(), "systemctl start "+NativeUnit(s.ID)) || strings.Contains(calls(f), "compose") {
+		t.Errorf("restore did not swap with PHP stopped, or reached Docker:\n%s", h.all())
+	}
+}
+
+func TestNativeToolsAndDatabase(t *testing.T) {
+	m, f, h, _, s := nativeReady(t)
+	if err := os.MkdirAll(filepath.Join(m.dir(s.ID), "wp", "wp-content"), 0o750); err != nil { // WP-CLI made it
+		t.Fatal(err)
+	}
+	_, _, err := m.Login(context.Background(), s.ID)
+	t.Logf("login with a silent fake host: %v", err)
+	if _, err := os.Stat(filepath.Join(m.dir(s.ID), "compose.yml")); err == nil {
+		t.Error("a compose file was written for a native website")
+	}
+	all := h.all()
+	if !strings.Contains(all, "--setenv=NP_HASH=") || !strings.Contains(all, "--setenv=NP_USER="+s.AdminUser) || !strings.Contains(all, "/usr/local/bin/wp --path="+m.npaths.docroot(s.ID)+" eval") {
+		t.Errorf("one-click login not run through WP-CLI as the website user:\n%s", all)
+	}
+	if _, err := os.Stat(filepath.Join(m.dir(s.ID), "wp", "wp-content", "mu-plugins")); err != nil {
+		t.Errorf("must-use plugin folder not written: %v", err)
+	}
+	if _, err := m.Query(context.Background(), s.ID, "SELECT 1"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(h.all(), "mariadb --defaults-extra-file="+m.dir(s.ID)+"/secrets/my.cnf --protocol=socket --socket=/run/mysqld/mysqld.sock --xml "+NativeDB(s.ID)) {
+		t.Errorf("query not as the website's own database user:\n%s", h.all())
+	}
+	if fi, err := os.Stat(filepath.Join(m.dir(s.ID), "secrets", "my.cnf")); err != nil || fi.Mode().Perm() != 0o600 || !strings.Contains(mustRead(t, filepath.Join(m.dir(s.ID), "secrets", "my.cnf")), "user="+NativeDB(s.ID)) {
+		t.Errorf("my.cnf %v", err)
+	}
+	if strings.Contains(calls(f), "compose") {
+		t.Errorf("reached Docker:\n%s", calls(f))
 	}
 }
