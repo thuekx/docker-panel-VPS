@@ -67,6 +67,10 @@ run REVERT "${A[@]}"; ok "revert stops the native engine and keeps the packages"
 run VERIFY "${A[@]}"; ok "verify fails after revert" '[ $RC = 1 ]'
 run APPLY "${A[@]}"; ok "apply after revert brings it back" '[ $RC = 0 ] && systemctl is-active -q nginx'
 
+# the agent on the native engine: real websites through its socket
+# shellcheck source=agent-native.sh
+. "$HERE/agent-native.sh"
+
 docker network rm nostek-edge >/dev/null 2>&1
 if [ "$BAD" = 0 ]; then echo "RESULT NATIVE-01 HARNESS PASS tests=$TESTS sisa_uji=0"; exit 0; fi
 echo "RESULT NATIVE-01 HARNESS FAIL bad=$BAD/$TESTS"; exit 1

@@ -161,9 +161,10 @@ func (s Site) nativeSandbox(p NativePaths) []string {
 		"AmbientCapabilities=",
 		"TemporaryFileSystem=" + p.Data + ":ro",
 		"BindPaths=" + dir + "/wp " + dir + "/tmp " + dir + "/logs",
-		"InaccessiblePaths=-/run/nostek-agent -/run/docker.sock -/var/run/docker.sock -/etc/nostek -/etc/nostek-agent -/root",
+		"InaccessiblePaths=-/run/nostek-agent -/run/docker.sock -/var/run/docker.sock -/etc/nostek-agent -/root",
 		"RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6",
 		"IPAddressDeny=localhost link-local multicast 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7",
+		"IPAddressAllow=127.0.0.53/32", // the host's DNS resolver (systemd-resolved): names for updates and APIs
 		"Environment=HOME=" + dir + "/tmp TMPDIR=" + dir + "/tmp WP_CLI_CACHE_DIR=" + dir + "/tmp/wp-cli",
 	}
 }
