@@ -406,6 +406,7 @@ type siteData struct {
 	Env     []string         // names of the app's environment values
 	Hook    *hookView        // APP-02c: auto-deploy of a website built from Git
 	Images  *imagesView      // IMG-01: pinned images and the update button
+	Limits  *limitsView      // RES-01: memory and PHP settings
 }
 
 // deployRow is one deploy as the Overview shows it.
@@ -487,6 +488,9 @@ func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanRe
 		if img, err := s.ag.Images(ctx, id); err == nil {
 			d.Images = imagesOf(img)
 		}
+		if l, err := s.ag.Limits(ctx, id); err == nil {
+			d.Limits = limitsOf(l)
+		}
 	}
 	if svc := r.URL.Query().Get("logs"); siteService(site, svc) {
 		d.Service = svc
@@ -566,6 +570,23 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		s.owners.set(job, userOf(r).ID)
 		s.audit1(userOf(r), r, "site.image-update", id+" "+site.Domain)
 		http.Redirect(w, r, "/sites/job/"+job, http.StatusSeeOther)
+		return
+	case "limits":
+		cur, lerr := s.ag.Limits(ctx, id)
+		var ch agent.LimitChange
+		if lerr == nil {
+			ch, lerr = limitChange(r.PostForm, cur)
+		}
+		if lerr == nil {
+			lerr = s.ag.SetLimits(ctx, id, ch)
+		}
+		if lerr != nil {
+			s.audit1(userOf(r), r, "site.limits", id+" failed: "+lerr.Error())
+			http.Redirect(w, r, back+"?err="+url.QueryEscape(lerr.Error())+"#limits", http.StatusSeeOther)
+			return
+		}
+		s.audit1(userOf(r), r, "site.limits", id+" "+site.Domain+" "+limitNote(ch))
+		http.Redirect(w, r, back+"?done=limits#limits", http.StatusSeeOther)
 		return
 	case "webhook-on", "webhook-off":
 		if !site.IsNode() || site.FromFiles() {

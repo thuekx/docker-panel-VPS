@@ -103,6 +103,7 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 				return int(a * 100 / b)
 			},
 			"f1":    func(f float64) string { return strconv.FormatFloat(f, 'f', 1, 64) },
+			"mb":    mb,
 			"list3": func(a, b, c string) []string { return []string{a, b, c} },
 			"list4": func(a, b, c, d string) []string { return []string{a, b, c, d} },
 			"list":  func(a ...string) []string { return a },

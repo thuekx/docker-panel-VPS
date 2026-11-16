@@ -47,6 +47,9 @@ type Site struct {
 	Build   string `json:"build,omitempty"`
 	Start   string `json:"start,omitempty"`
 	Release int    `json:"release,omitempty"` // live release number (0 = none yet)
+	// RES-01: memory of services raised above the standard (MB), and PHP settings raised above the standard
+	RAM       map[string]int `json:"ram,omitempty"`
+	PHPLimits *PHPSettings   `json:"php_limits,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
@@ -328,7 +331,7 @@ networks:
     external: true
   out: {}
 `)
-	return b.String(), nil
+	return applyRAM(b.String(), s.RAM), nil
 }
 
 func (s Site) wpServices(b *strings.Builder, p catalog.PHPVersion) {

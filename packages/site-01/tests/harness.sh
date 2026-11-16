@@ -268,6 +268,17 @@ api GET /v1/sites/d-example-test/db; ok "Database tab works with its own databas
 api POST /v1/sites/d-example-test/backups; JB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "PHP site backup holds its database" '[ "$(wait_job "$JB")" = done ] && f="$(ls "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/backups/"manual-*)" && tar -xzOf "$f" database.sql > "$T/d.sql" 2>/dev/null; grep -q "Database: app" "$T/d.sql"'
 
+# --- RES-01 limits per website: our standard, raise only; memory_limit raises the PHP container with it
+api GET /v1/sites/d-example-test/limits
+ok "limits show the standard: PHP container 512 MB, memory_limit 256 MB" '[ "$CODE" = 200 ] && python3 -c "import json,sys; l=json.load(sys.stdin); d={x[\"service\"]:x for x in l[\"services\"]}; assert d[\"php\"][\"current_mb\"]==512 and d[\"php\"][\"php\"], d; assert l[\"php\"][\"memory_mb\"]==256, l; assert l[\"host_mb\"]>0, l" <<<"$BODY"'
+api POST /v1/sites/d-example-test/limits '{"php":{"memory_mb":512,"upload_mb":512,"exec_seconds":300,"max_input_vars":3000}}'
+ok "PHP settings raised: memory_limit 512M, uploads 512M, the PHP container raised to 768 MB, Nginx takes 512 MB bodies" '[ "$CODE" = 200 ] && [ "$(docker exec np-site-d-example-test-php-1 php -r "echo ini_get(\"memory_limit\");")" = 512M ] && [ "$(docker exec np-site-d-example-test-php-1 php -r "echo ini_get(\"upload_max_filesize\");")" = 512M ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-php-1)" = 805306368 ] && grep -q "client_max_body_size 512m;" "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/nginx.conf" && [ "$(site_get d-example-test d-example-test.$ZONE /after)" = "front:/after" ]'
+api POST /v1/sites/d-example-test/limits '{"ram":{"db":1024}}'
+ok "database memory raised alone" '[ "$CODE" = 200 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-db-1)" = 1073741824 ]'
+api POST /v1/sites/d-example-test/limits '{"ram":{"db":256}}'; ok "below the standard is refused" '[ "$CODE" = 400 ] && grep -q standard <<<"$BODY"'
+api POST /v1/sites/d-example-test/limits '{"ram":{"db":512,"php":512},"php":{"memory_mb":256,"upload_mb":128,"exec_seconds":120,"max_input_vars":1000}}'
+ok "back to the standard" '[ "$CODE" = 200 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-php-1)" = 536870912 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-db-1)" = 536870912 ] && [ "$(docker exec np-site-d-example-test-php-1 php -r "echo ini_get(\"memory_limit\");")" = 256M ] && grep -q "client_max_body_size 128m;" "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/nginx.conf"'
+
 # --- APP-01 Laravel (real build from the official images + Composer from packagist: needs outbound internet to
 # deb.debian.org, packagist.org and github.com). HARNESS_LARAVEL=0 skips only this part and says so in RESULT.
 api POST /v1/sites '{"app":"laravel","domain":"e.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"","title":""}'

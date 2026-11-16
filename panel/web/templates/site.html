@@ -123,6 +123,23 @@
     <button class="primary" name="action" value="image-update" type="submit" data-confirm="{{t $l "img.ask"}}">{{t $l "img.update"}}</button>
   </form>{{end}}
 </section>{{end}}
+{{with .Data.Limits}}<section class="card wide tone c-violet" data-anim="card" id="limits">
+  <div class="deploy-head"><h2>{{t $l "lim.title"}}</h2>{{if .Over}}<span class="pill s-warn">{{t $l "lim.over.pill"}}</span>{{end}}</div>
+  <p class="muted">{{t $l "lim.help"}}</p>
+  <form method="post" action="/sites/{{$s.ID}}#limits" class="form"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="action" value="limits">
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "lim.service"}}</th><th>{{t $l "lim.standard"}}</th><th>{{t $l "lim.memory"}}</th></tr></thead><tbody>{{range .RAM}}{{$r := .}}
+    <tr><td class="nowrap">{{t $l (printf "stack.svc.%s" .Service)}}{{if .PHP}} <span class="muted">· PHP</span>{{end}}</td><td class="nowrap">{{mb .Standard}}</td>
+    <td><select name="ram.{{.Service}}" aria-label="{{t $l "lim.memory"}} {{.Service}}">{{range .Choices}}<option value="{{.}}"{{if eq . $r.Current}} selected{{end}}>{{mb .}}{{if eq . $r.Standard}} · {{t $l "lim.std"}}{{end}}</option>{{end}}</select></td></tr>{{end}}
+  </tbody></table></div>
+  {{if .PHP}}<h3>{{t $l "lim.php"}}</h3><p class="muted">{{t $l "lim.php.help"}}</p>
+  <div class="lim-php">{{range .PHP}}{{$p := .}}
+    <label>{{t $l (printf "lim.php.%s" .Key)}}
+      <select name="php.{{.Key}}">{{range .Choices}}<option value="{{.}}"{{if eq . $p.Current}} selected{{end}}>{{if eq $p.Unit "MB"}}{{mb .}}{{else}}{{.}}{{if $p.Unit}} {{$p.Unit}}{{end}}{{end}}{{if eq . $p.Standard}} · {{t $l "lim.std"}}{{end}}</option>{{end}}</select></label>{{end}}
+  </div>{{end}}
+  <p class="muted">{{t $l "lim.total" (mb .TotalMB) (mb .HostMB)}}{{if .Over}} {{t $l "lim.over"}}{{end}}</p>
+  <button class="primary" type="submit" data-busy="{{t $l "lim.busy"}}">{{t $l "lim.save"}}</button>
+  </form>
+</section>{{end}}
 {{$st := .Data.Stack}}
 <section class="card wide tone c-blue stack" data-anim="card" id="stack" data-stack="/stack/{{$s.ID}}">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{template "ico-box"}}</span>{{t $l "stack.title"}} <code class="proj">{{if $st.Project}}{{$st.Project}}{{else}}np-site-{{$s.ID}}{{end}}</code></span>

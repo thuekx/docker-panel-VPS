@@ -87,6 +87,7 @@ type Manager struct {
 	hookMu    sync.Mutex
 	hookWait  map[string]bool
 	hookRetry time.Duration
+	memFn     func() int // RES-01: the server's memory in MB (tests replace it)
 }
 
 // New returns a manager.
@@ -464,7 +465,7 @@ func (m *Manager) create(j *Job, s Site) {
 		files["nginx.conf"] = NginxPHPConf
 	}
 	if s.AppName() != spec.AppStatic && !s.IsReady() {
-		files["php.ini"] = PHPIni
+		files["php.ini"] = s.PHPIniFile()
 	}
 	if rec := buildRecipe(s); rec != "" {
 		files[filepath.Join("build", "Dockerfile")] = rec
