@@ -54,6 +54,8 @@ type Site struct {
 	Engine string `json:"engine,omitempty"`
 	// MIG-01: table prefix carried over from a migrated WordPress site ("" = wp_)
 	TablePrefix string `json:"table_prefix,omitempty"`
+	// DOM-01: redirects per path, applied on the main address
+	Redirects []Redirect `json:"redirects,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
@@ -156,6 +158,14 @@ func (s Site) labels() []string {
 		fmt.Sprintf(`traefik.http.middlewares.%s-canon.redirectregex.replacement: "https://%s$${1}"`, rid, canon),
 		fmt.Sprintf(`traefik.http.middlewares.%s-canon.redirectregex.permanent: "true"`, rid),
 	}
+	redirs := s.redirectMiddlewares()
+	for i, r := range s.Redirects {
+		l = append(l,
+			fmt.Sprintf(`traefik.http.middlewares.%s.redirectregex.regex: "%s"`, redirs[i], redirectRegex(r.From, "$$")),
+			fmt.Sprintf(`traefik.http.middlewares.%s.redirectregex.replacement: "%s"`, redirs[i], s.redirectTarget(r, "$$")),
+			fmt.Sprintf(`traefik.http.middlewares.%s.redirectregex.permanent: "%t"`, redirs[i], r.Code == 301),
+		)
+	}
 	for _, h := range s.Hosts {
 		if !h.Routed {
 			continue
@@ -169,6 +179,8 @@ func (s Site) labels() []string {
 		)
 		if h.Name != canon {
 			l = append(l, fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s-canon`, r, rid))
+		} else if len(redirs) > 0 {
+			l = append(l, fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s`, r, strings.Join(redirs, ",")))
 		}
 	}
 	return l

@@ -112,6 +112,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /v1/sites/{id}/migrate/upload", s.migrateUpload)
 	mux.HandleFunc("POST /v1/sites/{id}/migrate/clear", s.migrateClear)
 	mux.HandleFunc("POST /v1/sites/{id}/migrate", s.migrateStart)
+	mux.HandleFunc("GET /v1/sites/{id}/domains", s.domains)
+	mux.HandleFunc("POST /v1/sites/{id}/domains", s.domainsChange)
 	mux.HandleFunc("GET /v1/trash", s.trash)
 	mux.HandleFunc("POST /v1/trash/{entry}/restore", s.restore)
 	mux.HandleFunc("POST /v1/trash/{entry}/remove", s.removeTrash)

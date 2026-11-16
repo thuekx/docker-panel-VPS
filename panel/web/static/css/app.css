@@ -424,3 +424,10 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .disk-table td:first-child{min-width:180px}
 .crumbs{margin:4px 0 10px;word-break:break-all}
 @media (max-width:640px){.hide-sm{display:none}}
+/* DOM-01 Domains */
+.small{font-size:12px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+table.dom td{vertical-align:top}
+table.dom td p{margin:4px 0 0}
+table.dom td>div{margin-top:4px}
+table.dom form.row{flex-wrap:wrap;gap:6px}

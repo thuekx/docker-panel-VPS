@@ -25,7 +25,7 @@ Nostek Panel
 │   ├── DISK-01 disk usage + disk analyzer ● LIVE v1.19.0 2026-11-16
 │   ├── NATIVE-01 optional native site engine ● LIVE v1.20.0 2026-11-16
 │   ├── MIG-01 WordPress migration (plugin + cPanel backup) ● BUILT v1.21.0
-│   ├── DOM-01 domains, redirects, DNS check ............. ○
+│   ├── DOM-01 domains, redirects, DNS check ● BUILT v1.22.0
 │   ├── SEC-01 IP blocker, folder password, hotlink, WAF, malware scan ○
 │   ├── SFTP-01 SFTP per website ......................... ○
 │   ├── PHP-01 change PHP version, optimize website ...... ○

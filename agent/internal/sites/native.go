@@ -281,6 +281,8 @@ func (s Site) NativeEdge(gateway string) string {
 		fmt.Fprintf(&b, "    %s:\n      rule: \"Host(`%s`)\"\n      entryPoints: [websecure]\n      service: %s\n      tls:\n        certResolver: le\n", r, h.Name, rid)
 		if h.Name != canon {
 			fmt.Fprintf(&b, "      middlewares: [%s-canon]\n", rid)
+		} else if rs := s.redirectMiddlewares(); len(rs) > 0 {
+			fmt.Fprintf(&b, "      middlewares: [%s]\n", strings.Join(rs, ", "))
 		}
 	}
 	if n == 0 {
@@ -292,12 +294,23 @@ func (s Site) NativeEdge(gateway string) string {
         regex: "^https?://[^/]+(.*)"
         replacement: "https://%[2]s${1}"
         permanent: true
-  services:
+%[5]s  services:
     %[1]s:
       loadBalancer:
         passHostHeader: true
         servers:
           - url: "http://%[3]s:%[4]d"
-`, rid, canon, gateway, NativePort)
+`, rid, canon, gateway, NativePort, s.redirectEdge())
+	return b.String()
+}
+
+// redirectEdge renders the website's redirect middlewares for the edge's file provider.
+func (s Site) redirectEdge() string {
+	var b strings.Builder
+	for i, name := range s.redirectMiddlewares() {
+		r := s.Redirects[i]
+		fmt.Fprintf(&b, "    %s:\n      redirectRegex:\n        regex: \"%s\"\n        replacement: \"%s\"\n        permanent: %t\n",
+			name, redirectRegex(r.From, "$"), s.redirectTarget(r, "$"), r.Code == 301)
+	}
 	return b.String()
 }
