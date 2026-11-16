@@ -30,7 +30,7 @@ Third-party software runs as separate container images; none of its code is copi
 
 ## Site lifecycle (target)
 
-1. Owner fills a form: domain, web server (Apache / Nginx), PHP version, admin e-mail.
+1. The admin fills a form: domain, web server (Apache / Nginx), PHP version, admin e-mail.
 2. Approve card shows the summary.
 3. Panel creates network, volumes, database, web stack, routing and certificate.
 4. Panel shows the site with health, logs, file manager, DB admin, backup and delete actions.

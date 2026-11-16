@@ -3,7 +3,7 @@ package sites
 // Update image (IMG-01). Every image a website runs is pinned by digest in the agent's catalogue; a new agent
 // release may carry newer pins (a WordPress or PHP patch, MariaDB, PostgreSQL, Nginx, a runtime, or a new recipe
 // of a built image). A website never moves to them by itself: the agent keeps the images its containers run when
-// it rewrites a compose file, and the owner presses "Update image". That pulls the new images first (nothing
+// it rewrites a compose file, and then "Update image". That pulls the new images first (nothing
 // changes if a pull fails), makes a "before-update" backup, then recreates the containers on the new images; if
 // they do not come up healthy, the previous compose file and images are put back. Never a floating "latest".
 
@@ -206,7 +206,7 @@ func (m *Manager) updateImages(ctx context.Context, j *Job, s Site, img Images) 
 			return fmt.Errorf("pull %s failed, nothing was changed: %s", u.Wanted, tail(out))
 		}
 	}
-	// 2. a backup the owner can restore if the website misbehaves on the new images
+	// 2. a backup that can be restored if the website misbehaves on the new images
 	name, err := m.backup(ctx, j, s, "before-update")
 	if err != nil {
 		return fmt.Errorf("the backup failed, nothing was changed: %v", err)

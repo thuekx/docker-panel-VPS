@@ -40,7 +40,7 @@ func nodeSite(t *testing.T, build func(n int) ([]byte, error), up func() error) 
 		return nil, nil, false
 	}
 	job, s, err := m.Create(context.Background(), spec.Create{App: "node", Domain: "voltix.id", Primary: "domain",
-		Version: "24", Repo: "https://github.com/owner/shop.git", Branch: "main", Start: "node server.js"})
+		Version: "24", Repo: "https://github.com/user/shop.git", Branch: "main", Start: "node server.js"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestNodeSiteCreate(t *testing.T) {
 		t.Fatalf("job %+v", v)
 	}
 	got, _ := m.Get(s.ID)
-	if !got.IsRuntime() || got.HasDB() || got.Release != 1 || got.Phase != "ready" || got.Repo != "https://github.com/owner/shop.git" {
+	if !got.IsRuntime() || got.HasDB() || got.Release != 1 || got.Phase != "ready" || got.Repo != "https://github.com/user/shop.git" {
 		t.Fatalf("site %+v", got)
 	}
 	cf, _ := os.ReadFile(filepath.Join(m.dir(s.ID), "compose.yml"))
@@ -83,7 +83,7 @@ func TestNodeSiteCreate(t *testing.T) {
 	}
 	j := strings.Join(build, " ")
 	for _, want := range []string{"--rm", "--memory 1536m", "--cap-drop ALL", "no-new-privileges:true", "--pids-limit 1024",
-		"NOSTEK_REPO=https://github.com/owner/shop.git", "NOSTEK_BRANCH=main", "--user " + strconv.Itoa(m.uid()), n.Image,
+		"NOSTEK_REPO=https://github.com/user/shop.git", "NOSTEK_BRANCH=main", "--user " + strconv.Itoa(m.uid()), n.Image,
 		"/wp/releases/1:/app", spec.NodeInstall, spec.NodeBuild, `rm -rf "$HOME/src/.git"`, "NOSTEK_DIR=", `cp -R "$src/$NOSTEK_DIR/." /app/`} {
 		if !strings.Contains(j, want) {
 			t.Errorf("build lacks %q: %s", want, j)

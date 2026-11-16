@@ -1,7 +1,7 @@
 package sites
 
 // Starter pages of the apps (APP-01): one file that shows the website works and says how to put the real site
-// in place. The owner replaces it with the File Manager (upload a .zip and extract it) or overwrites it.
+// in place. Replace it with the File Manager (upload a .zip and extract it) or overwrites it.
 
 import (
 	"html"

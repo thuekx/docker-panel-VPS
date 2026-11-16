@@ -13,7 +13,7 @@ func TestCatalogNative(t *testing.T) {
 	if code != 200 || body["native"] != nil {
 		t.Errorf("native engine offered without NATIVE-01: %d %v", code, body["native"])
 	}
-	code, body = do(t, c, http.MethodPost, "/v1/sites/plan", `{"domain":"voltix-id.preview.nostek.dev","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"owner@nostek.dev","title":"Voltix","engine":"native"}`)
+	code, body = do(t, c, http.MethodPost, "/v1/sites/plan", `{"domain":"voltix-id.preview.nostek.dev","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"admin@nostek.dev","title":"Voltix","engine":"native"}`)
 	if code != 422 {
 		t.Errorf("native plan without the engine: %d %v", code, body)
 	}

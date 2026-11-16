@@ -1,7 +1,7 @@
 package web
 
 // Resources (RES-01): the Overview card that shows each container's memory limit and the website's PHP settings,
-// on our standard until the owner raises them from a short list (never below the standard).
+// on our standard until they are raised from a short list (never below the standard).
 
 import (
 	"fmt"

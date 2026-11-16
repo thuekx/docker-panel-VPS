@@ -1,6 +1,6 @@
 # NATIVE-01 — Optional native site engine
 
-Status: BUILT v1.20.0 (2026-11-16); scope decided by the owner 2026-11-16 01:43 WIB (NATIVE-1): the recommended shape below, PHP 8.1-8.5 from the ondrej/php PPA. ENGINE-1 (owner 2026-11-12): websites run on
+Status: BUILT v1.20.0 (2026-11-16); scope decided 2026-11-16 01:43 WIB (NATIVE-1): the recommended shape below, PHP 8.1-8.5 from the ondrej/php PPA. ENGINE-1 (2026-11-12): websites run on
 Docker stacks only "for now"; a native engine (Nginx/Apache + PHP-FPM on the host, cPanel-style, lighter on RAM) comes
 after the core site features, and the add-website page then explains Docker vs native.
 
@@ -27,7 +27,7 @@ PHP per site only while it serves requests (`pm = ondemand`): a quiet site costs
 - Per pool: `open_basedir` to the site folder and its tmp, own `session.save_path` and `upload_tmp_dir`,
   `disable_functions` for process functions (exec, shell_exec, system, passthru, proc_open, popen), memory and
   request limits, `pm = ondemand` with `pm.max_children` from the site's plan.
-- Network: an nftables rule set (owner match on the site users) blocks site PHP from the agent socket, the panel,
+- Network: an nftables rule set (matching on the site users' uid) blocks site PHP from the agent socket, the panel,
   the Docker API and other sites' ports; outbound internet stays allowed (WordPress updates).
 - systemd slice per site (`MemoryMax`, `CPUQuota`, `TasksMax`) as the counterpart of the container limits.
 

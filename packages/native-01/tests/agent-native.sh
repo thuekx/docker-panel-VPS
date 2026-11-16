@@ -52,7 +52,7 @@ for _ in $(seq 1 20); do api GET /v1/health; [ "$CODE" = 200 ] && break; sleep 0
 
 api GET /v1/catalog; ok "the agent offers the native engine with PHP 8.1-8.5" 'grep -q "\"native\":{\"php\":\[\"8.1\",\"8.2\",\"8.3\",\"8.4\",\"8.5\"\]}" <<<"$BODY"'
 
-api POST /v1/sites '{"domain":"wpn.example.test","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"owner@example.test","title":"Native WP","engine":"native"}'
+api POST /v1/sites '{"domain":"wpn.example.test","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"admin@example.test","title":"Native WP","engine":"native"}'
 JW="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"; C1="$CODE"; JWS="$(wait_job "$JW")"
 OUT="$(api GET "/v1/jobs/$JW"; echo "$BODY"; tail -n 30 /tmp/np-native-agent.log)"
 ok "a native WordPress is created (WP-CLI as the website user, in its sandbox)" '[ "$C1" = 202 ] && [ "$JWS" = "done" ]'

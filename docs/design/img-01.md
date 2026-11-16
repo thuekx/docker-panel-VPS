@@ -1,6 +1,6 @@
 # IMG-01 — Update image, per website
 
-Status: BUILT 2026-11-13 (v1.16.0). Owner order 2026-11-12 19:34 WIB: a per-website "Update image" button; the panel
+Status: BUILT 2026-11-13 (v1.16.0). Order 2026-11-12 19:34 WIB: a per-website "Update image" button; the panel
 shows "update available" when the agent carries newer pinned images; one press makes a backup first, then recreates
 the containers on the new images; images stay pinned by digest, never auto-"latest".
 

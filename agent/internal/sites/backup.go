@@ -33,9 +33,9 @@ import (
 const (
 	// BackupFormat names the archive layout; a restore refuses any other.
 	BackupFormat = "nostek-site-backup/1"
-	// KeepDefault is how many daily backups are kept when the owner has not chosen.
+	// KeepDefault is how many daily backups are kept when none was chosen.
 	KeepDefault = 7
-	// KeepMax is the most daily backups the owner may keep.
+	// KeepMax is the most daily backups that can be kept.
 	KeepMax = 30
 	// keepSafety is how many before-restore (and before-update) copies are kept.
 	keepSafety = 3

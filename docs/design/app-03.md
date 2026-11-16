@@ -1,6 +1,6 @@
 # APP-03 — Ready-app catalogue
 
-Status: wave 1 BUILT 2026-11-14 (v1.17.0): Uptime Kuma, n8n. Roadmap order (owner 2026-11-12): every stack first
+Status: wave 1 BUILT 2026-11-14 (v1.17.0): Uptime Kuma, n8n. Roadmap order (2026-11-12): every stack first
 (APP-01, APP-02), then IMG-01, then APP-03. Examples named in app-01.md: Ghost, n8n, Uptime Kuma.
 
 ## Wave 1: apps that keep their data in one folder
@@ -17,7 +17,7 @@ Status: wave 1 BUILT 2026-11-14 (v1.17.0): Uptime Kuma, n8n. Roadmap order (owne
 - **Data in the website folder**, owned by www-data: the File Manager shows it, BAK-01 backups and restores carry it,
   IMG-01 Update image moves the app to newer pins. A backup stops the app while the files are copied (SQLite must not
   be copied while it writes) and starts it again: a few seconds offline, also for the nightly backup.
-- **First account**: both apps let the first visitor create the admin/owner account. The job page tells the owner to
+- **First account**: both apps let the first visitor create the admin account. The job page says to
   open the app at once. Known limit, follow-up candidate: keep a new ready app behind the panel login until its first
   account exists.
 - n8n gets its public address (`N8N_HOST`, `WEBHOOK_URL`, `N8N_EDITOR_BASE_URL`), `N8N_PROXY_HOPS=1` (behind the edge),
@@ -26,7 +26,7 @@ Status: wave 1 BUILT 2026-11-14 (v1.17.0): Uptime Kuma, n8n. Roadmap order (owne
 ## Wave 2 (not built): apps that need another database
 
 **Ghost** supports only MySQL 8 in production (not MariaDB): it needs a third database engine (image, Database page,
-dump/import, backups, restore) before it can join. Decide with the owner which apps come next.
+dump/import, backups, restore) before it can join. Decide which apps come next.
 
 ## Tests
 

@@ -1,6 +1,6 @@
 # DISK-01 — Disk usage and disk analyzer
 
-Status: BUILT 2026-11-16 (v1.19.0). Owner 2026-11-16 01:51 WIB, from the cPanel screenshots (Files → Disk Usage).
+Status: BUILT 2026-11-16 (v1.19.0). Request 2026-11-16 01:51 WIB, from the cPanel screenshots (Files → Disk Usage).
 
 ## Website (Disk tab)
 - Parts of the website folder: files (`wp/`, what the File Manager shows), database (`db/`), backups, deleted files

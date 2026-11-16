@@ -81,7 +81,7 @@ func do(t *testing.T, c *http.Client, method, path, body string) (int, map[strin
 	return resp.StatusCode, out
 }
 
-const good = `{"domain":"voltix.id","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"owner@nostek.dev","title":"Voltix"}`
+const good = `{"domain":"voltix.id","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"admin@nostek.dev","title":"Voltix"}`
 
 func TestPeerRefused(t *testing.T) {
 	c, logPath := serve(t, map[int]bool{424242: true})

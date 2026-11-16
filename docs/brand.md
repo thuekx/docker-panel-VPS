@@ -1,6 +1,6 @@
 # Nostek Panel — brand kit v2
 
-Status: approved by the owner on 2026-11-11 (BRAND-1 = Nostek PANEL, teal colourway).
+Status: approved on 2026-11-11 (BRAND-1 = Nostek PANEL, teal colourway).
 
 ![Brand board](../assets/brand/png/brand-board.png)
 

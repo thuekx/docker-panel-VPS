@@ -13,7 +13,7 @@ import (
 
 func TestWebhookRoutes(t *testing.T) {
 	c, logPath := serve(t, map[int]bool{os.Getuid(): true})
-	_, cr := do(t, c, "POST", "/v1/sites", `{"app":"node","domain":"voltix.id","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"","version":"24","repo":"https://github.com/owner/shop.git","branch":"main"}`)
+	_, cr := do(t, c, "POST", "/v1/sites", `{"app":"node","domain":"voltix.id","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":"","version":"24","repo":"https://github.com/user/shop.git","branch":"main"}`)
 	job, _ := cr["job"].(string)
 	for i := 0; i < 300 && job != ""; i++ {
 		if _, st := do(t, c, "GET", "/v1/jobs/"+job, ""); st["state"] != "running" {

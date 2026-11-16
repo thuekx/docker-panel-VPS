@@ -1,7 +1,7 @@
 # PANEL-01 — edge proxy + panel skeleton with 2FA
 
-Status: done 2026-11-11 15:06 WIB (package `packages/panel-01`, app `panel/`, stack `deploy/core/compose.yml`). Stack (PANEL-STACK-1, owner 2026-11-11 12:56 WIB): Go, server-rendered HTML, SQLite; UI animation
-with Motion and anime.js (both MIT), vendored and pinned, honouring `prefers-reduced-motion`. Roadmap slot PANEL-01, owner thread "Rancang panel Docker untuk VPS fresh".
+Status: done 2026-11-11 15:06 WIB (package `packages/panel-01`, app `panel/`, stack `deploy/core/compose.yml`). Stack (PANEL-STACK-1, 2026-11-11 12:56 WIB): Go, server-rendered HTML, SQLite; UI animation
+with Motion and anime.js (both MIT), vendored and pinned, honouring `prefers-reduced-motion`. Roadmap slot PANEL-01, thread "Rancang panel Docker untuk VPS fresh".
 
 ## Containers (one Docker Compose project `nostek-core`)
 

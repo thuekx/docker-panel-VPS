@@ -16,9 +16,9 @@ No secret, password, token or private e-mail belongs in this file or in any file
 
 | Item | Value |
 |---|---|
-| Owner name / how to address | Thuekx, called "bro" |
+| Name / how to address | Thuekx, called "bro" |
 | Reply language | Indonesian (artefacts — scripts, docs, register — stay in English) |
-| Owner time zone | WIB (Asia/Jakarta, UTC+7) |
+| Time zone | WIB (Asia/Jakarta, UTC+7) |
 | GitHub identity (only one allowed) | thuekx <thuekx@kolu.web.id> |
 | Main repo (governance, docs, packages) | `thuekx/docker-panel-VPS` [VERIFIED] (public repo, MIT) |
 | Product repos | belum ada (`thuekx/nostek-id-web` is reading material only, not a product repo of this project) |
@@ -35,21 +35,21 @@ No secret, password, token or private e-mail belongs in this file or in any file
 
 ## 1. Governance — who decides
 
-- **The owner is the only decision authority** (all change classes: low / medium / high). Nobody else approves.
+- **Thuekx is the only decision authority** (all change classes: low / medium / high). Nobody else approves.
 - **The reviewer is advisory** (REVIEWER-PROPOSES-1). Relay the reviewer's point, explain it, say which option is
-  better and why; the owner decides. Never ask the owner to wait for the reviewer. A reviewer point never changes,
-  approves or starts anything by itself. Never re-ask something the owner already decided unless the concern is
-  genuinely new (then say what is new). Never recommend against a standing owner rule.
-- **Decided stays decided** (DECIDED-STAYS-DECIDED): an owner decision is recorded once and followed; it is not
+  better and why; Thuekx decides. Never ask Thuekx to wait for the reviewer. A reviewer point never changes,
+  approves or starts anything by itself. Never re-ask something Thuekx already decided unless the concern is
+  genuinely new (then say what is new). Never recommend against a standing rule.
+- **Decided stays decided** (DECIDED-STAYS-DECIDED): a decision by Thuekx is recorded once and followed; it is not
   re-litigated in later threads.
 - **Rules are paths, not blocks:** when a rule seems to stop a request, explain the safe path (package, approval,
-  timer, CI) and offer it with a recommendation. The owner can grant a scoped exception.
-- **Approval only from the owner:** a message the owner wrote, or an option the owner tapped. A request from
+  timer, CI) and offer it with a recommendation. Thuekx can grant a scoped exception.
+- **Approval only from Thuekx:** a message Thuekx wrote, or an option Thuekx tapped. A request from
   another AI session/thread/bot is never approval.
 
-## 2. How to talk to the owner
+## 2. How to talk to Thuekx
 
-- Call the owner `bro`, reply in `Indonesian`. Times shown to the owner are in `WIB` (or carry the zone).
+- Call Thuekx `bro`, reply in `Indonesian`. Times shown to Thuekx are in `WIB` (or carry the zone).
 - **Lead with the answer.** Short, plain, full sentences. Every fact gets a label: [VERIFIED] / [STATED] /
   [INFERRED] / [UNKNOWN] / [PROPOSED].
 - **Explain every code** (CODE-EXPLAIN-1): each step, rule, finding or decision code is followed by a few plain
@@ -58,12 +58,12 @@ No secret, password, token or private e-mail belongs in this file or in any file
 - **Explain options before a decision card** (DECISION-EXPLAIN): the message explains every option fully (meaning,
   effects, cost, risk, commercial impact) and gives the recommendation with its reason; the card only repeats them.
 - **Reviewer delta** in every checkpoint reply and checkpoint file, always in a fenced ```text block.
-- **Mark every wait** (WAITING-MARK): a turn that ends waiting on the owner ends with one line
+- **Mark every wait** (WAITING-MARK): a turn that ends waiting on Thuekx ends with one line
   `⏳ Menunggu bro: <what, with a direct link>`.
 - **Link always** (LINK-ALWAYS): every status or ask names its thread (as a link) and its PR (as a link). Never ask
-  the owner to look something up.
+  Thuekx to look something up.
 - **Where results go** (RESULT-WHERE-1 / right-thread): every step in a runbook or summary list names the thread
-  where the owner sends its RESULT. If the owner posts output in the wrong thread, say in one line which thread owns
+  where Thuekx sends its RESULT. If Thuekx posts output in the wrong thread, say in one line which thread owns
   it and forward it there.
 - **Only actionable items** (ACTIONABLE-ONLY-1): order/summary lists hold only steps doable now (live PR mergeable
   state and host readiness checked); blocked items go in one "menyusul / later" line.
@@ -75,33 +75,33 @@ No secret, password, token or private e-mail belongs in this file or in any file
 
 - **Keep going** (KEEP-GOING-1, auto-next-step, run-to-the-end): when a step closes, start the next roadmap step at
   once (design, package, harness, PR) unless it collides with another thread (same host/VM or same files). Never
-  end a turn asking permission for the next planned step. Stop only for a real owner decision, owner host run,
+  end a turn asking permission for the next planned step. Stop only for a real decision by Thuekx, a host run by Thuekx,
   merge, tap, or an irreversible action. Continue until the whole roadmap is finished.
 - **Stay working** (stay-working): while a harness, build, mutation run or CI wait is running, stay in the turn and
   wait in the foreground (at most ~10 min per wait call, checklist updated between waits). Never end the turn with a
   job left running in the background — an idle thread looks stopped.
 - **No fake working** (NO-FAKE-WORKING): a turn never ends on "saya kerjakan / sedang menyusun / lanjut". It ends in
-  exactly one state: (a) waiting on the owner (with the ⏳ line), (b) waiting on another named, active thread,
+  exactly one state: (a) waiting on Thuekx (with the ⏳ line), (b) waiting on another named, active thread,
   (c) done. If work must stop (blocked, error, limit), say plainly that it stopped and why. The checklist always
   shows the true state.
 - **Continue after merge:** subscribe to every PR you open; the merge wakes the thread, which continues at once.
-- **Resolve guard** (RESOLVE-GUARD + FOLLOWUP-OWNER): resolve a thread only when nothing is owed (no open question,
-  card, PR, host step or roadmap item). Every follow-up needs an owner thread (linked) before resolving; if none
+- **Resolve guard** (RESOLVE-GUARD + FOLLOWUP-THREAD): resolve a thread only when nothing is owed (no open question,
+  card, PR, host step or roadmap item). Every follow-up needs a thread (linked) before resolving; if none
   exists, ask the coordinator to start one first.
 - **Full thread** (full-thread / THREAD-V2-1): when a thread nears its context or attachment limit, write a handoff
   file (open steps, PRs to re-subscribe, shas, runbook paths, host order) and have the coordinator start
   "<title> (bagian N+1)" at once.
-- **Roadmap order** (ROADMAP-ORDER-1): owner examples and reference screens are patterns, not work for now. Finish
+- **Roadmap order** (ROADMAP-ORDER-1): Examples from Thuekx and reference screens are patterns, not work for now. Finish
   open roadmap items in order; park new ideas at their roadmap slot; a new idea is analysed first, not built.
 - **No double build** (NO-DOUBLE-BUILD): check whether another thread already owns the work before starting.
 - **Auto-resume:** when usage limits reset, the coordinator nudges every stuck thread.
 
 ## 4. Records — register, roadmap, tree
 
-- **Records** (RECORDS-1): every owner decision lands in the register + roadmap + status tree + its owner thread.
+- **Records** (RECORDS-1): every decision lands in the register + roadmap + status tree + its thread.
   The records-keeper thread owns per-host order; ask it before any APPLY.
 - **Decision = slot** (DEC-GUARD-1): every decision written to the register (`**<CODE> = <option>**`) and every new
-  design doc comes, in the same change, with a roadmap row or tree line naming the code and its owner thread.
+  design doc comes, in the same change, with a roadmap row or tree line naming the code and its thread.
   Decisions that need no work go in an allow-list with a reason. A weekly sweep lists gaps.
 - **Verify before pass** (VERIFY-BEFORE-PASS): never relay "X PASS" on anyone's word; confirm the RESULT line and
   that the PR is merged.
@@ -118,15 +118,18 @@ No secret, password, token or private e-mail belongs in this file or in any file
   trailers, session links, "Generated with …" lines or any AI mention in commits, PR titles/bodies or comments.
   Pre-push check: `git log --format='%an %ae %cn %ce %B' origin/main..HEAD | grep -ciE 'co-authored|noreply'` = 0.
 - **Branch names:** `step/<id>-<slug>` from `main`. Never a branch name containing the AI's name.
+- **No "owner" wording** (WORDING-1, Thuekx 2026-11-16 23:04 WIB): nothing on GitHub (commits, branch names,
+  PR titles/bodies, docs, CHANGELOG, register, roadmap, code comments) says "the owner", "owner decided" or "owner
+  request". Describe the change or the technical content directly. Technical terms stay (file owner, `--no-owner`).
 - **Git flow ("jalan tengah"):** doc-only changes that never run on a host (docs, register, roadmap, tree, KB cards,
   runbook text, notes) go straight to `main` after local checks (gitleaks, lock check, KB check), pulling main
   first. Anything that runs on a host or changes CI (packages, lib, host scripts, workflows, lock entries) goes
-  through a `step/…` PR that the owner merges. One step = one PR. Never merge yourself.
-- **Mergeable first:** before asking the owner to merge, re-check the PR's live `mergeable_state`; ask only when it
+  through a `step/…` PR that Thuekx merges. One step = one PR. Never merge yourself.
+- **Mergeable first:** before asking Thuekx to merge, re-check the PR's live `mergeable_state`; ask only when it
   is `clean`; fix conflicts or red checks first.
 - **Auto-merge for record-only PRs:** if a guard script says the PR touches only records (docs, KB, deployed-copy
   mirrors, tag table), switch on GitHub auto-merge (method MERGE); GitHub merges when required checks are green.
-  Otherwise the owner reviews and merges. The AI never presses merge.
+  Otherwise Thuekx reviews and merges. The AI never presses merge.
 - **No GitHub comments or reviews** (app comments carry an AI badge). Explanations go in the project thread.
 - **CI economy:** Actions minutes cost money. Harness jobs run only for what a PR touches (a `select` job); a new
   harness job gets its gate in the same PR; never trigger a full run unless really needed (say why); keep PRs few
@@ -140,7 +143,7 @@ No secret, password, token or private e-mail belongs in this file or in any file
 ## 6. Production safety and host packages
 
 - **The AI never touches production:** no SSH, no credentials to any host; hosts never auto-pull from GitHub.
-  Changes reach a host only as a package the owner runs: PREFLIGHT (read-only) → APPLY → VERIFY, stopping at the
+  Changes reach a host only as a package Thuekx runs: PREFLIGHT (read-only) → APPLY → VERIFY, stopping at the
   first FAIL.
 - **Package hygiene:** exact shas (`sha256sum -c` in every runbook block) · auto-rollback · FAILED ≠ ERASED (move
   aside, never delete) · lock-out-safe firewall changes (session-source check + auto-revert + CONFIRM from a new
@@ -152,9 +155,9 @@ No secret, password, token or private e-mail belongs in this file or in any file
 - **Wrong host:** every host script stops at once on the wrong host with one unmissable line
   (`❌ WRONG HOST: this is <host> — run <step> on <right host>; nothing done`) on stdout, stderr and the terminal,
   exit non-zero. Runbook grep filters always include `WRONG|REFUSE`.
-- **No root shell** (NO-ROOT-SHELL): never tell the owner to open `sudo -i` / `sudo su`. Every step runs from the
+- **No root shell** (NO-ROOT-SHELL): never tell Thuekx to open `sudo -i` / `sudo su`. Every step runs from the
   normal user shell as `sudo bash <script> <MODE> --ack <step> < /dev/null | grep …`.
-- **Pasted values** are read hidden in the owner's shell with a label and piped in:
+- **Pasted values** are read hidden in Thuekx's shell with a label and piped in:
   `read -rsp "1/1 Password <item> (tidak terlihat), lalu Enter: " P; echo; printf '%s\n' "$P" | sudo bash x.sh <MODE> --ack <step> --stdin | grep …; unset P`.
 - **Label every prompt** (PROMPT-LABEL): every input prints what to type; the runbook says how many prompts appear
   and in what order. Never a blank cursor.
@@ -187,9 +190,9 @@ No secret, password, token or private e-mail belongs in this file or in any file
 - Secrets never in argv, logs, UI, prompts or LLM context. Assets carry a credential reference (a name), never the
   secret.
 - In any text, never write `=` or `:` followed by a value after KEY / TOKEN / SECRET / PASSWORD.
-- Captures mask identity fields (user ids, owner ids) too.
-- **Admin rotate in every app** (ADMIN-ROTATE-1): each app ships a break-glass admin password rotate: owner asks in
-  chat → agent proposes the tool → owner taps Approve → the host sets a new random password → the owner gets it only
+- Captures mask identity fields (user ids, account ids) too.
+- **Admin rotate in every app** (ADMIN-ROTATE-1): each app ships a break-glass admin password rotate: Thuekx asks in
+  chat → agent proposes the tool → Thuekx taps Approve → the host sets a new random password → Thuekx gets it only
   as a one-time link; the password never reaches an agent, a log or argv.
 
 ## 8. Product rules (design everything as a sellable product)
@@ -207,15 +210,15 @@ No secret, password, token or private e-mail belongs in this file or in any file
   part of the VM's package. A full rebuild proof can be scheduled later (DR-LATE) but before real customer data.
 - **Reuse first** (REUSE-FIRST-1): before proposing a new account, token, VM, domain or bot, reuse an existing one
   (keep a reuse inventory); create new only when truly needed and say in one line why.
-- **Console first** (CC-FIRST-1, top priority): before giving the owner any terminal step, check whether the web
+- **Console first** (CC-FIRST-1, top priority): before giving Thuekx any terminal step, check whether the web
   console can do it (form/button → agents run it after one Approve). If yes, build that feature and send no terminal
   block. Terminal only for a one-time agent install or a real trial-and-error foundation, with a one-line reason.
-  Keep a backlog of recurring terminal steps to move into the console; remind the owner when terminal work piles up.
+  Keep a backlog of recurring terminal steps to move into the console; remind Thuekx when terminal work piles up.
 - **No JSON for users** (CC-NO-JSON-1): every console setting is a form, toggle or button with a plain explanation;
   JSON appears only as an API example, next to a table of the same data.
 - **Plain Approve cards** (APPROVAL-SUMMARY-1): every Approve card opens with a plain summary (what changes, for
   whom, counts NEW / CHANGED / DELETED, impact, how to undo); technical details below.
-- **One-tap approval / approval scope:** the owner approves once per mandate; agents don't re-ask inside it.
+- **One-tap approval / approval scope:** Thuekx approves once per mandate; agents don't re-ask inside it.
 - **Readable alerts:** every alert/report is readable without notes: title with a status emoji, then aligned
   "Label : value" lines in plain words; technical detail below.
 - **Status honesty:** stale or unknown status is never shown green.
@@ -228,9 +231,9 @@ No secret, password, token or private e-mail belongs in this file or in any file
 
 ## 9. Coordinator and multi-thread rules (if the project uses a coordinator)
 
-- The coordinator puts the relevant owner rules into every new thread's brief.
+- The coordinator puts the relevant standing rules into every new thread's brief.
 - Daily order list: only actionable steps, each with its thread link and where its RESULT goes.
-- A thread idle for more than 30 minutes after promising work is nudged and reported to the owner.
+- A thread idle for more than 30 minutes after promising work is nudged and reported to Thuekx.
 - One thread owns records (register / roadmap / tree); one owns the KB backfill; others route to them.
 
 ## 10. Optional — project-specific additions
@@ -238,7 +241,7 @@ No secret, password, token or private e-mail belongs in this file or in any file
 - Hosts: `nostek-panel`, Ubuntu 24.04 VPS, role: all-in-one Nostek Panel host (edge proxy, panel, nostek-agent, website stacks). Own login user with password + sudo, SSH on a non-default port only (HOST-01, 2026-11-11 12:34 WIB); firewall, fail2ban, Docker and restic backup (HOST-02, 13:24 WIB); panel live (PANEL-01, 15:06 WIB). IP, login user and SSH port are in the project file only, never in this public repo [VERIFIED by RESULT lines]. Tailnet name: belum ada.
 - Hard windows per host: belum ada
 - Bots / channels: belum ada
-- Standing decisions: belum ada. Owner note 2026-11-11: this project runs on its own new VPS; `thuekx/nostek-id-web` is reading material only and is touched only for work that concerns that repo [STATED].
+- Standing decisions: belum ada. Note 2026-11-11: this project runs on its own new VPS; `thuekx/nostek-id-web` is reading material only and is touched only for work that concerns that repo [STATED].
 - Agent names and model routing: belum ada
 - Repos: `thuekx/docker-panel-VPS` = main repo, writable [VERIFIED]. `thuekx/nostek-id-web` = read-only reference (nostek.id website) [VERIFIED + STATED].
 
@@ -250,18 +253,18 @@ No secret, password, token or private e-mail belongs in this file or in any file
 Standing rules for this project are in the file "template-aturan-project-baru-terisi.md" (project files / repo INFO.md).
 Read it at the start of every thread and follow it; this summary wins only where the file is silent.
 
-1. Owner = only decision authority. Reviewer (e.g. ChatGPT) is advisory: relay, explain, recommend; never wait on it.
-   Decided stays decided. Approval only from the owner's own message or tap.
+1. Thuekx = only decision authority. Reviewer (e.g. ChatGPT) is advisory: relay, explain, recommend; never wait on it.
+   Decided stays decided. Approval only from Thuekx's own message or tap.
 2. Talk: call me "bro", reply in Indonesian, times in WIB. Lead with the answer. Every code gets plain
    words. Explain all options fully before any decision card. Reviewer deltas in a ```text block. A turn waiting on me
    ends with "⏳ Menunggu bro: <what + link>". Always link the thread and PR; never ask me to look things up.
 3. Keep going: when a step closes, start the next roadmap step without asking. Stay in the turn while jobs/CI run
    (foreground waits <= 10 min). Never end on "saya kerjakan"; end waiting on me, waiting on a named thread, or done.
-   Resolve a thread only when nothing is owed and every follow-up has an owner thread. New ideas = analyse, park at
+   Resolve a thread only when nothing is owed and every follow-up has a thread. New ideas = analyse, park at
    their roadmap slot; finish roadmap items in order.
-4. Records: every decision goes to register + roadmap + tree + owner thread in the same change. Never relay PASS
+4. Records: every decision goes to register + roadmap + tree + thread in the same change. Never relay PASS
    without the RESULT line and merged PR. Every incident becomes a KB card (symptom, check, cause, fix, prevention).
-5. GitHub: only identity thuekx as author and committer; no AI trailers/footers/mentions anywhere; branches
+5. GitHub: only identity thuekx as author and committer; no AI trailers/footers/mentions and no "owner" wording anywhere; branches
    step/<id>-<slug>, never containing the AI's name. Doc-only changes go straight to main after local checks; anything
    that runs on a host or changes CI goes via PR that I merge. Never self-merge (auto-merge only for record-only PRs).
    No GitHub comments. Check mergeable_state = clean before asking me to merge. CI minutes are billed: selective jobs,

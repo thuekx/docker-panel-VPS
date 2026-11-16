@@ -1,6 +1,6 @@
 package sites
 
-// Disk usage (DISK-01, owner 2026-11-16 01:51 WIB, like cPanel's Disk Usage). Per website: how much its files,
+// Disk usage (DISK-01, 2026-11-16 01:51 WIB, like cPanel's Disk Usage). Per website: how much its files,
 // database, backups and file trash take, and a drill-down of its files folder by size with its largest files. For
 // the server: the disk, every website, the website trash, and what Docker keeps (images, build cache), with a safe
 // clean-up of what no website uses. Reading only walks folders; it never follows a symbolic link.

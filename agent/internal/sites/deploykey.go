@@ -1,7 +1,7 @@
 package sites
 
 // Deploy keys for private Git repositories (APP-02b). The panel asks for a key before the website exists, so the
-// owner can add the public half to the repository (GitHub: Settings → Deploy keys, read only) before the first
+// the public half is added to the repository (GitHub: Settings → Deploy keys, read only) before the first
 // build. The private half never leaves the server: it is written 0600 and only mounted, read only, into the
 // website's own build container. The repository's host key is learnt on the first fetch and pinned in
 // deploy/known_hosts; a changed host key stops later builds.

@@ -91,7 +91,7 @@ def icon(theme, bg):
 
 os.makedirs(OUT, exist_ok=True)
 files={}
-# BRAND-1 (owner 2026-11-11): main logo = Nostek PANEL in the teal colourway
+# BRAND-1 (2026-11-11): main logo = Nostek PANEL in the teal colourway
 files['nostek-mark.svg']=icon('teal','none')
 files['nostek-app-icon.svg']=icon('teal','dark')
 files['nostek-favicon.svg']=icon('teal','dark')

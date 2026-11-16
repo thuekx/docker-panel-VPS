@@ -13,10 +13,10 @@ func TestFormCreateNode(t *testing.T) {
 	r, _ := http.NewRequest("POST", "/", nil)
 	r.PostForm = url.Values{"app": {"node"}, "domain": {"shop.voltix.id"}, "primary": {"domain"}, "server": {"apache"}, "php": {"8.4"},
 		"admin_email": {"o@nostek.dev"}, "database": {"1"}, "version": {"13"}, "node_version": {" 24 "},
-		"repo": {" https://github.com/owner/shop.git "}, "branch": {"main"}, "build": {"npm run build:prod"}, "start": {""}}
+		"repo": {" https://github.com/user/shop.git "}, "branch": {"main"}, "build": {"npm run build:prod"}, "start": {""}}
 	c, _ := formCreate(r)
 	if c.App != "node" || c.Server != "" || c.PHP != "" || c.AdminEmail != "" || c.Database || c.Version != "24" ||
-		c.Repo != "https://github.com/owner/shop.git" || c.Branch != "main" || c.Build != "npm run build:prod" || c.Start != "" {
+		c.Repo != "https://github.com/user/shop.git" || c.Branch != "main" || c.Build != "npm run build:prod" || c.Start != "" {
 		t.Errorf("node %+v", c)
 	}
 	r.PostForm.Set("source", "files")
@@ -65,16 +65,16 @@ func TestNodePages(t *testing.T) {
 	}
 	// plan then create: the approve card carries the Node.js fields to the create step
 	form := url.Values{"step": {"plan"}, "app": {"node"}, "domain": {"voltix.id"}, "primary": {"domain"}, "node_version": {"24"},
-		"repo": {"https://github.com/owner/shop.git"}, "branch": {"main"}, "start": {"node server.js"}}
+		"repo": {"https://github.com/user/shop.git"}, "branch": {"main"}, "start": {"node server.js"}}
 	f.app = "node"
 	code, plan, _ := e.postWith(e.c, "/sites/new", form, body)
-	if code != 200 || !strings.Contains(plan, `name="repo" value="https://github.com/owner/shop.git"`) || !strings.Contains(plan, `name="node_version" value="24"`) ||
+	if code != 200 || !strings.Contains(plan, `name="repo" value="https://github.com/user/shop.git"`) || !strings.Contains(plan, `name="node_version" value="24"`) ||
 		!strings.Contains(plan, "<code>node server.js</code>") {
 		t.Fatalf("plan %d", code)
 	}
 	form.Set("step", "create")
 	e.postWith(e.c, "/sites/new", form, plan)
-	if n := len(f.created); n == 0 || f.created[n-1].Repo != "https://github.com/owner/shop.git" || f.created[n-1].Version != "24" || f.created[n-1].Start != "node server.js" {
+	if n := len(f.created); n == 0 || f.created[n-1].Repo != "https://github.com/user/shop.git" || f.created[n-1].Version != "24" || f.created[n-1].Start != "node server.js" {
 		t.Fatalf("created %+v", f.created)
 	}
 	for _, lang := range []string{"en", "id"} {
@@ -88,7 +88,7 @@ func TestNodePages(t *testing.T) {
 	}
 	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
 	_, page, _ := e.get(e.c, "/sites/voltix-id")
-	for _, want := range []string{"Node.js 24", "Deploy now", "https://github.com/owner/shop.git", "release #3", "<code>0123456</code> Checkout &lt;b&gt;v2&lt;/b&gt;",
+	for _, want := range []string{"Node.js 24", "Deploy now", "https://github.com/user/shop.git", "release #3", "<code>0123456</code> Checkout &lt;b&gt;v2&lt;/b&gt;",
 		`name="release" value="1"`, "build failed: see the build log", `href="/sites/voltix-id/deploys/2/log"`, "?logs=app"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("overview lacks %q", want)
@@ -237,7 +237,7 @@ func TestPrivateRepoPages(t *testing.T) {
 	e.setupAdmin(e.c, "admin@example.test")
 	_, body, _ := e.get(e.c, "/sites/new")
 	form := url.Values{"step": {"plan"}, "app": {"node"}, "domain": {"voltix.id"}, "primary": {"domain"}, "node_version": {"24"},
-		"repo": {"git@github.com:owner/private-shop.git"}, "branch": {"main"}}
+		"repo": {"git@github.com:user/private-shop.git"}, "branch": {"main"}}
 	f.app = "node"
 	code, plan, _ := e.postWith(e.c, "/sites/new", form, body)
 	if code != 200 || f.keys != 1 || !strings.Contains(plan, `name="key_id" value="0123456789abcdef"`) || !strings.Contains(plan, "AAAAITestKey") ||
@@ -247,7 +247,7 @@ func TestPrivateRepoPages(t *testing.T) {
 	form.Set("step", "create")
 	form.Set("key_id", "0123456789abcdef")
 	e.postWith(e.c, "/sites/new", form, plan)
-	if n := len(f.created); n == 0 || f.created[n-1].KeyID != "0123456789abcdef" || f.created[n-1].Repo != "git@github.com:owner/private-shop.git" {
+	if n := len(f.created); n == 0 || f.created[n-1].KeyID != "0123456789abcdef" || f.created[n-1].Repo != "git@github.com:user/private-shop.git" {
 		t.Fatalf("created %+v", f.created)
 	}
 	if f.keys != 1 {
@@ -255,11 +255,11 @@ func TestPrivateRepoPages(t *testing.T) {
 	}
 	// a public repository gets no key, and a key id sent with it is dropped
 	form = url.Values{"step": {"plan"}, "app": {"node"}, "domain": {"voltix.id"}, "primary": {"domain"}, "node_version": {"24"},
-		"repo": {"https://github.com/owner/shop.git"}, "branch": {"main"}, "key_id": {"0123456789abcdef"}}
+		"repo": {"https://github.com/user/shop.git"}, "branch": {"main"}, "key_id": {"0123456789abcdef"}}
 	if _, plan, _ := e.postWith(e.c, "/sites/new", form, body); f.keys != 1 || strings.Contains(plan, `name="key_id"`) {
 		t.Errorf("public repository got a key: %d", f.keys)
 	}
-	f.repo = "git@github.com:owner/private-shop.git"
+	f.repo = "git@github.com:user/private-shop.git"
 	for _, lang := range []string{"en", "id"} {
 		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
 		code, page, _ := e.get(e.c, "/sites/voltix-id")

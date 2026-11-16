@@ -1,7 +1,7 @@
 # APP-01 — One-click apps besides WordPress
 
 Status: wave 1 LIVE 2026-11-12 19:32 WIB (v1.8.0: plain PHP + static); wave 2 Laravel BUILT 2026-11-12 (v1.9.0). Laravel moved to wave 2 (it needs its own image with
-`pdo_mysql` and Composer; the WordPress images have only `mysqli`). Owner asked: one-click for React, Next.js,
+`pdo_mysql` and Composer; the WordPress images have only `mysqli`). Requested: one-click for React, Next.js,
 Laravel, Go, plain PHP and other popular stacks, ready to use.
 
 ## Opinion
@@ -14,8 +14,8 @@ Two kinds of templates, because they start differently:
 
 | Kind | Starts as | Example |
 |---|---|---|
-| **Starter** | a working skeleton generated at create time, the owner edits or replaces it | plain PHP, Laravel, static |
-| **From code** | the owner's own code from a Git repository (public, or private with a read-only deploy key) or a .zip upload; the panel builds it in a throwaway build container and runs it | React/Vite, Next.js, Node, Go, Python |
+| **Starter** | a working skeleton generated at create time, edit or replace it | plain PHP, Laravel, static |
+| **From code** | your own code from a Git repository (public, or private with a read-only deploy key) or a .zip upload; the panel builds it in a throwaway build container and runs it | React/Vite, Next.js, Node, Go, Python |
 
 ## Template list (first wave → later)
 
@@ -62,7 +62,7 @@ only on the edge network and their own back network; secrets never in git, argv,
   Nginx serves files directly and sends the rest to `index.php` (front controller).
 - **Static** runs only nginx 1.30-alpine with the folder mounted read-only, SPA fallback to `index.html`, hidden
   files refused, healthcheck on `/.nostek-health`.
-- A starter page (`index.php` or `index.html`) is written at create time; the owner replaces it in Files.
+- A starter page (`index.php` or `index.html`) is written at create time; replace it in Files.
 - The panel shows the WordPress tab only for WordPress and the Database tab only for sites with a database. Backup,
   Files, Stack, Logs, PHP settings (PHP sites), domain and preview address work as for WordPress. Agent routes for
   WordPress tools and databases refuse other apps with a plain 400.
@@ -70,7 +70,7 @@ only on the edge network and their own back network; secrets never in git, argv,
 
 ## Wave 2 as built (v1.9.0): Laravel
 
-- Owner decision 2026-11-12 19:34 WIB: the Laravel image is **built on the server from official images**, not a
+- Decision 2026-11-12 19:34 WIB: the Laravel image is **built on the server from official images**, not a
   community image. Recipe (`catalog.LaravelDockerfile`): the pinned official WordPress PHP-FPM image of the chosen
   PHP version (the same one WordPress sites use; WordPress is never started) + `pdo_mysql` + `unzip`, and the
   `composer` binary from the pinned official `composer:2` image. Local tag `nostek-local/laravel:php<v>-<hash of
@@ -84,11 +84,11 @@ only on the edge network and their own back network; secrets never in git, argv,
   `DB_PASSWORD_FILE` and hands the value to Laravel before it starts, for the web, artisan, queue and scheduler.
 - Panel: Laravel card on the Overview with a fixed list of artisan commands (migrate, optimize, optimize:clear,
   queue:restart); logs and restart for queue and scheduler; Database, Files, Backup tabs as for every site.
-- Not yet: Laravel from the owner's Git repository (APP-02 with the Git deploy), Horizon/Octane, Redis.
+- Not yet: Laravel from your own Git repository (APP-02 with the Git deploy), Horizon/Octane, Redis.
 
 ## Laravel version choice (v1.9.1)
 
-- Owner asked 2026-11-12 ~20:40 WIB for a choice of Laravel version. "Add website" → Laravel now offers
+- Requested 2026-11-12 ~20:40 WIB for a choice of Laravel version. "Add website" → Laravel now offers
   **Laravel 13** (newest, default, needs PHP 8.3 or newer) and **Laravel 12** (needs PHP 8.2 or newer)
   (`catalog.Laravel`). The agent refuses a version it does not know, a PHP version below the minimum, and a
   version on any app other than Laravel. The site remembers its version (`site.json`), shown on the Overview.
