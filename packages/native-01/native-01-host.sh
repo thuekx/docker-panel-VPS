@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Nostek Panel - NATIVE-01: the optional native website engine on the host (owner decision NATIVE-1).
+# Nostek Panel - NATIVE-01: the optional native website engine on the host (decision NATIVE-1).
 # Installs one host Nginx (only on the edge network's gateway address, port 8088), PHP-FPM 8.1-8.5 from the
 # ondrej/php PPA (the distribution services stay off: every native website runs its own PHP-FPM as its own user),
 # one host MariaDB 10.11 on its unix socket only (no TCP), and WP-CLI. The agent learns about it from

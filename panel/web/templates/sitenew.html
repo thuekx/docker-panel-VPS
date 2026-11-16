@@ -74,7 +74,7 @@
       <label><input type="radio" name="source" value="files" {{if eq $f.Source "files"}}checked{{end}}> {{t $l "node.source.files"}}</label>
     </fieldset>
     <div class="for-git">
-    <label>{{t $l "node.repo"}}<input name="repo" value="{{$f.Repo}}" placeholder="https://github.com/owner/app.git" autocapitalize="none" spellcheck="false"><span class="muted">{{t $l "node.repo.help"}}</span></label>
+    <label>{{t $l "node.repo"}}<input name="repo" value="{{$f.Repo}}" placeholder="https://github.com/user/app.git" autocapitalize="none" spellcheck="false"><span class="muted">{{t $l "node.repo.help"}}</span></label>
     <label>{{t $l "node.branch"}}<input name="branch" value="{{if $f.Branch}}{{$f.Branch}}{{else}}main{{end}}" autocapitalize="none" spellcheck="false"></label>
     </div>
     <p class="muted for-files">{{t $l "node.source.files.help"}}</p>

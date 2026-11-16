@@ -487,7 +487,7 @@ func (m *Manager) createNode(ctx context.Context, j *Job, s Site, fail func(stri
 
 // appDatabase prepares the MariaDB of a Node.js, Go or Python app (APP-02b): the data folder, the password file
 // the database container reads, and the connection values in the app's environment file (0600, outside the
-// website folder), where the Overview lists their names and the owner can change them.
+// website folder), where the Overview lists their names and they can be changed.
 func (m *Manager) appDatabase(s Site) error {
 	dir := m.dir(s.ID)
 	if err := os.MkdirAll(filepath.Join(dir, "db"), 0o755); err != nil {

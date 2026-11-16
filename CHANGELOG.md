@@ -6,7 +6,7 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 ## [1.20.0] — 2026-11-16
 
 ### Added
-- **Native engine, optional** (NATIVE-01, owner decision NATIVE-1). Next to Docker, a WordPress, PHP or static website
+- **Native engine, optional** (NATIVE-01, decision NATIVE-1). Next to Docker, a WordPress, PHP or static website
   can run on the server's own Nginx, its own PHP-FPM (PHP 8.1-8.5 from the ondrej/php PPA) and the shared MariaDB.
   A quiet website then takes a few MB instead of 150-250 MB. Docker stays the default and every existing website keeps
   running as it is.
@@ -37,7 +37,7 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 ## [1.19.0] — 2026-11-16
 
 ### Added
-- **Disk usage and disk analyzer** (DISK-01, like cPanel's Disk Usage, owner 2026-11-16).
+- **Disk usage and disk analyzer** (DISK-01, like cPanel's Disk Usage, 2026-11-16).
   - Every website gets a **Disk** tab: what its files, database, backups and deleted files take, a drill-down of its
     folders from largest to smallest (click a folder to go in), and its 20 largest files with a link to their folder
     in the File Manager. Symbolic links are never followed; a very large folder stops counting after 20 seconds and
@@ -51,8 +51,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 ## [1.18.0] — 2026-11-16
 
 ### Added
-- **Resources per website** (RES-01, owner request). The Overview gains a **Resources** card. Every website keeps
-  running on our standard limits until the owner raises them, and they can only be raised (or set back to the
+- **Resources per website** (RES-01). The Overview gains a **Resources** card. Every website keeps
+  running on our standard limits until they are raised, and they can only be raised (or set back to the
   standard), never set below it.
   - **Memory per container**: the standard of the template (for example PHP 512 MB, Nginx 128 MB, database 512 MB),
     or 768 MB, 1 GB, 1.5 GB, 2 GB. Memory is taken from the server only while it is used; the limit stops one website
@@ -68,7 +68,7 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ## [1.17.0] — 2026-11-14
 
-Running at the owner's server since 2026-11-16 01:38 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+Live on the production server since 2026-11-16 01:38 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Ready apps** (APP-03, first wave). "Add website" gains a second group, **Ready apps**: **Uptime Kuma** (website
@@ -80,7 +80,7 @@ Running at the owner's server since 2026-11-16 01:38 WIB (`site-01` APPLY + VERI
   - It is reachable only through the panel's HTTPS edge; it may reach the internet (monitor checks, workflow calls).
   - After creating it, open it at once and make its first account: the first visitor sets it.
   - Logs of the app are on the Overview.
-- **Start, Restart, Stop and Delete show that they are working** (owner request): the pressed button spins and says
+- **Start, Restart, Stop and Delete show that they are working**: the pressed button spins and says
   what runs ("Stopping…"), the other buttons wait, and a note says it can take up to 3 minutes; the page shows the
   result by itself when it is done. Also on the restart button of each container.
 
@@ -94,7 +94,7 @@ Running at the owner's server since 2026-11-16 01:38 WIB (`site-01` APPLY + VERI
 
 ## [1.16.0] — 2026-11-13
 
-Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+Live on the production server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Update image** for every website (IMG-01). A new card **Images** on the Overview lists each container, the image
@@ -113,7 +113,7 @@ Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERI
 
 ## [1.15.0] — 2026-11-13
 
-Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+Live on the production server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Database choice per package** (DB-FLEX, as on cPanel). "Add website" now offers the databases each package
@@ -131,7 +131,7 @@ Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERI
 
 ## [1.14.0] — 2026-11-13
 
-Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+Live on the production server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Auto-deploy on push** for Node.js, Go and Python websites built from Git (APP-02c). A new card **Auto-deploy** on
@@ -146,7 +146,7 @@ Running at the owner's server since 2026-11-14 22:29 WIB (`site-01` APPLY + VERI
 
 ## [1.13.0] — 2026-11-13
 
-Running at the owner's server since 21:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+Live on the production server since 21:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **A database for Node.js, Go and Python websites** (APP-02b). "Add website" asks for one: no database, **MariaDB**
@@ -164,11 +164,11 @@ Running at the owner's server since 21:29 WIB (`site-01` APPLY + VERIFY PASS, `p
 
 ## [1.12.0] — 2026-11-13
 
-Running at the owner's server since 17:05 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+Live on the production server since 17:05 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Private Git repositories** for Node.js, Go and Python websites (APP-02b). Give the SSH address of the repository
-  (for example `git@github.com:owner/app.git`); the panel makes a **deploy key** for that website only and shows it
+  (for example `git@github.com:user/app.git`); the panel makes a **deploy key** for that website only and shows it
   on the approve card, with the steps to add it on GitHub, GitLab or Bitbucket (read only). The first build then
   reads the repository with it.
   - The private half of the key never leaves the server: it is kept in a file only the website's build can read and
@@ -178,7 +178,7 @@ Running at the owner's server since 17:05 WIB (`site-01` APPLY + VERIFY PASS, `p
 
 ## [1.11.0] — 2026-11-12
 
-Running at the owner's server since 17:05 WIB 2026-11-13, together with 1.12.0 (`site-01` APPLY + VERIFY PASS,
+Live on the production server since 17:05 WIB 2026-11-13, together with 1.12.0 (`site-01` APPLY + VERIFY PASS,
 `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
@@ -202,7 +202,7 @@ Running at the owner's server since 17:05 WIB 2026-11-13, together with 1.12.0 (
 
 ## [1.10.0] — 2026-11-12
 
-Running at the owner's server since 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS), together
+Live on the production server since 22:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS), together
 with 1.9.1.
 
 ### Added
@@ -222,7 +222,7 @@ with 1.9.1.
 
 ## [1.9.1] — 2026-11-12
 
-Released to the owner's server with 1.10.0 (22:29 WIB).
+Released to the production server with 1.10.0 (22:29 WIB).
 
 ### Added
 - **Choose the Laravel version** when adding a Laravel website: Laravel 13 (newest, default) or Laravel 12. The panel
@@ -235,7 +235,7 @@ Released to the owner's server with 1.10.0 (22:29 WIB).
 
 ## [1.9.0] — 2026-11-12
 
-Running at the owner's server since 20:34 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+Live on the production server since 20:34 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Laravel websites** (APP-01, second wave). "Add website" offers Laravel: a fresh Laravel project, ready to use,
@@ -249,7 +249,7 @@ Running at the owner's server since 20:34 WIB (`site-01` APPLY + VERIFY PASS, `p
 
 ## [1.8.0] — 2026-11-12
 
-Running at the owner's server since 19:32 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+Live on the production server since 19:32 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **More than WordPress** (APP-01, first wave). "Add website" now asks which app:
@@ -270,7 +270,7 @@ Laravel follows in the next wave (it needs its own PHP image with `pdo_mysql` an
 
 ## [1.7.0] — 2026-11-12
 
-Running at the owner's server since 18:31 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS,
+Live on the production server since 18:31 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS,
 certificate valid). The same update brought 1.6.1.
 
 ### Added
@@ -301,7 +301,7 @@ Released with 1.7.0 in one update (18:31 WIB).
 
 ## [1.6.0] — 2026-11-12
 
-Running at the owner's server since 16:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
+Live on the production server since 16:29 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
 
 ### Added
 - **WordPress Tools** per website (WP-01, like WP Toolkit), a new WordPress tab:
@@ -327,7 +327,7 @@ Running at the owner's server since 16:29 WIB (`site-01` APPLY + VERIFY PASS, `p
 
 ## [1.5.0] — 2026-11-12
 
-Running at the owner's server since 15:37 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
+Live on the production server since 15:37 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
 
 ### Added
 - **File Manager** per website (SITE-02): browse folders, open and edit text files (up to 2 MB, line ends kept),
@@ -351,7 +351,7 @@ Running at the owner's server since 15:37 WIB (`site-01` APPLY + VERIFY PASS, `p
 
 ## [1.4.0] — 2026-11-12
 
-Running at the owner's server since 14:22 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
+Live on the production server since 14:22 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS, certificate valid).
 
 ### Added
 - **Stack** card on each website (STACK-01): every container of the site (web server, PHP-FPM, database) with
@@ -362,7 +362,7 @@ Running at the owner's server since 14:22 WIB (`site-01` APPLY + VERIFY PASS, `p
 
 ## [1.3.0] — 2026-11-12
 
-Running at the owner's server since 01:07 WIB (`panel-01 UPDATE` + VERIFY PASS, certificate valid).
+Live on the production server since 01:07 WIB (`panel-01 UPDATE` + VERIFY PASS, certificate valid).
 
 ### Added
 - **Profile** page: change your password (current password needed; every other device is signed out),
@@ -377,7 +377,7 @@ Running at the owner's server since 01:07 WIB (`panel-01 UPDATE` + VERIFY PASS, 
 
 ## [1.2.0] — 2026-11-11
 
-Running at the owner's server since 16:41 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` PASS).
+Live on the production server since 16:41 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` PASS).
 
 ### Added
 - **Websites** (SITE-01): add a WordPress website with Apache or Nginx + PHP-FPM, PHP 8.1 to 8.5 (8.1 marked end of
@@ -394,7 +394,7 @@ Running at the owner's server since 16:41 WIB (`site-01` APPLY + VERIFY PASS, `p
 
 ## [1.1.0] — 2026-11-11
 
-Running at the owner's server since 15:48 WIB (updated with `UPDATE`, VERIFY PASS).
+Live on the production server since 15:48 WIB (updated with `UPDATE`, VERIFY PASS).
 
 ### Added
 - Appearance setting: Light, Dark or Follow system. Switch in the header and in Settings; saved on the account
@@ -411,7 +411,7 @@ Running at the owner's server since 15:48 WIB (updated with `UPDATE`, VERIFY PAS
 
 ## [1.0.0] — 2026-11-11
 
-First release, running at the owner's server since 15:06 WIB.
+First release, live on the production server since 15:06 WIB.
 
 ### Added
 - Nostek Panel (Go): one-time setup link for the first admin, login with Argon2id passwords and mandatory

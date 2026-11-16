@@ -90,7 +90,7 @@ func newTest(t *testing.T, dns map[string][]string) (*Manager, *fakeRunner) {
 }
 
 func req() spec.Create {
-	return spec.Create{Domain: "voltix.id", Primary: "domain", Server: "apache", PHP: "8.4", AdminEmail: "owner@nostek.dev", Title: "Voltix"}
+	return spec.Create{Domain: "voltix.id", Primary: "domain", Server: "apache", PHP: "8.4", AdminEmail: "admin@nostek.dev", Title: "Voltix"}
 }
 
 func waitJob(t *testing.T, m *Manager, id string) JobView {

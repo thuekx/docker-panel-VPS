@@ -1,9 +1,9 @@
 # APP-02 — Node.js / Next.js, Go and Python websites, deployed from Git
 
-Status: APP-02a BUILT 2026-11-12 (v1.10.0, Node.js from Git or own files); 02b/02c [DESIGN]. Designed 2026-11-12, after APP-01 (Laravel live as v1.9.0). Owner order: every stack first (APP-01, APP-02),
+Status: APP-02a BUILT 2026-11-12 (v1.10.0, Node.js from Git or own files); 02b/02c [DESIGN]. Designed 2026-11-12, after APP-01 (Laravel live as v1.9.0). Order: every stack first (APP-01, APP-02),
 then IMG-01 (update image button), then APP-03 (ready-app catalogue).
 
-## What the owner gets
+## What you get
 
 "Add website" gains **Node.js** (Express, NestJS, Nuxt, SvelteKit, Remix, Next.js), **Go** and **Python** (Django,
 FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the website has a **Deploy** tab:
@@ -74,7 +74,7 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
 
 ## APP-02b private repositories as built (v1.12.0)
 
-- Address: `git@host:owner/app.git` or `ssh://git@host[:port]/owner/app.git` (user `git` only, path cannot start with
+- Address: `git@host:user/app.git` or `ssh://git@host[:port]/user/app.git` (user `git` only, path cannot start with
   `-`, no spaces). https addresses stay public-only.
 - Key: Ed25519, made by the agent (Go standard library, OpenSSH format) when the panel plans the website:
   `POST /v1/deploykeys` keeps it 0600 in `/srv/nostek/deploy-keys/<id>` (folder 0700) and returns id, public key and
@@ -91,14 +91,14 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
 
 ## APP-02b database for apps as built (v1.13.0)
 
-- Owner decision 2026-11-13: both engines, chosen when the website is made (`database: true`, `db_engine`: `mariadb`
+- Decision 2026-11-13: both engines, chosen when the website is made (`database: true`, `db_engine`: `mariadb`
   (default) or `postgres`). The engine cannot be changed later; a move is export and import.
 - Compose: service `db` on the `back` network only (MariaDB as for PHP sites, or `postgres:18-trixie` by digest,
   data `./db:/var/lib/postgresql`, `POSTGRES_PASSWORD_FILE`, `pg_isready` health check, 512 MB). The app joins `back`
   and waits for a healthy `db`.
 - Password: `secrets/db_password` (0444 inside a 0700 folder, mounted as a compose secret). Connection values go into
   `deploy/app.env` (0600) like any environment value: `DATABASE_URL`, `DB_HOST=db`, `DB_PORT` (3306 or 5432),
-  `DB_NAME=app`, `DB_USER=app`, `DB_PASSWORD`. The owner may edit or delete them on the Overview.
+  `DB_NAME=app`, `DB_USER=app`, `DB_PASSWORD`. They can be edited or deleted on the Overview.
 - PostgreSQL tools run in the `db` container through a small wrapper that reads the password file
   (`PGPASSWORD="$(cat /run/secrets/db_password)"`), never from argv: overview (`SHOW server_version`, tables of the
   `public` schema from `pg_class`), console (`psql` HTML output with a random table class and NULL marker, so typed
@@ -127,7 +127,7 @@ FastAPI, Flask). Unlike PHP, these apps must be **built and started**, so the we
 
 ## DB-FLEX database choice per package as built (v1.15.0)
 
-- Owner decision 2026-11-13 21:46 WIB: like cPanel, each package offers the databases it supports; one database per
+- Decision 2026-11-13 21:46 WIB: like cPanel, each package offers the databases it supports; one database per
   website (two at once only if a real need comes up).
 - Spec: `db_engine` (`mariadb` | `postgres`) needs `database: true` for PHP and runtime apps; Laravel takes it alone
   (it always has a database); WordPress and static sites take none.

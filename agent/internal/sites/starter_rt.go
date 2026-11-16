@@ -1,7 +1,7 @@
 package sites
 
 // Starter apps of Go and Python websites built from their own files (APP-02b): no dependencies, so the first
-// deploy needs no registry. The owner replaces them with the File Manager and presses Deploy.
+// deploy needs no registry. Replace them with the File Manager and presses Deploy.
 
 import (
 	"html"

@@ -71,7 +71,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if f.app == "node" {
 		site.PHP, site.Server, site.AdminUser, site.Version = "", "", "", "24"
-		site.Repo, site.Branch, site.Start, site.Release = "https://github.com/owner/shop.git", "main", "node server.js", 3
+		site.Repo, site.Branch, site.Start, site.Release = "https://github.com/user/shop.git", "main", "node server.js", 3
 		if f.repo != "" {
 			site.Repo = f.repo
 		}

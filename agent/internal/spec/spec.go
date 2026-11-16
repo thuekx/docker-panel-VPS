@@ -119,8 +119,8 @@ const (
 var (
 	// Public https Git addresses: no user name or password in the address, no query, no fragment.
 	repoRe = regexp.MustCompile(`^https://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?(/[A-Za-z0-9._~-]+)+/?$`)
-	// Private repositories over SSH with the website's deploy key: git@host:owner/app.git or
-	// ssh://git@host[:port]/owner/app.git (APP-02b). Only the user "git"; no options can be smuggled in.
+	// Private repositories over SSH with the website's deploy key: git@host:user/app.git or
+	// ssh://git@host[:port]/user/app.git (APP-02b). Only the user "git"; no options can be smuggled in.
 	sshRepoRe = regexp.MustCompile(`^(git@[a-z0-9]([a-z0-9.-]*[a-z0-9])?:|ssh://git@[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?/)[A-Za-z0-9_][A-Za-z0-9._~-]*(/[A-Za-z0-9._~-]+)*/?$`)
 	keyIDRe   = regexp.MustCompile(`^[a-f0-9]{16}$`)
 	branchRe  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]*$`)
@@ -149,11 +149,11 @@ func AppDir(d string) error {
 	return nil
 }
 
-// Repo checks a Git repository address: public https, or SSH (git@host:owner/app.git) for a private repository
+// Repo checks a Git repository address: public https, or SSH (git@host:user/app.git) for a private repository
 // read with the website's deploy key.
 func Repo(r string) error {
 	if r == "" || len(r) > MaxRepo || !(repoRe.MatchString(r) || sshRepoRe.MatchString(r)) || strings.Contains(r, "..") {
-		return errors.New("repository must be a public https address such as https://github.com/owner/app.git (no user name or password), or for a private repository an SSH address such as git@github.com:owner/app.git")
+		return errors.New("repository must be a public https address such as https://github.com/user/app.git (no user name or password), or for a private repository an SSH address such as git@github.com:user/app.git")
 	}
 	return nil
 }
@@ -179,7 +179,7 @@ func Branch(b string) error {
 }
 
 // Command checks a build or start command: one line of printable text. It runs inside the website's own
-// container (the owner's own code runs there anyway), never on the server itself.
+// container (your own code runs there anyway), never on the server itself.
 func Command(c string) error {
 	if strings.TrimSpace(c) == "" || len(c) > MaxCommand {
 		return fmt.Errorf("command must be 1-%d characters", MaxCommand)
@@ -234,7 +234,7 @@ const (
 // IsRuntimeApp is true for an app built from source by the agent: node, go or python.
 func IsRuntimeApp(app string) bool { return app == AppNode || app == AppGo || app == AppPython }
 
-// Commands of a runtime app: install (fixed), build and start (defaults, the owner may change them).
+// Commands of a runtime app: install (fixed), build and start (defaults, can be changed).
 var (
 	InstallCmd = map[string]string{
 		AppNode:   NodeInstall,

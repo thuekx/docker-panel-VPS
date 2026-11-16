@@ -515,7 +515,7 @@
   "sites.creates.node": "Satu container: aplikasi Anda di image resmi Node.js, di-build dari branch pilihan Anda. Setiap deploy membuat rilis baru; rilis yang aktif tetap jalan sampai rilis baru menjawab.",
   "sites.resources.node": "Memori maksimal 768 MB saat berjalan (build boleh memakai sampai 1,5 GB dan 2 CPU, paling lama 15 menit); disk bertambah sesuai isi website dan 3 rilis yang disimpan.",
   "node.repo": "Repository Git",
-  "node.repo.help": "Alamat https publik, misalnya https://github.com/owner/app.git, atau untuk repository privat alamat SSH seperti git@github.com:owner/app.git (panel lalu membuat deploy key untuknya).",
+  "node.repo.help": "Alamat https publik, misalnya https://github.com/user/app.git, atau untuk repository privat alamat SSH seperti git@github.com:user/app.git (panel lalu membuat deploy key untuknya).",
   "node.branch": "Branch",
   "node.build": "Perintah build",
   "node.start": "Perintah start",

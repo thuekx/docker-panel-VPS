@@ -52,7 +52,7 @@ func TestPrivateRepoDeployKey(t *testing.T) {
 		}
 		return nil, nil, false
 	}
-	c := spec.Create{App: "go", Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "git@github.com:owner/private-app.git", Branch: "main"}
+	c := spec.Create{App: "go", Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "git@github.com:user/private-app.git", Branch: "main"}
 	if _, err := m.Plan(context.Background(), c); err == nil || !strings.Contains(err.Error(), "deploy key") {
 		t.Fatalf("SSH repository without a key: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestPrivateRepoDeployKey(t *testing.T) {
 	}
 	for _, want := range []string{m.deployKeyPath(s.ID) + ":" + buildKeyPath + ":ro", m.knownHostsPath(s.ID) + ":" + buildKnownHosts,
 		"GIT_SSH_COMMAND=ssh -i " + buildKeyPath, "IdentitiesOnly=yes", "BatchMode=yes", "StrictHostKeyChecking=accept-new",
-		"UserKnownHostsFile=" + buildKnownHosts, "NOSTEK_REPO=git@github.com:owner/private-app.git", "GIT_TERMINAL_PROMPT=0"} {
+		"UserKnownHostsFile=" + buildKnownHosts, "NOSTEK_REPO=git@github.com:user/private-app.git", "GIT_TERMINAL_PROMPT=0"} {
 		if !strings.Contains(build, want) {
 			t.Errorf("build lacks %q", want)
 		}

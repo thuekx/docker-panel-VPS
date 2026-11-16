@@ -181,7 +181,7 @@ var (
 	wpWarnRe = regexp.MustCompile(`(?m)^Warning: (.*)$`)
 )
 
-// wpErr turns a failed WP-CLI command into a short message the owner can act on.
+// wpErr turns a failed WP-CLI command into a short message to act on.
 func wpErr(o wpOut) error {
 	t := o.Err + "\n" + o.Out
 	if strings.Contains(t, "Error establishing a database connection") {

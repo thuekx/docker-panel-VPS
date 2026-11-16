@@ -54,7 +54,7 @@ func TestEmailTitleID(t *testing.T) {
 }
 
 func okCreate() Create {
-	return Create{Domain: "voltix.id", Primary: "domain", Server: "apache", PHP: "8.4", AdminEmail: "owner@nostek.dev", Title: "Voltix"}
+	return Create{Domain: "voltix.id", Primary: "domain", Server: "apache", PHP: "8.4", AdminEmail: "admin@nostek.dev", Title: "Voltix"}
 }
 
 func TestCreateCheck(t *testing.T) {
@@ -176,7 +176,7 @@ func TestCreateApps(t *testing.T) {
 }
 
 func TestNodeCreate(t *testing.T) {
-	ok := Create{App: "node", Domain: "voltix.id", Primary: "domain", Version: "24", Repo: "https://github.com/owner/shop.git", Branch: "main"}
+	ok := Create{App: "node", Domain: "voltix.id", Primary: "domain", Version: "24", Repo: "https://github.com/user/shop.git", Branch: "main"}
 	if err := ok.Check(nil); err != nil {
 		t.Fatal(err)
 	}
@@ -185,11 +185,11 @@ func TestNodeCreate(t *testing.T) {
 		"php":         func(c *Create) { c.PHP = "8.4" },
 		"version":     func(c *Create) { c.Version = "20" },
 		"no version":  func(c *Create) { c.Version = "" },
-		"http":        func(c *Create) { c.Repo = "http://github.com/owner/shop.git" },
-		"userinfo":    func(c *Create) { c.Repo = "https://user:pw@github.com/owner/shop.git" },
-		"query":       func(c *Create) { c.Repo = "https://github.com/owner/shop.git?x=1" },
-		"ssh":         func(c *Create) { c.Repo = "git@github.com:owner/shop.git" },
-		"dotdot":      func(c *Create) { c.Repo = "https://github.com/owner/../shop" },
+		"http":        func(c *Create) { c.Repo = "http://github.com/user/shop.git" },
+		"userinfo":    func(c *Create) { c.Repo = "https://user:pw@github.com/user/shop.git" },
+		"query":       func(c *Create) { c.Repo = "https://github.com/user/shop.git?x=1" },
+		"ssh":         func(c *Create) { c.Repo = "git@github.com:user/shop.git" },
+		"dotdot":      func(c *Create) { c.Repo = "https://github.com/user/../shop" },
 		"file":        func(c *Create) { c.Repo = "file:///etc" },
 		"no branch":   func(c *Create) { c.Branch = "" },
 		"dash branch": func(c *Create) { c.Branch = "-x" },
@@ -236,22 +236,22 @@ func TestNodeCreate(t *testing.T) {
 }
 
 func TestSSHRepo(t *testing.T) {
-	for _, ok := range []string{"git@github.com:owner/app.git", "git@gitlab.com:group/sub/app.git", "ssh://git@git.example.com:2222/owner/app.git", "ssh://git@172.17.0.1:2222/srv/app.git"} {
+	for _, ok := range []string{"git@github.com:user/app.git", "git@gitlab.com:group/sub/app.git", "ssh://git@git.example.com:2222/user/app.git", "ssh://git@172.17.0.1:2222/srv/app.git"} {
 		if Repo(ok) != nil || !IsSSHRepo(ok) {
 			t.Errorf("%s refused", ok)
 		}
 	}
-	for _, bad := range []string{"git@github.com:-oProxyCommand=sh", "git@-oProxyCommand=x:a/b", "root@github.com:owner/app.git", "ssh://root@host/a.git",
-		"ssh://git@host/../etc", "git@github.com:owner/app.git;id", "git@github.com:owner/app.git --upload-pack=x", "ext::sh -c id", "git@github.com:",
+	for _, bad := range []string{"git@github.com:-oProxyCommand=sh", "git@-oProxyCommand=x:a/b", "root@github.com:user/app.git", "ssh://root@host/a.git",
+		"ssh://git@host/../etc", "git@github.com:user/app.git;id", "git@github.com:user/app.git --upload-pack=x", "ext::sh -c id", "git@github.com:",
 		"file:///etc", "ssh://git@host:99999999/a"} {
 		if Repo(bad) == nil || IsSSHRepo(bad) {
 			t.Errorf("%s accepted", bad)
 		}
 	}
-	if IsSSHRepo("https://github.com/owner/app.git") {
+	if IsSSHRepo("https://github.com/user/app.git") {
 		t.Error("https address taken as SSH")
 	}
-	base := Create{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "git@github.com:owner/app.git", Branch: "main"}
+	base := Create{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "git@github.com:user/app.git", Branch: "main"}
 	if base.Check(nil) == nil {
 		t.Error("SSH repository without a deploy key accepted")
 	}
@@ -260,9 +260,9 @@ func TestSSHRepo(t *testing.T) {
 		t.Errorf("SSH repository with a key: %v", err)
 	}
 	for _, c := range []Create{
-		{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "https://github.com/owner/app.git", Branch: "main", KeyID: "0123456789abcdef"},
+		{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "https://github.com/user/app.git", Branch: "main", KeyID: "0123456789abcdef"},
 		{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Source: SourceFiles, KeyID: "0123456789abcdef"},
-		{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "git@github.com:owner/app.git", Branch: "main", KeyID: "../../etc/passwd"},
+		{App: AppGo, Domain: "voltix.id", Primary: "domain", Version: "1.27", Repo: "git@github.com:user/app.git", Branch: "main", KeyID: "../../etc/passwd"},
 		{Domain: "voltix.id", Primary: "domain", Server: "nginx", PHP: "8.4", AdminEmail: "o@voltix.id", KeyID: "0123456789abcdef"},
 	} {
 		if c.Check(nil) == nil {

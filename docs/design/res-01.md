@@ -1,12 +1,12 @@
 # RES-01 — Resource limits per website
 
-Status: BUILT 2026-11-16 (v1.18.0). Owner 2026-11-16 01:46 WIB: "buatkan sekalian dengan standard default kita dan
+Status: BUILT 2026-11-16 (v1.18.0). Request 2026-11-16 01:46 WIB: "buatkan sekalian dengan standard default kita dan
 hanya bisa dinaikkan jika dibutuhkan" (like cPanel's MultiPHP INI Editor and memory_limit).
 
 ## Rules
 - Every website runs on **our standard**: the container memory limits of its template (`mem_limit` in the rendered
   compose file) and the standard php.ini (memory_limit 256M, upload_max_filesize/post_max_size 128M,
-  max_execution_time 120, max_input_vars 1000). Nothing changes for a website until the owner raises something.
+  max_execution_time 120, max_input_vars 1000). Nothing changes for a website until something is raised.
 - **Raise only**: memory per container 768 MB, 1 GB, 1.5 GB or 2 GB above the standard; PHP settings from a short
   list each. Setting the standard drops the raise. Below the standard is refused by the agent.
 - **memory_limit has room**: raising it raises every container that reads the website's php.ini to at least one

@@ -1,6 +1,6 @@
 package sites
 
-// Native engine (NATIVE-01, owner decision NATIVE-1 2026-11-16): a website served by the host's Nginx and its own
+// Native engine (NATIVE-01, decision NATIVE-1 2026-11-16): a website served by the host's Nginx and its own
 // PHP-FPM from the ondrej/php PPA (8.1-8.5), with its database on the host's MariaDB over the unix socket. Only
 // WordPress, plain PHP and static websites; Docker stays the default engine.
 //
@@ -170,7 +170,7 @@ func (s Site) nativeSandbox(p NativePaths) []string {
 	}
 }
 
-// nativeMem is the memory limit of the website's PHP in MB: the standard, or what the owner raised it to.
+// nativeMem is the memory limit of the website's PHP in MB: the standard, or what it was raised to.
 func (s Site) nativeMem() int {
 	if v, ok := s.RAM["php"]; ok && v > NativeMemory {
 		return v

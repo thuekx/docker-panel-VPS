@@ -1,6 +1,6 @@
 # WordPress migration into Nostek Panel (MIG-01) — options
 
-Status: [PROPOSED], roadmap slot MIG-01 (after SITE-02 and BAK-01). Owner asked for it on 2026-11-11.
+Status: [PROPOSED], roadmap slot MIG-01 (after SITE-02 and BAK-01). Requested on 2026-11-11.
 
 Goal: move an existing WordPress site from an old host into the panel with as few steps as possible, with a
 preview before DNS is switched, and without downtime on the old site.
@@ -18,7 +18,7 @@ preview before DNS is switched, and without downtime on the old site.
 1. Create the target site (Apache or Nginx) with a temporary preview address.
 2. Copy files, import the database, rewrite URLs safely (serialized-data aware search-replace).
 3. Health check: home page, admin login, permalinks, media.
-4. Owner checks the preview, then switches DNS; the panel issues HTTPS for the real domain.
+4. Check the preview, then switches DNS; the panel issues HTTPS for the real domain.
 5. The old site is left untouched (move aside, never delete).
 
 Recommendation: build M1 first with M3 as fallback; add M2 later for large sites.

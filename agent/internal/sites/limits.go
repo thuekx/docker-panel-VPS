@@ -1,7 +1,7 @@
 package sites
 
-// Resource limits per website (RES-01, owner 2026-11-16 01:46 WIB). Every website starts on our standard: the
-// container memory limits of the templates and the standard PHP settings. The owner can only raise them, from a
+// Resource limits per website (RES-01, 2026-11-16 01:46 WIB). Every website starts on our standard: the
+// container memory limits of the templates and the standard PHP settings. They can only be raised, from a
 // short list, when a website needs more (and go back to the standard), never below it. Raising PHP's
 // memory_limit raises the memory of the containers that run PHP with it, so memory_limit always has room.
 
@@ -18,10 +18,10 @@ import (
 	"time"
 )
 
-// RAMChoices are the container memory limits (MB) the owner can raise a service to.
+// RAMChoices are the container memory limits (MB) a service can be raised to.
 var RAMChoices = []int{768, 1024, 1536, 2048}
 
-// PHPSettings are the PHP settings the owner can raise (like cPanel's MultiPHP INI Editor).
+// PHPSettings are the PHP settings that can be raised (like cPanel's MultiPHP INI Editor).
 type PHPSettings struct {
 	Memory    int `json:"memory_mb"`      // memory_limit
 	Upload    int `json:"upload_mb"`      // upload_max_filesize and post_max_size

@@ -1,8 +1,8 @@
 # SITE-02 — File Manager and Database per website (v1.5.0)
 
-Owner ask: cPanel-like file manager and database admin for each website (roadmap #8).
+Request: cPanel-like file manager and database admin for each website (roadmap #8).
 
-## What the owner gets
+## What you get
 
 | Page | What it does |
 |---|---|

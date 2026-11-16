@@ -170,7 +170,7 @@ func TestImageUpdateFailures(t *testing.T) {
 	if mustRead(t, m.composePath(id)) != old {
 		t.Error("previous compose file not put back")
 	}
-	// neither starts: the owner is told which backup to restore
+	// neither starts: the panel names the backup to restore
 	m, f, id, _ = olderSite(t)
 	f.dumped = "-- dump\n"
 	f.hook = func(args []string) ([]byte, error, bool) {
