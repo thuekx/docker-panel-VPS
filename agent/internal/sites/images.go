@@ -123,6 +123,9 @@ func (m *Manager) ImageStatus(ctx context.Context, id string) (Images, error) {
 	if err != nil {
 		return Images{}, err
 	}
+	if s.IsNative() { // apt keeps the host's Nginx, PHP and MariaDB patched; there are no images
+		return Images{}, ErrNativeUnsupported
+	}
 	want, err := s.Compose()
 	if err != nil {
 		return Images{}, fmt.Errorf("%w: this agent no longer offers the version this website runs", ErrBadInput)

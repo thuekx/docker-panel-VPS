@@ -740,5 +740,13 @@
   "disk.clean.images.ask": "Hapus semua image yang tidak disebut website mana pun? Image website Anda (termasuk WP-CLI dan image hasil build) tetap ada. Versi lama yang disimpan setelah Perbarui image ikut terhapus: kembali ke versi itu lalu butuh backup-nya.",
   "disk.clean.help": "Image yang disebut website dan image yang dipakai container tidak pernah dihapus. Build cache dibuat lagi oleh build berikutnya (sekali itu mungkin lebih lama).",
   "disk.done.images": "Image tak terpakai dihapus: %s.",
-  "disk.done.build-cache": "Build cache dikosongkan: %s dibebaskan."
+  "disk.done.build-cache": "Build cache dikosongkan: %s dibebaskan.",
+  "engine.title": "Engine",
+  "engine.docker": "Docker (disarankan)",
+  "engine.docker.help": "Setiap website punya container sendiri: web server, PHP dan database sendiri. Pemisahan antar website paling kuat; sekitar 150-250 MB memori per WordPress saat diam.",
+  "engine.native": "Native",
+  "engine.native.help": "Memakai Nginx server ini, PHP-FPM milik website sendiri yang hanya jalan saat melayani pengunjung, dan MariaDB bersama: website yang sepi hanya memakai beberapa MB. Dipisahkan oleh user Linux dan sandbox sendiri, lebih lemah dari container. Hanya untuk WordPress, PHP dan website statis, selalu dengan Nginx, database hanya MariaDB.",
+  "engine.native.php": "Versi PHP yang terpasang untuk engine native: %s.",
+  "engine.shown.docker": "Docker",
+  "engine.shown.native": "Native (Nginx + PHP-FPM + MariaDB di host)"
 }

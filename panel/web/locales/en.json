@@ -740,5 +740,13 @@
   "disk.clean.images.ask": "Remove every image no website names? Images of your websites (also WP-CLI and built images) stay. An older version kept after Update image is removed: going back then needs its backup.",
   "disk.clean.help": "Images named by a website and images a container uses are never removed. The build cache is rebuilt by the next build (it may take longer once).",
   "disk.done.images": "Unused images removed: %s.",
-  "disk.done.build-cache": "Build cache cleared: %s freed."
+  "disk.done.build-cache": "Build cache cleared: %s freed.",
+  "engine.title": "Engine",
+  "engine.docker": "Docker (recommended)",
+  "engine.docker.help": "Every website gets its own containers: its own web server, PHP and database. The strongest separation between websites; about 150-250 MB of memory per WordPress at rest.",
+  "engine.native": "Native",
+  "engine.native.help": "The server's own Nginx, a PHP-FPM of its own that runs only while it serves visitors, and the shared MariaDB: a quiet website takes only a few MB. Separated by its own Linux user and sandbox, which is weaker than a container. WordPress, PHP and static websites only, always on Nginx, MariaDB only.",
+  "engine.native.php": "PHP versions installed for the native engine: %s.",
+  "engine.shown.docker": "Docker",
+  "engine.shown.native": "Native (host Nginx + PHP-FPM + MariaDB)"
 }

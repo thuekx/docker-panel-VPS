@@ -45,6 +45,8 @@ type fakeAgent struct {
 	limCalls  []string // RES-01: bodies of the limit changes
 	cleans    []string // DISK-01: clean-up bodies
 	diskPaths []string // DISK-01: drill-down paths asked
+	native    bool     // NATIVE-01: the server has the native engine
+	engine    string   // NATIVE-01: engine of the fake site
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +56,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	site := agent.Site{ID: "voltix-id", Domain: "voltix.id", Server: "nginx", PHP: "8.4", AdminUser: "admin-abc123",
 		URL: "https://voltix-id.preview.nostek.dev", Phase: "ready", Status: "running",
 		Hosts: []agent.Host{{Name: "voltix.id", Role: "primary"}, {Name: "voltix-id.preview.nostek.dev", Role: "preview", Routed: true}}}
-	site.App, site.Database, site.DBEngine = f.app, f.appDB, f.dbEngine
+	site.App, site.Database, site.DBEngine, site.Engine = f.app, f.appDB, f.dbEngine, f.engine
 	if f.app == "laravel" {
 		site.Version = "13"
 	}
@@ -94,7 +96,8 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Node:    []agent.Node{{Version: "26", SecurityUntil: "2029-04-30"}, {Version: "24", SecurityUntil: "2028-04-30", Default: true}},
 			Go:      []agent.Node{{Version: "1.27", SecurityUntil: "2027-08-31", Default: true}},
 			Python:  []agent.Node{{Version: "3.14", SecurityUntil: "2030-10-31", Default: true}},
-			Ready:   []agent.Ready{{ID: "uptime-kuma", Name: "Uptime Kuma", Version: "2.5.11-slim-rootless"}, {ID: "n8n", Name: "n8n", Version: "2.47.7"}}})
+			Ready:   []agent.Ready{{ID: "uptime-kuma", Name: "Uptime Kuma", Version: "2.5.11-slim-rootless"}, {ID: "n8n", Name: "n8n", Version: "2.47.7"}},
+			Native:  map[bool]*agent.Native{true: {PHP: []string{"8.3", "8.4"}}}[f.native]})
 	case r.URL.Path == "/v1/sites" && r.Method == "GET":
 		write(200, map[string]any{"sites": []agent.Site{site}})
 	case r.URL.Path == "/v1/trash":
@@ -192,7 +195,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.URL.Path == "/v1/sites/plan" {
-			site.App = c.App
+			site.App, site.Engine = c.App, c.Engine
 			if site.IsNode() || c.App == "php" || c.App == "laravel" {
 				site.Database, site.DBEngine = c.Database, c.DBEngine
 			}
