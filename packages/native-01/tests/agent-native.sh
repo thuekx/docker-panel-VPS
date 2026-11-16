@@ -29,6 +29,11 @@ wait_job() { # $1 job id → done | failed
 served() { # $1 host $2 path → status code from the host's Nginx, as the edge asks it
   curl -s -o /tmp/np-native-page -w '%{http_code}' --max-time 20 -H "Host: $1" -H 'X-Forwarded-Proto: https' "http://$GW:8088$2"
 }
+serves() { # $1 host: 200 within 10 s (an Nginx reload hands over to its new workers a moment after it returns)
+  local _
+  for _ in $(seq 1 20); do [ "$(served "$1" /)" = 200 ] && return 0; sleep 0.5; done
+  return 1
+}
 native_cleanup() {
   pkill -f "$AG serve" >/dev/null 2>&1
   sed -i "/$MARK_N\$/d" /etc/hosts
@@ -61,7 +66,7 @@ ok "its database lives in the host MariaDB, reachable by its own user only" 'mar
 
 api POST /v1/sites '{"domain":"sta.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"","app":"static","engine":"native"}'
 JS="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
-ok "a native static website is created without PHP or a database" '[ "$(wait_job "$JS")" = done ] && [ ! -e /etc/systemd/system/nostek-php-sta-example-test.service ] && [ "$(served sta-example-test.$ZONE /)" = 200 ]'
+ok "a native static website is created without PHP or a database" '[ "$(wait_job "$JS")" = done ] && [ ! -e /etc/systemd/system/nostek-php-sta-example-test.service ] && serves "sta-example-test.$ZONE"'
 
 # the website's PHP tries to step outside; every attempt must fail (a listener on loopback stands for the panel)
 python3 -m http.server 18099 --bind 127.0.0.1 >/dev/null 2>&1 & LOOP=$!
@@ -90,7 +95,7 @@ ok "WordPress Tools read plugins and themes through WP-CLI" '[ "$CODE" = 200 ] &
 api GET "/v1/sites/$WPID/db"; OUT="$BODY"
 ok "the Database page lists the WordPress tables as the website's database user" '[ "$CODE" = 200 ] && grep -q "wp_posts" <<<"$BODY"'
 api POST "/v1/sites/$WPID/limits" '{"php":{"memory_mb":512,"upload_mb":256,"exec_seconds":120,"max_input_vars":1000}}'; OUT="$BODY $(systemctl show -p MemoryMax nostek-php-$WPID.service) $(served "$WPH" /)"
-ok "raising PHP memory raises the service limit and restarts PHP" '[ "$CODE" = 200 ] || [ "$CODE" = 204 ]; [ "$(systemctl show -p MemoryMax --value nostek-php-$WPID.service)" = $((768*1024*1024)) ] && [ "$(served "$WPH" /)" = 200 ]'
+ok "raising PHP memory raises the service limit and restarts PHP" '[ "$CODE" = 200 ] || [ "$CODE" = 204 ]; [ "$(systemctl show -p MemoryMax --value nostek-php-$WPID.service)" = $((768*1024*1024)) ] && serves "$WPH"'
 
 api POST "/v1/sites/$WPID/backups"; JB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "backup copies the database from the host MariaDB and the files" '[ "$(wait_job "$JB")" = done ] && ls /srv/nostek/sites/$WPID/backups/manual-*.tar.gz >/dev/null 2>&1'
@@ -98,12 +103,12 @@ BK="$(basename "$(ls /srv/nostek/sites/$WPID/backups/manual-*.tar.gz | head -n1)
 mariadb -e "UPDATE np_wpn_example_test.wp_options SET option_value='Changed' WHERE option_name='blogname'"
 rm -f "/srv/nostek/sites/$WPID/wp/wp-content/themes/index.php"
 api POST "/v1/sites/$WPID/backups/$BK/restore" '{"what":"all"}'; JR="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"; OUT="$BODY"
-ok "restore brings back the database and the files, owned by the website user" '[ "$(wait_job "$JR")" = done ] && [ "$(mariadb -N -e "SELECT option_value FROM np_wpn_example_test.wp_options WHERE option_name=\"blogname\"")" = "Native WP" ] && [ "$(stat -c %U /srv/nostek/sites/$WPID/wp/wp-content/themes/index.php)" = "$WPU" ] && [ "$(served "$WPH" /)" = 200 ]'
+ok "restore brings back the database and the files, owned by the website user" '[ "$(wait_job "$JR")" = done ] && [ "$(mariadb -N -e "SELECT option_value FROM np_wpn_example_test.wp_options WHERE option_name=\"blogname\"")" = "Native WP" ] && [ "$(stat -c %U /srv/nostek/sites/$WPID/wp/wp-content/themes/index.php)" = "$WPU" ] && serves "$WPH"'
 
 api POST "/v1/sites/$WPID/delete"; ENTRY="$(grep -o '"trash":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "delete stops it and takes it off Nginx, keeping its user and database" '[ -n "$ENTRY" ] && ! systemctl is-active -q nostek-php-$WPID.service && [ "$(served "$WPH" /)" != 200 ] && id "$WPU" >/dev/null 2>&1 && mariadb -N -e "SHOW DATABASES" | grep -qx np_wpn_example_test'
 api POST "/v1/trash/$ENTRY/restore"; OUT="$BODY $(systemctl is-active nostek-php-$WPID.service) $(served "$WPH" /)"
-ok "restore from the trash serves it again" '[ "$CODE" = 200 ] && systemctl is-active -q nostek-php-$WPID.service && [ "$(served "$WPH" /)" = 200 ]'
+ok "restore from the trash serves it again" '[ "$CODE" = 200 ] && systemctl is-active -q nostek-php-$WPID.service && serves "$WPH"'
 api POST "/v1/sites/$WPID/delete"; ENTRY="$(grep -o '"trash":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 api POST "/v1/trash/$ENTRY/remove"; OUT="$BODY"
 ok "delete permanently removes its user and its database" '! id "$WPU" >/dev/null 2>&1 && ! mariadb -N -e "SHOW DATABASES" | grep -qx np_wpn_example_test && [ ! -e /etc/systemd/system/nostek-php-$WPID.service ]'
