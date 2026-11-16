@@ -3,6 +3,37 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.20.0] — 2026-11-16
+
+### Added
+- **Native engine, optional** (NATIVE-01, owner decision NATIVE-1). Next to Docker, a WordPress, PHP or static website
+  can run on the server's own Nginx, its own PHP-FPM (PHP 8.1-8.5 from the ondrej/php PPA) and the shared MariaDB.
+  A quiet website then takes a few MB instead of 150-250 MB. Docker stays the default and every existing website keeps
+  running as it is.
+  - New host package **NATIVE-01** (`packages/native-01/native-01-host.sh`, PREFLIGHT/APPLY/VERIFY/REVERT). It installs
+    Nginx (listening only on the edge network's address, port 8088, reachable from the edge only), PHP-FPM 8.1-8.5
+    (the distribution pools stay off), MariaDB on its socket only and WP-CLI 2.12.0 (checksum pinned). Without it,
+    nothing changes: the panel offers Docker only.
+  - **Add website** gains an **Engine** choice (Docker recommended / Native) with what each means; the Overview shows
+    the engine.
+  - Each native website gets its own Linux user, its own PHP-FPM service and its own database user. Its PHP and every
+    WP-CLI run of it work in a systemd sandbox:
+    - a read-only system, where only its own folder is writable and other websites are not visible;
+    - no access to the agent or Docker;
+    - no loopback or private network addresses (the internet and the DNS resolver stay reachable);
+    - open_basedir, process functions disabled, and memory, CPU and task limits.
+  - Native websites have the same panel features as Docker ones: logs, start/stop/restart, the Resources card (PHP
+    settings and the PHP memory limit), File Manager (files written as the website's user), Disk (the database size
+    from MariaDB), backups and restores, the Database page (as the website's own database user), WordPress Tools,
+    the system cron, trash and restore, and permanent delete (which also removes its database and Linux user).
+  - Traefik reads the native websites' routes from a file provider (`/srv/nostek/edge/dynamic`, read-only), next to
+    the Docker routes. It keeps ports 80/443 and the certificates.
+
+### Not for native websites (yet)
+- Laravel, Node.js, Go, Python and ready apps, Apache, and PostgreSQL stay Docker-only. "Update image" does not apply:
+  apt keeps the host's Nginx, PHP and MariaDB patched. Moving a website between Docker and native is a backup and a
+  restore into a new website (MIG-01).
+
 ## [1.19.0] — 2026-11-16
 
 ### Added

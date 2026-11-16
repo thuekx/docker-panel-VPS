@@ -1,6 +1,6 @@
 # NATIVE-01 — Optional native site engine
 
-Status: DESIGN 2026-11-16; scope decided by the owner 2026-11-16 01:43 WIB (NATIVE-1): the recommended shape below, PHP 8.1-8.5 from the ondrej/php PPA. ENGINE-1 (owner 2026-11-12): websites run on
+Status: BUILT v1.20.0 (2026-11-16); scope decided by the owner 2026-11-16 01:43 WIB (NATIVE-1): the recommended shape below, PHP 8.1-8.5 from the ondrej/php PPA. ENGINE-1 (owner 2026-11-12): websites run on
 Docker stacks only "for now"; a native engine (Nginx/Apache + PHP-FPM on the host, cPanel-style, lighter on RAM) comes
 after the core site features, and the add-website page then explains Docker vs native.
 

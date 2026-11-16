@@ -27,7 +27,7 @@ import (
 
 // Engines a website can run on.
 const (
-	EngineDocker = ""       // one Docker stack per website (default, every website made before v1.18.0)
+	EngineDocker = ""       // one Docker stack per website (default, every website made before v1.20.0)
 	EngineNative = "native" // host Nginx + PHP-FPM + MariaDB
 )
 
