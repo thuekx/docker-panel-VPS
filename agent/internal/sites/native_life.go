@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// nativeLogs: web = the website's Nginx error and access log, php = its PHP-FPM service journal and PHP error log.
+// nativeLogs: web = the website's Nginx error and access log, php = its PHP error log and PHP-FPM log.
 func (m *Manager) nativeLogs(ctx context.Context, s Site, service string, lines int) (string, error) {
 	logs := filepath.Join(m.dir(s.ID), "logs")
 	var b strings.Builder
@@ -26,11 +26,9 @@ func (m *Manager) nativeLogs(ctx context.Context, s Site, service string, lines 
 			fmt.Fprintf(&b, "==> %s <==\n%s\n", f, tailFile(filepath.Join(logs, f), lines))
 		}
 	case "php":
-		out, err := m.hostRun(ctx, nil, "journalctl", "--no-pager", "--output=short-iso", "--lines", fmt.Sprint(lines), "--unit", NativeUnit(s.ID))
-		if err != nil {
-			return "", fmt.Errorf("logs failed: %s", tail(out))
+		for _, f := range []string{"php-error.log", "php-fpm.log"} {
+			fmt.Fprintf(&b, "==> %s <==\n%s\n", f, tailFile(filepath.Join(logs, f), lines))
 		}
-		fmt.Fprintf(&b, "==> PHP-FPM <==\n%s\n==> php-error.log <==\n%s\n", out, tailFile(filepath.Join(logs, "php-error.log"), lines))
 	default:
 		return "", fmt.Errorf("service %q is not part of this site", service)
 	}

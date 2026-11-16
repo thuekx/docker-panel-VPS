@@ -83,6 +83,7 @@ func nativeTest(t *testing.T) (*Manager, *fakeRunner, *fakeHost, NativePaths) {
 	p := NativePaths{Etc: filepath.Join(root, "etc"), Run: filepath.Join(root, "run"), Data: m.cfg.Data}
 	m.EnableNative(testNative, h, p)
 	m.lookupUser = func(string) (int, int, error) { return os.Getuid(), os.Getgid(), nil }
+	m.cfg.FileUID = os.Getuid()
 	return m, f, h, p
 }
 
@@ -284,7 +285,7 @@ func nativeReady(t *testing.T) (*Manager, *fakeRunner, *fakeHost, NativePaths, S
 }
 
 func TestNativeLogs(t *testing.T) {
-	m, _, h, _, s := nativeReady(t)
+	m, _, _, _, s := nativeReady(t)
 	var lines []string
 	for i := 0; i < 30; i++ {
 		lines = append(lines, "GET /line-"+string(rune('a'+i%26)))
@@ -296,8 +297,8 @@ func TestNativeLogs(t *testing.T) {
 	if err != nil || !strings.Contains(out, "==> access.log <==") || strings.Count(out, "GET /line-") != 5 {
 		t.Errorf("web logs %v\n%s", err, out)
 	}
-	if _, err := m.Logs(context.Background(), s.ID, "php", 50); err != nil || !strings.Contains(h.all(), "journalctl --no-pager --output=short-iso --lines 50 --unit "+NativeUnit(s.ID)) {
-		t.Errorf("php logs %v", err)
+	if out, err := m.Logs(context.Background(), s.ID, "php", 50); err != nil || !strings.Contains(out, "==> php-fpm.log <==") {
+		t.Errorf("php logs %v %s", err, out)
 	}
 	if _, err := m.Logs(context.Background(), s.ID, "db", 10); err == nil {
 		t.Error("the shared database is not a service of the website")

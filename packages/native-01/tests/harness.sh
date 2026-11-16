@@ -50,7 +50,7 @@ useradd --system --no-create-home --shell /usr/sbin/nologin np-harness >/dev/nul
 mkdir -p /run/np-harness && chown np-harness /run/np-harness
 cat > /tmp/np-harness-fpm.conf <<'EOF'
 [global]
-error_log = /proc/self/fd/2
+error_log = /run/np-harness/php-fpm.log
 [h]
 listen = /run/np-harness/php.sock
 pm = ondemand
