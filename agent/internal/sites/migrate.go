@@ -329,7 +329,7 @@ func safeRel(name string) (string, bool) {
 	return path.Clean(name), true
 }
 
-// put writes one entry into the staging folder as the website's files: owner www-data (Docker; the native switch
+// put writes one entry into the staging folder as the website's files: owned by www-data (Docker; the native switch
 // gives them to the website user), rwx bits only, links as links. The old wp-config.php is kept as
 // wp-config.old.php: the website runs on the panel's own.
 func (mg *migration) put(rel string, typ byte, mode fs.FileMode, mtime time.Time, link string, size int64, r io.Reader) error {
