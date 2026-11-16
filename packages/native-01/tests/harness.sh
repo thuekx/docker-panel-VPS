@@ -56,7 +56,9 @@ listen = /run/np-harness/php.sock
 pm = ondemand
 pm.max_children = 2
 EOF
-ok "php-fpm 8.4 accepts a website pool" 'php-fpm8.4 -t -y /tmp/np-harness-fpm.conf >/dev/null 2>&1'
+chmod 0644 /tmp/np-harness-fpm.conf
+OUT="$(runuser -u np-harness -- php-fpm8.4 -t -y /tmp/np-harness-fpm.conf 2>&1)"; RC=$?
+ok "php-fpm 8.4 accepts a website pool as the website's own user (no root)" '[ $RC = 0 ]'
 
 mkdir -p /srv/nostek/sites/n-harness && echo '{"id":"n-harness","engine": "native"}' > /srv/nostek/sites/n-harness/site.json
 run REVERT "${A[@]}"; ok "revert refuses while a native website exists" '[ $RC = 3 ] && has "1 native website(s) still exist" && systemctl is-active -q nginx'
