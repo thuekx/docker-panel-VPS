@@ -88,6 +88,11 @@ type Manager struct {
 	hookWait  map[string]bool
 	hookRetry time.Duration
 	memFn     func() int // RES-01: the server's memory in MB (tests replace it)
+	// NATIVE-01: the native engine (nil native = not installed on this server)
+	native     *NativeConfig
+	host       HostRunner
+	npaths     NativePaths
+	lookupUser func(name string) (uid, gid int, err error)
 }
 
 // New returns a manager.
@@ -319,6 +324,9 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 	if err != nil {
 		return Site{}, err
 	}
+	if err := m.checkNative(c); err != nil {
+		return Site{}, err
+	}
 	if err := c.Check(res); err != nil {
 		if tr, _ := m.Trash(); strings.HasSuffix(err.Error(), "already in use on this server") {
 			for _, t := range tr {
@@ -338,6 +346,7 @@ func (m *Manager) Plan(ctx context.Context, c spec.Create) (Site, error) {
 		Database: c.Database,
 		DBEngine: dbEngine(c),
 		Version:  laravelVersion(c),
+		Engine:   c.Engine,
 	}
 	if spec.IsRuntimeApp(c.AppOf()) {
 		s.Version, s.Repo, s.Branch, s.Build, s.Start, s.Dir = c.Version, c.Repo, c.Branch, c.Build, c.Start, c.Dir
@@ -423,6 +432,10 @@ func (m *Manager) create(j *Job, s Site) {
 	}
 	if s.IsRuntime() {
 		m.createNode(ctx, j, s, fail)
+		return
+	}
+	if s.IsNative() {
+		m.createNative(ctx, j, s, fail)
 		return
 	}
 	j.Step("files")
@@ -563,6 +576,12 @@ func (m *Manager) Status(ctx context.Context, id string) string {
 func (m *Manager) StatusCount(ctx context.Context, id string) (string, int, int) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	if s, err := m.Get(id); err == nil && s.IsNative() {
+		if m.native == nil {
+			return "unknown", 0, 0
+		}
+		return m.nativeStatus(ctx, s)
+	}
 	out, err := m.compose(ctx, id, nil, "ps", "--all", "--format", "json")
 	if err != nil {
 		return "unknown", 0, 0
@@ -592,13 +611,20 @@ func (m *Manager) StatusCount(ctx context.Context, id string) (string, int, int)
 
 // Action runs start, stop or restart.
 func (m *Manager) Action(ctx context.Context, id, action string) error {
-	if _, err := m.Get(id); err != nil {
+	s, err := m.Get(id)
+	if err != nil {
 		return err
 	}
 	if !m.mu.TryLock() {
 		return ErrBusy
 	}
 	defer m.mu.Unlock()
+	if s.IsNative() {
+		if m.native == nil {
+			return errNativeOff
+		}
+		return m.nativeAction(ctx, s, action)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 	var args []string

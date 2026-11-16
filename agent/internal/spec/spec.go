@@ -212,7 +212,11 @@ type Create struct {
 	Start      string   `json:"start,omitempty"`     // node: start command ("" = default)
 	KeyID      string   `json:"key_id,omitempty"`    // SSH repository: the deploy key made for it (POST /v1/deploykeys)
 	DBEngine   string   `json:"db_engine,omitempty"` // mariadb (default) | postgres: PHP and runtime apps with database, Laravel
+	Engine     string   `json:"engine,omitempty"`    // "" = Docker stack (default) | native: host Nginx + PHP-FPM + MariaDB (NATIVE-01)
 }
+
+// EngineNative is the native engine (NATIVE-01): WordPress, plain PHP and static websites on the host's Nginx.
+const EngineNative = "native"
 
 // Database engines of a website's own database.
 const (
@@ -378,6 +382,21 @@ func (c Create) Check(reserved map[string]bool) error {
 	if c.DBEngine != "" && !c.Database && app != AppLaravel {
 		// WordPress runs on MariaDB only; Laravel always has a database and only picks its engine
 		return errors.New("a database engine is chosen only together with a database (WordPress uses MariaDB)")
+	}
+	switch c.Engine {
+	case "":
+	case EngineNative:
+		if app != AppWordPress && app != AppPHP && app != AppStatic {
+			return errors.New("the native engine runs WordPress, PHP and static websites only")
+		}
+		if c.Server != "nginx" {
+			return errors.New("the native engine runs on nginx")
+		}
+		if c.DBEngine == DBPostgres {
+			return errors.New("the native engine has MariaDB only")
+		}
+	default:
+		return errors.New("engine must be empty (Docker) or native")
 	}
 	if app != AppWordPress {
 		if c.AdminEmail != "" {
