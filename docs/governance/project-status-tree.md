@@ -1,6 +1,6 @@
 # Project status tree — Nostek Panel
 
-Updated 2026-11-11 (WIB).
+Updated 2026-11-18 (WIB).
 
 ```text
 Nostek Panel
@@ -31,5 +31,11 @@ Nostek Panel
 │   ├── PHP-01 change PHP version, optimize website ...... ○
 │   └── OPS-01 logs, usage, cron, alerts, visitor stats .. ○
 └── Distribution
-    └── INST-01 public installer .......................... ○
+    ├── INST-01 public installer (+ preflight, RAYX-1) .... ○
+    └── after INST-01 (RAYX-1 = A, 2026-11-18)
+        ├── API-01 open API with API keys ................ ○
+        ├── BAK-02 panel backup + restore to new VPS ..... ○
+        ├── CERT-01 wildcard + own certificate ........... ○
+        ├── DB-02 remote DB access per IP, table repair .. ○
+        └── AUTH-02 passkey login ........................ ○
 ```
