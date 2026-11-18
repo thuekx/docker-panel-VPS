@@ -885,5 +885,7 @@
   "dom.step.addresses": "Alamat WordPress dipindahkan",
   "dom.step.now.addresses": "Memindahkan alamat WordPress",
   "dom.step.check": "Website diperiksa",
-  "dom.step.now.check": "Memeriksa website"
+  "dom.step.now.check": "Memeriksa website",
+  "reveal.copied": "Tersalin",
+  "reveal.copyfail": "Gagal menyalin: teks sudah dipilih, tekan Ctrl+C"
 }

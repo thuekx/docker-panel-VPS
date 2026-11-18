@@ -54,11 +54,54 @@
     if (shake.length) animate(shake, { x: [0, -8, 8, -5, 5, 0] }, { duration: 0.45 });
   }
 
+  // Copy buttons: the text is copied, the button turns into a check mark with "Copied" for 2 s, and a small
+  // inline notice (announced to screen readers) confirms it next to the button. A failed copy says so and selects
+  // the text, so it can be copied by hand.
   function copy() {
+    var body = document.body;
+    var okText = body.getAttribute("data-copied") || "Copied", failText = body.getAttribute("data-copyfail") || "Copy failed";
+    function fallback(text) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      body.removeChild(ta);
+      return ok ? Promise.resolve() : Promise.reject(new Error("copy"));
+    }
+    function selectText(el) {
+      var r = document.createRange(); r.selectNodeContents(el);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    }
+    function notice(b, text, good) {
+      var n = b.parentNode.querySelector(".copy-note");
+      if (!n) {
+        n = document.createElement("span");
+        n.className = "copy-note"; n.setAttribute("role", "status"); n.setAttribute("aria-live", "polite");
+        b.insertAdjacentElement("afterend", n);
+      }
+      n.textContent = text; n.classList.toggle("bad", !good); n.classList.add("on");
+      if (!reduce && window.Motion) window.Motion.animate(n, { opacity: [0, 1], y: [6, 0], scale: [0.92, 1] }, { type: "spring", bounce: 0.4, duration: 0.45 });
+      clearTimeout(n._t);
+      n._t = setTimeout(function () { n.classList.remove("on"); }, 2200);
+    }
     all("[data-copy]").forEach(function (b) {
+      var label = b.textContent;
       b.addEventListener("click", function () {
         var el = document.getElementById(b.getAttribute("data-copy"));
-        if (el && navigator.clipboard) navigator.clipboard.writeText(el.textContent);
+        if (!el) return;
+        var text = el.textContent;
+        var p = navigator.clipboard && window.isSecureContext ? navigator.clipboard.writeText(text).catch(function () { return fallback(text); }) : fallback(text);
+        p.then(function () {
+          b.classList.add("copied"); b.textContent = "\u2713 " + okText;
+          if (!reduce && window.Motion) window.Motion.animate(b, { scale: [1, 0.92, 1.06, 1] }, { duration: 0.4 });
+          notice(b, okText, true);
+          clearTimeout(b._t);
+          b._t = setTimeout(function () { b.classList.remove("copied"); b.textContent = label; }, 2000);
+        }, function () {
+          selectText(el);
+          notice(b, failText, false);
+        });
       });
     });
   }

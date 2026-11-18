@@ -885,5 +885,7 @@
   "dom.step.addresses": "WordPress addresses moved",
   "dom.step.now.addresses": "Moving WordPress addresses",
   "dom.step.check": "Website checked",
-  "dom.step.now.check": "Checking the website"
+  "dom.step.now.check": "Checking the website",
+  "reveal.copied": "Copied",
+  "reveal.copyfail": "Copy failed: the text is selected, press Ctrl+C"
 }

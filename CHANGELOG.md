@@ -22,6 +22,9 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ### Changed
 - The Migrate tab's "Domains" button opens the new Domains tab.
+- Every **Copy** button now confirms the copy: the button turns into "✓ Copied" for two seconds with a short
+  animation, and an inline notice next to it says so (also read out by screen readers). When the browser refuses,
+  the notice says so and the text is selected, ready for Ctrl+C.
 
 ## [1.21.0] — 2026-11-17
 
