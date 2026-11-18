@@ -28,8 +28,8 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 | 12d | PHP-01 | Change the PHP version of an existing website (cPanel MultiPHP Manager) for WordPress, PHP and Laravel, with a backup first and a way back; Optimize Website (compression, browser cache headers) | Rancang panel Docker untuk VPS fresh | ○ |
 | 13 | OPS-01 | Logs, resource usage, cron jobs, readable alerts; visitor statistics from the access log (cPanel Metrics: visitors, errors, bandwidth, raw access log); cron jobs, Telegram and e-mail alerts, service watchdog, login history (RAYX-1, 2026-11-18) | Rancang panel Docker untuk VPS fresh | ○ |
 | 14 | INST-01 | Public one-command installer for any fresh Ubuntu VPS; preflight of hostname, DNS and ports, sha256-verified release download (RAYX-1, 2026-11-18) | Rancang panel Docker untuk VPS fresh | ○ |
-| 14a | API-01 | Open panel API with API keys per purpose (limited rights, revocable), base for automation and add-ons (RAYX-1) | Analisa rayxo untuk fitur panel kita | ○ |
-| 14b | BAK-02 | Backup of the panel itself (settings, website list, keys) and restore onto a new VPS (RAYX-1) | Analisa rayxo untuk fitur panel kita | ○ |
-| 14c | CERT-01 | Wildcard certificates (DNS challenge) and upload of an own certificate (RAYX-1) | Analisa rayxo untuk fitur panel kita | ○ |
-| 14d | DB-02 | Database access from outside per IP (off by default), check and repair tables (RAYX-1) | Analisa rayxo untuk fitur panel kita | ○ |
-| 14e | AUTH-02 | Passkey login next to 2FA (RAYX-1) | Analisa rayxo untuk fitur panel kita | ○ |
+| 14a | API-01 | Open panel API with API keys per purpose (limited rights, revocable), base for automation and add-ons (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
+| 14b | BAK-02 | Backup of the panel itself (settings, website list, keys) and restore onto a new VPS (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
+| 14c | CERT-01 | Wildcard certificates (DNS challenge) and upload of an own certificate (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
+| 14d | DB-02 | Database access from outside per IP (off by default), check and repair tables (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
+| 14e | AUTH-02 | Passkey login next to 2FA (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
