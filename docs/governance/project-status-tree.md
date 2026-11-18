@@ -24,7 +24,7 @@ Nostek Panel
 │   ├── RES-01 resource limits per website (RAM, PHP INI) ● LIVE v1.18.0 2026-11-16
 │   ├── DISK-01 disk usage + disk analyzer ● LIVE v1.19.0 2026-11-16
 │   ├── NATIVE-01 optional native site engine ● LIVE v1.20.0 2026-11-16
-│   ├── MIG-01 WordPress migration (plugin + cPanel backup) ● BUILT v1.21.0
+│   ├── MIG-01 WordPress migration (plugin + cPanel backup) ● LIVE v1.21.0 2026-11-19
 │   ├── DOM-01 domains, redirects, DNS check ● BUILT v1.22.0
 │   ├── SEC-01 IP blocker, folder password, hotlink, WAF, malware scan ○
 │   ├── SFTP-01 SFTP per website ......................... ○
