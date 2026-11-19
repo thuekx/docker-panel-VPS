@@ -784,6 +784,11 @@ func (m *Manager) RemoveTrash(entry string) error {
 			return err
 		}
 	}
+	if _, err := os.Stat(m.dir(ts.ID)); err != nil { // SEC-01: its password files, unless the name is in use again
+		for _, f := range ts.Protected {
+			_ = os.Remove(m.authFile(ts.ID, f.Path))
+		}
+	}
 	return os.RemoveAll(p)
 }
 

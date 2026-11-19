@@ -3,6 +3,20 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.23.0] — 2026-11-19
+
+### Added
+- **Security tab** for every website (SEC-01 wave 1), like cPanel's IP Blocker, Directory Privacy and Hotlink
+  Protection. The rules run at the edge, so they work the same for every app and for Docker and native websites:
+  - **IP Blocker:** block an address or a network (IPv4 or IPv6, up to /8 and /16 wide); its visits get 403 on
+    every name of the website. The page shows your own address, and the server's own address cannot be blocked;
+  - **password-protected folders:** a folder of the main address (or `/` for the whole website) asks for a user
+    name and password. Several users per folder; a user can get a new password or be removed. The panel stores
+    only a bcrypt hash: the password never reaches the agent, a log or the website;
+  - **hotlink protection:** other websites cannot embed this website's images and media (403), with a list of
+    sites that may. Visits without a referrer keep working.
+- Every change runs as a job with its step on the page; a failed change puts the previous rules back.
+
 ## [1.22.0] — 2026-11-17
 
 ### Added
