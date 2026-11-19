@@ -1,0 +1,77 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$dm := $d.D}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "dom.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (tabs $l $s "domains")}}
+{{with $d.Job}}{{$j := .}}
+{{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
+<section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
+  <div class="stat-head"><span><b class="ink">{{t $l "dom.job"}}</b></span>
+  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l "dom.job"}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <ol class="stepper">{{range $d.Steps}}
+    <li class="st-{{.State}}" data-step="{{.Key}}">
+      <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
+      <span class="txt"><span class="now">{{t $l (printf "dom.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "dom.step.%s" .Key)}}</span></span>
+    </li>{{end}}
+  </ol>
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "dom.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p class="banner ok">{{t $l "dom.job.done"}}</p><p class="muted">{{t $l "dom.job.cert"}}</p>{{end}}
+  {{if $j.Error}}<p class="banner warn">{{t $l "dom.job.fail"}}</p>
+  <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
+</section>
+{{end}}
+<section class="card wide tone c-teal" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-globe"}}</span>{{t $l "dom.title"}}</h2>
+  <p class="muted">{{t $l "dom.help" $dm.PublicIPv4}}</p>
+  {{if $dm.Canonical}}<p class="facts"><span>{{t $l "dom.main"}} <b class="mono">{{$dm.Canonical}}</b></span></p>{{end}}
+  {{if $d.Rows}}<div class="table-wrap"><table class="dom">
+    <thead><tr><th>{{t $l "dom.col.name"}}</th><th>{{t $l "dom.col.dns"}}</th><th>{{t $l "dom.col.cert"}}</th><th><span class="sr-only">{{t $l "dom.col.act"}}</span></th></tr></thead>
+    <tbody>{{range $d.Rows}}
+      <tr>
+        <td><code>{{.Name}}</code> <span class="muted">{{t $l (printf "dom.role.%s" .Role)}}</span>{{if .Main}} <span class="pill s-ok">{{t $l "dom.main.pill"}}</span>{{end}}
+          <div>{{if .Routed}}<span class="pill s-ok">{{t $l "dom.served"}}</span>{{else}}<span class="pill s-warn">{{t $l "dom.notserved"}}</span>{{end}}</div></td>
+        <td>{{if eq .DNS "here"}}<span class="pill s-ok">{{t $l "dom.dns.here"}}</span>{{else if eq .DNS "none"}}<span class="pill s-bad">{{t $l "dom.dns.none"}}</span>{{else if eq .DNS "error"}}<span class="pill s-unknown">{{t $l "dom.dns.error"}}</span>{{else}}<span class="pill s-warn">{{t $l (printf "dom.dns.%s" .DNS)}}</span>{{end}}
+          {{if .IPv4}}<div class="mono small">A {{join .IPv4 ", "}}</div>{{end}}{{if .IPv6}}<div class="mono small">AAAA {{join .IPv6 ", "}}</div>{{end}}
+          <p class="muted small">{{t $l .Why $dm.PublicIPv4}}{{if .IPv6}} {{t $l "dom.why.v6"}}{{end}}</p></td>
+        <td>{{if eq .Cert "valid"}}<span class="pill s-ok">{{t $l "dom.cert.valid"}}</span> <span class="muted small">{{t $l "wp.tls.until" .Until .Days}}{{if .CertIssuer}} · {{.CertIssuer}}{{end}}</span>{{else if eq .Cert "pending"}}<span class="pill s-warn">{{t $l "dom.cert.pending"}}</span>{{else if eq .Cert "error"}}<span class="pill s-bad">{{t $l "dom.cert.error"}}</span>{{if .CertError}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{.CertError}}</pre></details>{{end}}{{else}}<span class="muted">-</span>{{end}}</td>
+        <td>{{if .CanRemove}}<form method="post" action="/domains/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="remove"><input type="hidden" name="name" value="{{.Name}}">
+          <label class="check small"><input type="checkbox" name="confirm" value="1" required> {{t $l "dom.remove.sure"}}</label>
+          <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "dom.remove"}}</button></form>{{end}}</td>
+      </tr>{{end}}
+    </tbody></table></div>{{end}}
+  <form method="post" action="/domains/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="refresh">
+    <button class="{{if $d.Ready}}primary{{else}}secondary{{end}}" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "dom.refresh"}}</button>
+    <span class="muted">{{if $d.Ready}}{{t $l "dom.refresh.ready" $d.Ready}}{{else}}{{t $l "dom.refresh.help"}}{{end}}</span></form>
+</section>
+<section class="grid pair">
+<article class="card tone c-blue" data-anim="card" id="add">
+  <h2>{{t $l "dom.add.title"}}</h2>
+  <p class="muted">{{t $l "dom.add.help" $dm.PublicIPv4}}</p>
+  <form method="post" action="/domains/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="add">
+    <label>{{t $l "dom.add.name"}}<input name="name" placeholder="shop.example.com" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="253" required></label>
+    <p class="muted small">{{t $l "dom.add.count" $d.Aliases $dm.MaxAliases}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running (ge $d.Aliases $dm.MaxAliases)}} disabled{{end}}>{{t $l "dom.add.go"}}</button>
+  </form>
+</article>
+<article class="card tone c-violet" data-anim="card" id="redirects">
+  <h2>{{t $l "dom.redir.title"}}</h2>
+  <p class="muted">{{t $l "dom.redir.help"}}</p>
+  {{if $dm.Redirects}}<ul class="plain">{{range $dm.Redirects}}
+    <li><form method="post" action="/domains/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redirect-remove"><input type="hidden" name="from" value="{{.From}}">
+      <span><code>{{.From}}</code> → <code>{{.To}}</code> <span class="pill s-unknown">{{.Code}}</span></span>
+      <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "dom.remove"}}</button></form></li>{{end}}
+  </ul>{{else}}<p class="muted">{{t $l "dom.redir.none"}}</p>{{end}}
+  <form method="post" action="/domains/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redirect-add">
+    <label>{{t $l "dom.redir.from"}}<input name="from" placeholder="/old-page" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="201" required></label>
+    <label>{{t $l "dom.redir.to"}}<input name="to" placeholder="{{t $l "dom.redir.to.ph"}}" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="600" required></label>
+    <fieldset class="opts"><legend>{{t $l "dom.redir.code"}}</legend>
+      <label class="check"><input type="radio" name="code" value="301" checked> {{t $l "dom.redir.301"}}</label>
+      <label class="check"><input type="radio" name="code" value="302"> {{t $l "dom.redir.302"}}</label></fieldset>
+    <button class="secondary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "dom.redir.go"}}</button>
+  </form>
+</article>
+</section>
+{{if $d.Err}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
+<p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
+{{end}}

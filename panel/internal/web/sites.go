@@ -226,6 +226,7 @@ var jobKindSteps = map[string][]string{
 	"restore": {"safety database", "safety files", "restore database", "restore files", "switch files"},
 	"image":   {"pull new images", "copy database", "copy files", "recreate containers"},
 	"migrate": migrateSteps,
+	"domains": {"routes"}, // "addresses" and "check" run only when the main address moves
 }
 
 // createSteps is the order of the steps a create of this website runs, so the list is right from the first poll

@@ -19,7 +19,7 @@
   {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "mig.job.wait"}} <b data-progress>{{$j.Progress}}</b> <span class="elapsed" data-elapsed></span></p>{{end}}
   {{if eq $j.State "done"}}<p class="banner ok">{{t $l "mig.job.done"}}</p>
   <p class="mono">{{$d.Result}}</p>
-  <p class="row"><a class="primary btn" href="{{$s.URL}}" target="_blank" rel="noopener">{{t $l "mig.open"}}</a><a class="secondary btn" href="/wp/{{$s.ID}}">WordPress</a><a class="ghost btn" href="/sites/{{$s.ID}}">{{t $l "mig.domains"}}</a></p>
+  <p class="row"><a class="primary btn" href="{{$s.URL}}" target="_blank" rel="noopener">{{t $l "mig.open"}}</a><a class="secondary btn" href="/wp/{{$s.ID}}">WordPress</a><a class="ghost btn" href="/domains/{{$s.ID}}">{{t $l "mig.domains"}}</a></p>
   <p class="muted">{{t $l "mig.job.next"}}</p>{{end}}
   {{if $d.Choose}}
   <p class="banner warn">{{t $l "mig.choose.help"}}</p>

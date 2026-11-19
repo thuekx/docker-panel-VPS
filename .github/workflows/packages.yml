@@ -16,6 +16,7 @@ jobs:
       site01: ${{ steps.f.outputs.site01 }}
       native01: ${{ steps.f.outputs.native01 }}
       mig01: ${{ steps.f.outputs.mig01 }}
+      dom01: ${{ steps.f.outputs.dom01 }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -33,6 +34,7 @@ jobs:
           if grep -qE "^(packages/site-01/|agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "site01=true" >> "$GITHUB_OUTPUT"; else echo "site01=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(packages/native-01/|agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "native01=true" >> "$GITHUB_OUTPUT"; else echo "native01=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(packages/site-01/|agent/|panel/web/plugin/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "mig01=true" >> "$GITHUB_OUTPUT"; else echo "mig01=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE "^(packages/site-01/|agent/|deploy/core/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "dom01=true" >> "$GITHUB_OUTPUT"; else echo "dom01=false" >> "$GITHUB_OUTPUT"; fi
   host-01:
     needs: select
     if: needs.select.outputs.host01 == 'true'
@@ -149,6 +151,18 @@ jobs:
         run: php -l panel/web/plugin/nostek-migrate.php
       - name: harness (real Docker; an old WordPress behind HTTPS with the plugin, cPanel backups)
         run: sudo bash packages/site-01/tests/migrate.sh
+  dom-01:
+    needs: select
+    if: needs.select.outputs.dom01 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: shellcheck
+        run: shellcheck -S warning packages/site-01/tests/domains.sh
+      - name: harness (real Docker and a real Traefik edge; names, redirects, the move to the domain)
+        run: sudo bash packages/site-01/tests/domains.sh
   native-01:
     needs: select
     if: needs.select.outputs.native01 == 'true'

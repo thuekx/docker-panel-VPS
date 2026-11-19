@@ -20,7 +20,8 @@ preview address first, before DNS is switched, and the old site keeps running th
      with a `.sql` dump also works.
 3. The job page shows every step with files and tables done. In the end, it shows the old site's title, version and
    administrators, on the new preview address.
-4. Check the preview, then point the domain at the server (website domain settings; DOM-01 later shows the DNS check).
+4. Check the preview, then point the domain at the server and press **Check DNS again** on the website's Domains
+   tab (DOM-01, v1.22.0): the domain is served and WordPress's addresses move from the preview name to it.
 
 ## Way 1: the Nostek Migrate plugin (wave 1)
 A single-file PHP plugin (`migrate/nostek-migrate/nostek-migrate.php`, MIT, PHP 7.4+, WordPress 5.6+). It has no

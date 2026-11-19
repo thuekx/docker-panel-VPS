@@ -3,6 +3,29 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.22.0] — 2026-11-17
+
+### Added
+- **Domains tab** for every website (DOM-01), like cPanel's Domains, Aliases, Redirects and Track DNS:
+  - every name of the website with where DNS points it now (A and AAAA), a verdict that says what to do (points
+    here, points elsewhere, partly here, no record), and the certificate of every served name (valid until, being
+    issued, or not valid);
+  - a warning when an AAAA record points elsewhere: this server has no IPv6 yet, and the certificate can fail;
+  - **add or remove extra names** (up to 10) for the same website; a name is served as soon as it points here;
+  - **Check DNS again**: every name that now points here is served. When the domain itself is served for the first
+    time, it becomes the main address and WordPress's addresses move from the preview name to the domain (links in
+    posts included), with the previous state put back if that fails. This is the last step of a MIG-01 migration;
+  - **redirects** per path (up to 50), to another path of the website or to another address, 301 permanent or 302
+    temporary; the visit's query follows unless the target has its own.
+- Every change runs as a job with its steps on the page. Docker websites recreate their web container (a few
+  seconds); native websites only reload Nginx.
+
+### Changed
+- The Migrate tab's "Domains" button opens the new Domains tab.
+- Every **Copy** button now confirms the copy: the button turns into "✓ Copied" for two seconds with a short
+  animation, and an inline notice next to it says so (also read out by screen readers). When the browser refuses,
+  the notice says so and the text is selected, ready for Ctrl+C.
+
 ## [1.21.0] — 2026-11-17
 
 ### Added
