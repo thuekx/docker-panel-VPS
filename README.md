@@ -32,13 +32,13 @@ choose its own stack.
 | 🧩 **One stack per site** | Every website gets its own web server, PHP and database containers. |
 | ⚖️ **Apache or Nginx, per site** | Choose the web server when you create a site; neighbours can choose differently. |
 | ⚡ **One-click WordPress** | Pick a domain, pick a web server, click Install. SSL is issued automatically. |
-| 🗂️ **File manager** | Browse, upload and edit files, limited to the site's own folder. |
+| 🗂️ **File manager** | Browse, upload and edit files with a code editor (CodeMirror), limited to the site's own folder. |
 | 🗄️ **Database control** | Create databases and users, open a database admin tool from the panel. |
 | 🔐 **Secure by default** | Two-factor login, automatic HTTPS, firewall, brute-force protection, no raw Docker socket in the web app. |
 | 💾 **Backups** | Encrypted, scheduled backups per site with one-click restore. |
 | 🚚 **WordPress migration** | Bring an existing WordPress site from another host: with the Nostek Migrate plugin, or straight from a cPanel backup. |
 | 🌐 **Domains** | Extra names, redirects per path, and a DNS and certificate check for every name of a website. |
-| 🛡️ **Security** | IP blocker, password-protected folders and hotlink protection per website, applied at the edge. |
+| 🛡️ **Security** | IP blocker, password-protected folders and hotlink protection at the edge; custom error pages and MIME types per website. |
 | 🕒 **Time zone aware** | Every time on screen shows its zone. |
 
 ## How it works

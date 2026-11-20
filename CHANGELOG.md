@@ -3,7 +3,28 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.24.0] — 2026-11-21
+
+### Added
+- **Code editor in the File Manager** (EDITOR-1): editing a file now opens CodeMirror 6 (MIT), served by the panel
+  itself (no CDN):
+  - syntax colours for PHP, JavaScript/TypeScript, HTML, CSS, JSON, SQL, Python, Go, YAML, Markdown, XML, shell,
+    Nginx, Dockerfile, TOML and `.env`/`.htaccess`/`.ini` files, picked from the file name;
+  - line numbers, folding, bracket matching and closing, auto-indent (tabs or spaces as the file uses), several
+    cursors (Alt+click), find and replace (Ctrl+F), word suggestions (Ctrl+Space), comment toggle (Ctrl+/), undo
+    history, Ctrl+S to save;
+  - buttons for line wrapping and full screen; a dark theme with the panel's dark mode; works on phones;
+  - without JavaScript the plain text box works as before. Only the editor page allows the editor's own styles,
+    with a fresh nonce on every visit; every other page keeps the strict policy.
+- **Error Pages and MIME Types** on the Security tab (SEC-01 wave 2), like cPanel's pages of the same names, for
+  websites with their own web server (WordPress, PHP, Laravel, static; Docker and native):
+  - turn a page on for 400, 401, 403, 404, 500, 502, 503 or 504; it starts from a simple template in
+    `/.nostek-errors/` and is edited in the File Manager (an edited page is never overwritten);
+  - add a content type for file extensions, or replace the standard type of an extension.
+
 ## [1.23.1] — 2026-11-20
+
+Running on the production server since 2026-11-21 00:13 WIB.
 
 ### Fixed
 - Disk tab: the folder icon in front of each folder name was drawn without a size, so it filled the whole card and
