@@ -56,6 +56,10 @@ type Site struct {
 	TablePrefix string `json:"table_prefix,omitempty"`
 	// DOM-01: redirects per path, applied on the main address
 	Redirects []Redirect `json:"redirects,omitempty"`
+	// SEC-01: blocked addresses, password-protected folders and hotlink protection, all at the edge
+	BlockIPs  []string    `json:"block_ips,omitempty"`
+	Protected []Protected `json:"protected,omitempty"`
+	Hotlink   *Hotlink    `json:"hotlink,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
@@ -183,7 +187,7 @@ func (s Site) labels() []string {
 			l = append(l, fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s`, r, strings.Join(redirs, ",")))
 		}
 	}
-	return l
+	return append(l, s.securityLabels()...)
 }
 
 func indent(lines []string, n int) string {

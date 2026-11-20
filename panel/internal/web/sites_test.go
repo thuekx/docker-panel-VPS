@@ -51,7 +51,9 @@ type fakeAgent struct {
 	migJob    *agent.Job
 	domCalls  []string // DOM-01: bodies of the domain changes
 	domJob    *agent.Job
-	domSame   bool // DOM-01: the next change changes nothing
+	domSame   bool     // DOM-01: the next change changes nothing
+	secCalls  []string // SEC-01: bodies of the security changes
+	secJob    *agent.Job
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -96,6 +98,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/domains") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jddd") {
 		f.domains(w, r, write)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/security") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jsec") {
+		f.security(w, r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/wp") {

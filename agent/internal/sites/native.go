@@ -288,19 +288,21 @@ func (s Site) NativeEdge(gateway string) string {
 	if n == 0 {
 		return "" // nothing routed yet: no entry
 	}
+	secR, secM := s.securityEdgeYAML()
+	b.WriteString(secR)
 	fmt.Fprintf(&b, `  middlewares:
     %[1]s-canon:
       redirectRegex:
         regex: "^https?://[^/]+(.*)"
         replacement: "https://%[2]s${1}"
         permanent: true
-%[5]s  services:
+%[5]s%[6]s  services:
     %[1]s:
       loadBalancer:
         passHostHeader: true
         servers:
           - url: "http://%[3]s:%[4]d"
-`, rid, canon, gateway, NativePort, s.redirectEdge())
+`, rid, canon, gateway, NativePort, s.redirectEdge(), secM)
 	return b.String()
 }
 

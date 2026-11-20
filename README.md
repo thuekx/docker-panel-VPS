@@ -38,6 +38,7 @@ choose its own stack.
 | 💾 **Backups** | Encrypted, scheduled backups per site with one-click restore. |
 | 🚚 **WordPress migration** | Bring an existing WordPress site from another host: with the Nostek Migrate plugin, or straight from a cPanel backup. |
 | 🌐 **Domains** | Extra names, redirects per path, and a DNS and certificate check for every name of a website. |
+| 🛡️ **Security** | IP blocker, password-protected folders and hotlink protection per website, applied at the edge. |
 | 🕒 **Time zone aware** | Every time on screen shows its zone. |
 
 ## How it works

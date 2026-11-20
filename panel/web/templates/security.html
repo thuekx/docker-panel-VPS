@@ -1,0 +1,83 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "sec.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (tabs $l $s "security")}}
+{{with $d.Job}}{{$j := .}}
+{{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
+<section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
+  <div class="stat-head"><span><b class="ink">{{t $l "sec.job"}}</b></span>
+  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l "sec.job"}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <ol class="stepper">{{range $d.Steps}}
+    <li class="st-{{.State}}" data-step="{{.Key}}">
+      <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
+      <span class="txt"><span class="now">{{t $l (printf "sec.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "sec.step.%s" .Key)}}</span></span>
+    </li>{{end}}
+  </ol>
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "sec.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p class="banner ok">{{t $l "sec.job.done"}}</p>{{end}}
+  {{if $j.Error}}<p class="banner warn">{{t $l "sec.job.fail"}}</p>
+  <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
+</section>
+{{end}}
+<section class="card wide tone c-teal" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "sec.title"}}</h2>
+  <p class="muted">{{t $l "sec.help"}}</p>
+</section>
+<section class="grid pair">
+<article class="card tone c-blue" data-anim="card" id="block">
+  <h2>{{t $l "sec.block.title"}}</h2>
+  <p class="muted">{{t $l "sec.block.help"}}</p>
+  {{if $v.Blocked}}<ul class="plain">{{range $v.Blocked}}
+    <li><form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="block-remove"><input type="hidden" name="ip" value="{{.}}">
+      <span><code>{{.}}</code></span>
+      <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "sec.unblock"}}</button></form></li>{{end}}
+  </ul>{{else}}<p class="muted">{{t $l "sec.block.none"}}</p>{{end}}
+  <form method="post" action="/security/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="block-add">
+    <label>{{t $l "sec.block.ip"}}<input name="ip" placeholder="203.0.113.7 / 203.0.113.0/24" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required></label>
+    {{if $d.YourIP}}<p class="muted small">{{t $l "sec.block.you"}} <code>{{$d.YourIP}}</code></p>{{end}}
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "sec.block.go"}}</button>
+  </form>
+</article>
+<article class="card tone c-violet" data-anim="card" id="hotlink">
+  <h2>{{t $l "sec.hot.title"}}</h2>
+  <p class="muted">{{t $l "sec.hot.help"}}</p>
+  <p class="facts"><span>{{if $v.Hotlink}}<span class="pill s-ok">{{t $l "sec.on"}}</span>{{else}}<span class="pill s-unknown">{{t $l "sec.off"}}</span>{{end}}</span>
+    <span class="muted small">{{t $l "sec.hot.exts"}} {{join $v.HotlinkExts ", "}}</span></p>
+  <form method="post" action="/security/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="hotlink-on">
+    <label>{{t $l "sec.hot.allow"}}<textarea name="allow" rows="3" placeholder="google.com&#10;facebook.com" autocapitalize="none" spellcheck="false" maxlength="2000">{{$d.Allow}}</textarea></label>
+    <p class="muted small">{{t $l "sec.hot.allow.help"}}</p>
+    <div class="row"><button class="secondary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{if $v.Hotlink}}{{t $l "sec.hot.save"}}{{else}}{{t $l "sec.hot.on"}}{{end}}</button></div>
+  </form>
+  {{if $v.Hotlink}}<form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="hotlink-off">
+    <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "sec.hot.off"}}</button></form>{{end}}
+</article>
+</section>
+<section class="card wide tone c-amber" data-anim="card" id="protect">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "sec.prot.title"}}</h2>
+  <p class="muted">{{t $l "sec.prot.help"}}</p>
+  {{if $v.Protected}}<div class="table-wrap"><table class="dom">
+    <thead><tr><th>{{t $l "sec.prot.path"}}</th><th>{{t $l "sec.prot.users"}}</th><th><span class="sr-only">{{t $l "dom.col.act"}}</span></th></tr></thead>
+    <tbody>{{range $v.Protected}}{{$p := .}}
+      <tr>
+        <td><code>{{.Path}}</code></td>
+        <td><ul class="plain">{{range .Users}}<li><form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="protect-user-remove"><input type="hidden" name="path" value="{{$p.Path}}"><input type="hidden" name="user" value="{{.}}">
+          <code>{{.}}</code>{{if gt (len $p.Users) 1}} <button class="ghost danger-text small" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "dom.remove"}}</button>{{end}}</form></li>{{end}}</ul></td>
+        <td><form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="protect-remove"><input type="hidden" name="path" value="{{.Path}}">
+          <label class="check small"><input type="checkbox" name="confirm" value="1" required> {{t $l "dom.remove.sure"}}</label>
+          <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "sec.prot.remove"}}</button></form></td>
+      </tr>{{end}}
+    </tbody></table></div>{{else}}<p class="muted">{{t $l "sec.prot.none"}}</p>{{end}}
+  <form method="post" action="/security/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="protect-set">
+    <label>{{t $l "sec.prot.path"}}<input name="path" placeholder="/wp-admin" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="200" required></label>
+    <label>{{t $l "sec.prot.user"}}<input name="user" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="32" pattern="[A-Za-z0-9._\-]{1,32}" required></label>
+    <label>{{t $l "sec.prot.pass"}}<input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="72" required></label>
+    <label>{{t $l "sec.prot.pass2"}}<input type="password" name="password2" autocomplete="new-password" minlength="8" maxlength="72" required></label>
+    <p class="muted small">{{t $l "sec.prot.note"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "sec.prot.go"}}</button>
+  </form>
+</section>
+{{if $d.Err}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
+<p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
+{{end}}
