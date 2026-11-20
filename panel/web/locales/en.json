@@ -931,5 +931,9 @@
   "sec.protect.need": "Enter the folder and the user name.",
   "sec.pass.len": "The password needs %d to %d characters.",
   "sec.pass.same": "The two passwords are not the same.",
-  "sec.confirm.need": "Tick sure to remove the protection."
+  "sec.confirm.need": "Tick sure to remove the protection.",
+  "files.ed.search": "Find / replace",
+  "files.ed.wrap": "Wrap lines",
+  "files.ed.full": "Full screen",
+  "files.ed.keys": "Ctrl+S save · Ctrl+F find · Ctrl+Space suggest · Ctrl+/ comment · Alt+click more cursors"
 }

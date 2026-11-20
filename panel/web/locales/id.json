@@ -931,5 +931,9 @@
   "sec.protect.need": "Isi folder dan nama pengguna.",
   "sec.pass.len": "Password harus %d sampai %d karakter.",
   "sec.pass.same": "Kedua password tidak sama.",
-  "sec.confirm.need": "Centang yakin untuk menghapus proteksi."
+  "sec.confirm.need": "Centang yakin untuk menghapus proteksi.",
+  "files.ed.search": "Cari / ganti",
+  "files.ed.wrap": "Bungkus baris",
+  "files.ed.full": "Layar penuh",
+  "files.ed.keys": "Ctrl+S simpan · Ctrl+F cari · Ctrl+Space saran · Ctrl+/ komentar · Alt+klik kursor tambahan"
 }
