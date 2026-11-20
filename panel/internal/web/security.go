@@ -7,6 +7,7 @@ package web
 import (
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +31,14 @@ type securityData struct {
 	Running bool
 	YourIP  string
 	Allow   string // allowed sites of hotlink protection, one per line
+	Codes   []codeRow
+}
+
+// codeRow is one error code on the page: on or off, and its page in the File Manager.
+type codeRow struct {
+	Code int
+	On   bool
+	Path string
 }
 
 func (s *Server) securityPage(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +56,13 @@ func (s *Server) securityPage(w http.ResponseWriter, r *http.Request) {
 	d.V = v
 	if v.Hotlink != nil {
 		d.Allow = strings.Join(v.Hotlink.Allow, "\n")
+	}
+	for _, c := range v.ErrorCodes {
+		row := codeRow{Code: c, Path: v.ErrorDir + "/" + strconv.Itoa(c) + ".html"}
+		for _, x := range v.ErrorPages {
+			row.On = row.On || x == c
+		}
+		d.Codes = append(d.Codes, row)
 	}
 	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
 		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && j.Kind == "security" {
@@ -131,6 +147,19 @@ func (s *Server) securityAction(w http.ResponseWriter, r *http.Request) {
 		}
 		detail += " allow " + strings.Join(c.Allow, ",")
 	case "hotlink-off":
+	case "errpage-on", "errpage-off":
+		c.Code, _ = strconv.Atoi(f.Get("code"))
+		detail += " " + strconv.Itoa(c.Code)
+	case "mime-add":
+		c.Type, c.Exts = strings.TrimSpace(f.Get("type")), strings.TrimSpace(f.Get("exts"))
+		if c.Type == "" || c.Exts == "" || len(c.Type) > 200 || len(c.Exts) > 400 {
+			back(s.tr.T(l, "sec.mime.need"))
+			return
+		}
+		detail += " " + c.Type + " " + c.Exts
+	case "mime-remove":
+		c.Type = f.Get("type")
+		detail += " " + c.Type
 	default:
 		http.Error(w, "bad request", 400)
 		return

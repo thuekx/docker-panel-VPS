@@ -362,7 +362,7 @@ func (m *Manager) writeLimits(ctx context.Context, s Site) error {
 		return err
 	}
 	prev := map[string][]byte{}
-	for _, f := range []string{"compose.yml", "php.ini", "nginx.conf", "site.json"} {
+	for _, f := range []string{"compose.yml", "php.ini", "nginx.conf", "apache.conf", "site.json"} {
 		if b, err := os.ReadFile(filepath.Join(dir, f)); err == nil {
 			prev[f] = b
 		}
@@ -373,7 +373,10 @@ func (m *Manager) writeLimits(ctx context.Context, s Site) error {
 		next["php.ini"] = []byte(s.PHPIniFile())
 	}
 	if b, ok := prev["nginx.conf"]; ok {
-		next["nginx.conf"] = []byte(s.nginxBody(string(b)))
+		next["nginx.conf"] = []byte(s.withNginxRules(s.nginxBody(string(b))))
+	}
+	if s.apacheMount() != "" {
+		next["apache.conf"] = []byte(s.apacheRules())
 	}
 	putBack := func() {
 		for f, b := range prev {
@@ -394,7 +397,8 @@ func (m *Manager) writeLimits(ctx context.Context, s Site) error {
 	defer cancel()
 	// php.ini and nginx.conf are read when a container starts: a change of them recreates every container
 	args := []string{"up", "-d", "--wait", "--wait-timeout", fmt.Sprint(StartTimeout)}
-	if string(prev["php.ini"]) != string(next["php.ini"]) || string(prev["nginx.conf"]) != string(next["nginx.conf"]) {
+	if string(prev["php.ini"]) != string(next["php.ini"]) || string(prev["nginx.conf"]) != string(next["nginx.conf"]) ||
+		(next["apache.conf"] != nil && string(prev["apache.conf"]) != string(next["apache.conf"])) {
 		args = append(args, "--force-recreate")
 	}
 	if out, err := m.compose(ctx, s.ID, nil, args...); err != nil {

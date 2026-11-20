@@ -5,6 +5,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -51,6 +52,12 @@ func securityDetail(c sites.SecurityChange) string {
 		return c.Op + " " + c.Path
 	case "hotlink-on":
 		return c.Op + " allow " + strings.Join(c.Allow, ",")
+	case "errpage-on", "errpage-off":
+		return fmt.Sprintf("%s %d", c.Op, c.Code)
+	case "mime-add":
+		return c.Op + " " + c.Type + " " + c.Exts
+	case "mime-remove":
+		return c.Op + " " + c.Type
 	}
 	return c.Op
 }

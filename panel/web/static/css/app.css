@@ -290,6 +290,8 @@ form[data-upload] .progress i{transition:width .25s linear}
 .grow{flex:1 1 220px}
 textarea.code{font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;min-height:220px;resize:vertical}
 form[data-editor] textarea.code{min-height:62vh}
+.err-codes li form{flex-wrap:wrap;gap:8px}
+.err-codes li form>span:first-of-type{flex:1 1 160px}
 /* EDITOR-1: CodeMirror 6 */
 .ed-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}
 .ed-bar button[aria-pressed="true"]{color:var(--teal-l);border-color:var(--teal-l)}

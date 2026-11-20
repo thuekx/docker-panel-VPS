@@ -238,7 +238,7 @@ server {
     location / { try_files $uri $uri/ $uri.html =404; }
 }
 `)
-		return b.String()
+		return s.withNginxRules(b.String())
 	}
 	if s.IsWP() {
 		b.WriteString(`    location = /xmlrpc.php { deny all; }
@@ -261,7 +261,7 @@ server {
     }
 }
 `, s.php().ExecTime+30, p.socket(s.ID))
-	return b.String()
+	return s.withNginxRules(b.String())
 }
 
 // NativeEdge renders the Traefik file-provider entry of a native website: the same routers as a Docker website

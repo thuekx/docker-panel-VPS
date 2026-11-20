@@ -146,7 +146,13 @@ type SecurityView struct {
 	Protected   []Protected `json:"protected"`
 	Hotlink     *Hotlink    `json:"hotlink"`
 	HotlinkExts []string    `json:"hotlink_exts"`
-	Job         *JobView    `json:"job,omitempty"`
+	// wave 2: only for websites with their own web server
+	WebServer  bool     `json:"web_server"`
+	ErrorPages []int    `json:"error_pages"`
+	ErrorCodes []int    `json:"error_codes"`
+	ErrorDir   string   `json:"error_dir"`
+	MIME       []MIME   `json:"mime"`
+	Job        *JobView `json:"job,omitempty"`
 }
 
 // Security returns a website's edge rules.
@@ -155,7 +161,14 @@ func (m *Manager) Security(id string) (SecurityView, error) {
 	if err != nil {
 		return SecurityView{}, err
 	}
-	v := SecurityView{Blocked: s.BlockIPs, Protected: s.Protected, Hotlink: s.Hotlink, HotlinkExts: HotlinkExts}
+	v := SecurityView{Blocked: s.BlockIPs, Protected: s.Protected, Hotlink: s.Hotlink, HotlinkExts: HotlinkExts,
+		WebServer: s.HasWebServer(), ErrorPages: s.ErrorPages, ErrorCodes: ErrorCodes, ErrorDir: s.ErrorDir(), MIME: s.MIME}
+	if v.ErrorPages == nil {
+		v.ErrorPages = []int{}
+	}
+	if v.MIME == nil {
+		v.MIME = []MIME{}
+	}
 	if v.Blocked == nil {
 		v.Blocked = []string{}
 	}
@@ -173,12 +186,15 @@ func (m *Manager) Security(id string) (SecurityView, error) {
 
 // SecurityChange is one change on the Security page.
 type SecurityChange struct {
-	Op    string   `json:"op"` // block-add | block-remove | protect-set | protect-user-remove | protect-remove | hotlink-on | hotlink-off
+	Op    string   `json:"op"` // block-add | block-remove | protect-set | protect-user-remove | protect-remove | hotlink-on | hotlink-off | errpage-on | errpage-off | mime-add | mime-remove
 	IP    string   `json:"ip,omitempty"`
 	Path  string   `json:"path,omitempty"`
 	User  string   `json:"user,omitempty"`
 	Hash  string   `json:"hash,omitempty"` // bcrypt, made by the panel
 	Allow []string `json:"allow,omitempty"`
+	Code  int      `json:"code,omitempty"` // errpage-on | errpage-off
+	Type  string   `json:"type,omitempty"` // mime-add | mime-remove
+	Exts  string   `json:"exts,omitempty"` // mime-add: "tex ltx"
 }
 
 // nextSecurity applies a change to a copy of the website; auth holds the password file it needs (path -> users).
@@ -197,6 +213,9 @@ func (m *Manager) nextSecurity(s Site, c SecurityChange) (Site, map[string]map[s
 			}
 		}
 		return -1
+	}
+	if ok, err := nextWebRules(s, &next, c); ok {
+		return next, auth, err
 	}
 	switch c.Op {
 	case "block-add":
@@ -351,6 +370,12 @@ func (m *Manager) ChangeSecurity(id string, c SecurityChange) (string, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
 		j.Step("routes")
+		if c.Op == "errpage-on" {
+			if err := m.writeStarterPage(next, c.Code); err != nil {
+				j.Fail("writing the starter page failed: " + err.Error())
+				return
+			}
+		}
 		prev := map[string][]byte{}
 		for path, users := range auth {
 			host := m.authFile(id, path)

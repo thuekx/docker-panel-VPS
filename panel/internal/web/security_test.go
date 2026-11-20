@@ -38,7 +38,8 @@ func (f *fakeAgent) security(w http.ResponseWriter, r *http.Request, write func(
 		return
 	}
 	write(200, agent.Security{Blocked: []string{"198.51.100.9", "2001:db8::/32"}, Protected: []agent.Protected{{Path: "/admin", Users: []string{"ana", "budi"}}, {Path: "/solo", Users: []string{"cici"}}},
-		Hotlink: &agent.Hotlink{Allow: []string{"google.com"}}, HotlinkExts: []string{"jpg", "png"}, Job: f.secJob})
+		Hotlink: &agent.Hotlink{Allow: []string{"google.com"}}, HotlinkExts: []string{"jpg", "png"}, Job: f.secJob,
+		WebServer: true, ErrorCodes: []int{403, 404, 503}, ErrorPages: []int{404}, ErrorDir: "/.nostek-errors", MIME: []agent.MIME{{Type: "application/wasm", Exts: []string{"wasm"}}}})
 }
 
 func TestSecurityPage(t *testing.T) {
@@ -76,6 +77,10 @@ func TestSecurityPage(t *testing.T) {
 		">google.com</textarea>",
 		`name="user" value="ana"`,
 		"Save allowed sites",
+		`href="/files/voltix-id/edit?path=%2f.nostek-errors%2f404.html"`,
+		`name="op" value="errpage-on"><input type="hidden" name="code" value="503">`,
+		`name="op" value="errpage-off"><input type="hidden" name="code" value="404">`,
+		"<code>application/wasm</code> <span class=\"muted\">.wasm</span>",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
@@ -107,6 +112,10 @@ func TestSecurityPage(t *testing.T) {
 		{url.Values{"op": {"protect-remove"}, "path": {"/admin"}, "confirm": {"1"}}, "#job"},
 		{url.Values{"op": {"hotlink-on"}, "allow": {"google.com\r\nbing.com, duck.com"}}, "#job"},
 		{url.Values{"op": {"hotlink-off"}}, "done=nochange"},
+		{url.Values{"op": {"errpage-on"}, "code": {"503"}}, "#job"},
+		{url.Values{"op": {"mime-add"}, "type": {"text/x-tex"}, "exts": {""}}, "err="},
+		{url.Values{"op": {"mime-add"}, "type": {" text/x-tex "}, "exts": {"tex ltx"}}, "#job"},
+		{url.Values{"op": {"mime-remove"}, "type": {"application/wasm"}}, "#job"},
 	} {
 		if code, _, h := e.post(e.c, "/security/voltix-id", c.form, "/security/voltix-id"); code != 303 || !strings.Contains(h.Get("Location"), c.loc) {
 			t.Errorf("%v: %d %s", c.form, code, h.Get("Location"))
@@ -126,7 +135,8 @@ func TestSecurityPage(t *testing.T) {
 	}
 	want := []string{`{"op":"block-add","ip":"203.0.113.7"}`, `{"op":"block-add","ip":"bad"}`, `{"op":"block-remove","ip":"198.51.100.9"}`,
 		`{"op":"protect-user-remove","path":"/admin","user":"budi"}`, `{"op":"protect-remove","path":"/admin"}`,
-		`{"op":"hotlink-on","allow":["google.com","bing.com","duck.com"]}`, `{"op":"hotlink-off"}`}
+		`{"op":"hotlink-on","allow":["google.com","bing.com","duck.com"]}`, `{"op":"hotlink-off"}`,
+		`{"op":"errpage-on","code":503}`, `{"op":"mime-add","type":"text/x-tex","exts":"tex ltx"}`, `{"op":"mime-remove","type":"application/wasm"}`}
 	if strings.Join(rest, "\n") != strings.Join(want, "\n") {
 		t.Errorf("calls:\n%s", strings.Join(rest, "\n"))
 	}

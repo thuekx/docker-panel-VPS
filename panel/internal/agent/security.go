@@ -15,12 +15,23 @@ type Hotlink struct {
 	Allow []string `json:"allow"`
 }
 
+// MIME maps file extensions to a content type (SEC-01 wave 2).
+type MIME struct {
+	Type string   `json:"type"`
+	Exts []string `json:"exts"`
+}
+
 // Security is the Security page of a website.
 type Security struct {
 	Blocked     []string    `json:"blocked"`
 	Protected   []Protected `json:"protected"`
 	Hotlink     *Hotlink    `json:"hotlink"`
 	HotlinkExts []string    `json:"hotlink_exts"`
+	WebServer   bool        `json:"web_server"`
+	ErrorPages  []int       `json:"error_pages"`
+	ErrorCodes  []int       `json:"error_codes"`
+	ErrorDir    string      `json:"error_dir"`
+	MIME        []MIME      `json:"mime"`
 	Job         *Job        `json:"job"`
 }
 
@@ -33,6 +44,9 @@ type SecurityChange struct {
 	User  string   `json:"user,omitempty"`
 	Hash  string   `json:"hash,omitempty"`
 	Allow []string `json:"allow,omitempty"`
+	Code  int      `json:"code,omitempty"`
+	Type  string   `json:"type,omitempty"`
+	Exts  string   `json:"exts,omitempty"`
 }
 
 // Security returns a website's edge rules.
