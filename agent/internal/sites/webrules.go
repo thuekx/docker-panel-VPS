@@ -70,7 +70,24 @@ func (s Site) nginxRules() string {
 		fmt.Fprintf(&b, "    location ^~ /%s/ { access_log off; }\n", errDir)
 	}
 	if len(s.MIME) > 0 {
-		b.WriteString("    types {\n        include /etc/nginx/mime.types;\n")
+		own := map[string]bool{}
+		for _, m := range s.MIME {
+			for _, e := range m.Exts {
+				own[e] = true
+			}
+		}
+		b.WriteString("    types {\n")
+		for _, m := range standardMIME { // the standard map, less the extensions the website maps itself
+			var exts []string
+			for _, e := range m.Exts {
+				if !own[e] {
+					exts = append(exts, e)
+				}
+			}
+			if len(exts) > 0 {
+				fmt.Fprintf(&b, "        %s %s;\n", m.Type, strings.Join(exts, " "))
+			}
+		}
 		for _, m := range s.MIME {
 			fmt.Fprintf(&b, "        %s %s;\n", m.Type, strings.Join(m.Exts, " "))
 		}

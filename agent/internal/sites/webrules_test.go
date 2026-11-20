@@ -59,7 +59,8 @@ func TestWebRulesNginx(t *testing.T) {
 	conf := mustRead(t, filepath.Join(m.dir(s.ID), "nginx.conf"))
 	for _, want := range []string{
 		"    error_page 404 /.nostek-errors/404.html;\n    error_page 503 /.nostek-errors/503.html;\n    location ^~ /.nostek-errors/ { access_log off; }\n",
-		"    types {\n        include /etc/nginx/mime.types;\n        application/x-latex ltx;\n        text/x-tex tex;\n    }\n" + rulesEnd + "\n}\n",
+		"    types {\n        text/html html htm shtml;\n",
+		"        application/x-latex ltx;\n        text/x-tex tex;\n    }\n" + rulesEnd + "\n}\n",
 	} {
 		if !strings.Contains(conf, want) {
 			t.Errorf("nginx.conf lacks %q\n%s", want, conf)
