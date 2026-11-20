@@ -3,7 +3,15 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.23.1] — 2026-11-20
+
+### Fixed
+- Disk tab: the folder icon in front of each folder name was drawn without a size, so it filled the whole card and
+  hid the names. It is a small icon again (16 px).
+
 ## [1.23.0] — 2026-11-19
+
+Running on the production server since 2026-11-20 22:42 WIB.
 
 ### Added
 - **Security tab** for every website (SEC-01 wave 1), like cPanel's IP Blocker, Directory Privacy and Hotlink
@@ -18,6 +26,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 - Every change runs as a job with its step on the page; a failed change puts the previous rules back.
 
 ## [1.22.0] — 2026-11-17
+
+Running on the production server since 2026-11-20 22:34 WIB.
 
 ### Added
 - **Domains tab** for every website (DOM-01), like cPanel's Domains, Aliases, Redirects and Track DNS:
