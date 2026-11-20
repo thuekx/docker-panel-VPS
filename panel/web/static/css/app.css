@@ -422,6 +422,9 @@ details.tech pre{margin-top:8px;white-space:pre-wrap;word-break:break-word}
 .dp-trash{background:var(--c-amber)}.dp-other{background:var(--c-rose)}
 .bar.thin{height:4px;margin-top:6px}
 .disk-table td:first-child{min-width:180px}
+/* a small icon before a name in a table row; an svg without its own size would fill the whole width */
+.row-ico{display:inline-flex;vertical-align:-3px;margin-right:6px;color:var(--tone,var(--teal-l))}
+.row-ico svg,.disk-table a>svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .crumbs{margin:4px 0 10px;word-break:break-all}
 @media (max-width:640px){.hide-sm{display:none}}
 /* DOM-01 Domains */

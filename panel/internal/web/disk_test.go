@@ -17,6 +17,10 @@ func TestDiskPages(t *testing.T) {
 			!strings.Contains(page, "video.mp4") || !strings.Contains(page, `aria-current="page"`) || missingKey.MatchString(page) {
 			t.Fatalf("site disk (%s) %d %v", lang, code, missingKey.FindString(page))
 		}
+		// UI-DISK-1: the folder icon of a row sits in its sized wrapper, never bare in the link
+		if !strings.Contains(page, `<span class="row-ico" aria-hidden="true"><svg`) || strings.Contains(page, `"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2`) && !strings.Contains(page, `row-ico" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2`) {
+			t.Errorf("folder icon not in its sized wrapper (%s)", lang)
+		}
 		code, page, _ = e.get(e.c, "/disk")
 		if code != 200 || !strings.Contains(page, `id="disk-docker"`) || !strings.Contains(page, `href="/disk/voltix-id"`) || !strings.Contains(page, `value="images"`) || missingKey.MatchString(page) {
 			t.Fatalf("server disk (%s) %d %v", lang, code, missingKey.FindString(page))
