@@ -129,6 +129,32 @@ ok "an allowed site may embed" 'applied "{\"op\":\"hotlink-on\",\"allow\":[\"evi
 ok "hotlink protection off" 'applied "{\"op\":\"hotlink-off\"}" && edge "$S" /logo.png "200 " -e https://other.example.test/'
 change '{"op":"hotlink-off"}'
 ok "turning it off twice changes nothing" '[ "$CODE" = 200 ] && [ -z "$J" ]'
+# --- SEC-01 wave 2: error pages and MIME types in the website's own Nginx
+hdr() { curl -sk --noproxy '*' --max-time 20 --resolve "$S:443:127.0.0.1" -o /dev/null -D - "https://$S$1" | tr -d '\r' | grep -i "^content-type:" | cut -d' ' -f2- | head -n1; }
+body() { curl -sk --noproxy '*' --max-time 20 --resolve "$S:443:127.0.0.1" "https://$S$1"; }
+ok "404 page on: a missing file gets the starter page with code 404" 'applied "{\"op\":\"errpage-on\",\"code\":404}" && edge "$S" /gone.png "404 " && grep -q "<b>404</b>" <<<"$(body /gone.png)"'
+ok "the page is a file of the website, editable" '[ -f "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/.nostek-errors/404.html" ] && printf "<h1>Hilang</h1>\n" > "$T/404.html" && raw PUT "/v1/sites/$SID/files/content?path=/.nostek-errors/404.html&overwrite=1" "$T/404.html" && [ "$CODE" = 200 ] && grep -q "Hilang" <<<"$(body /gone.png)"'
+ok "403 page on: a dot file gets it" 'applied "{\"op\":\"errpage-on\",\"code\":403}" && edge "$S" /.env "403 " && grep -q "<b>403</b>" <<<"$(body /.env)"'
+ok "turning 404 on again changes nothing and keeps the edited page" 'change "{\"op\":\"errpage-on\",\"code\":404}"; [ "$CODE" = 200 ] && [ -z "$J" ] && grep -q Hilang "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/.nostek-errors/404.html"'
+printf 'x\n' > "$T/a.foo"; raw PUT "/v1/sites/$SID/files/content?path=/a.foo" "$T/a.foo"; printf 'y\n' > "$T/b.txt"; raw PUT "/v1/sites/$SID/files/content?path=/b.txt" "$T/b.txt"
+ok "MIME types: a new extension and a replaced one" 'applied "{\"op\":\"mime-add\",\"type\":\"text/x-foo\",\"exts\":\"foo\"}" && applied "{\"op\":\"mime-add\",\"type\":\"text/x-custom\",\"exts\":\"txt\"}" && [ "$(hdr /a.foo)" = text/x-foo ] && [ "$(hdr /b.txt)" = text/x-custom ] && [ "$(hdr /logo.png)" = image/png ]'
+ok "a content type that is not one is refused" 'change "{\"op\":\"mime-add\",\"type\":\"text/x;y\",\"exts\":\"y\"}"; [ "$CODE" = 400 ]'
+ok "rules removed: standard pages and types again" 'applied "{\"op\":\"errpage-off\",\"code\":404}" && applied "{\"op\":\"errpage-off\",\"code\":403}" && applied "{\"op\":\"mime-remove\",\"type\":\"text/x-foo\"}" && applied "{\"op\":\"mime-remove\",\"type\":\"text/x-custom\"}" && ! grep -q "<b>403</b>" <<<"$(body /.env)" && [ "$(hdr /b.txt)" = text/plain ] && ! grep -q nostek-rules "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/nginx.conf"'
+
+# --- the same on Apache (plain PHP website)
+P="p.example.test"; PID="p-example-test"
+printf '%s %s %s\n' "$IP" "$P" "$MARK" >> /etc/hosts
+api POST /v1/sites "{\"app\":\"php\",\"domain\":\"$P\",\"aliases\":[],\"primary\":\"domain\",\"server\":\"apache\",\"php\":\"8.4\",\"admin_email\":\"\",\"title\":\"Situs P\"}"; J="$(jobid)"
+ok "PHP website on Apache made" '[ "$CODE" = 202 ] && [ "$(wait_job "$J")" = done ] && edge "$P" / "200 "'
+api POST "/v1/sites/$PID/security" '{"op":"errpage-on","code":404}'; J="$(jobid)"; C1="$CODE"; S1="$(wait_job "$J")"
+api POST "/v1/sites/$PID/security" '{"op":"mime-add","type":"text/x-foo","exts":"foo"}'; J="$(jobid)"; C2="$CODE"; S2="$(wait_job "$J")"
+raw PUT "/v1/sites/$PID/files/content?path=/a.foo" "$T/a.foo"
+pget() { curl -sk --noproxy '*' --max-time 20 --resolve "$P:443:127.0.0.1" "$@"; }
+ok "Apache: the 404 page and the MIME type work" '[ "$C1" = 202 ] && [ "$S1" = done ] && [ "$C2" = 202 ] && [ "$S2" = done ] && edge "$P" /gone.png "404 " && grep -q "<b>404</b>" <<<"$(pget "https://$P/gone.png")" && pget -o /dev/null -D - "https://$P/a.foo" | tr -d "\r" | grep -qi "^content-type: text/x-foo"'
+api POST "/v1/sites/$PID/security" '{"op":"errpage-off","code":404}'; J="$(jobid)"; wait_job "$J" >/dev/null
+api POST "/v1/sites/$PID/security" '{"op":"mime-remove","type":"text/x-foo"}'; J="$(jobid)"; S3="$(wait_job "$J")"
+ok "Apache: rules removed, the mount goes with them" '[ "$S3" = done ] && ! grep -q apache.conf "$SITE01_TEST_ROOT/srv/nostek/sites/$PID/compose.yml" && edge "$P" / "200 "'
+
 ok "no security router left in the website's labels" '! grep -E "site-$SID-(block|protect|hotlink|deny)" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml"'
 
 cleanup; TMP_ALL="$(mktemp -d)"
