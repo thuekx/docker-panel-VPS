@@ -716,6 +716,7 @@ func (m *Manager) Delete(ctx context.Context, id string) (string, error) {
 	if err := os.Rename(m.dir(id), filepath.Join(m.trashDir(), entry)); err != nil {
 		return "", err
 	}
+	m.sftpToTrash(id, filepath.Join(m.trashDir(), entry)) // SFTP-01: the accounts go (and come back) with the website
 	return entry, nil
 }
 
@@ -750,6 +751,7 @@ func (m *Manager) Restore(ctx context.Context, entry string) (string, error) {
 	if err := os.Rename(src, m.dir(id)); err != nil {
 		return "", err
 	}
+	m.sftpFromTrash(id)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 	if ts.IsNative() {

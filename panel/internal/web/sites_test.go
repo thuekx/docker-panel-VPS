@@ -58,6 +58,8 @@ type fakeAgent struct {
 	secLogins agent.Logins // SEC-01 wave 3
 	secWAF    agent.WAF    // SEC-01 wave 3b
 	secWAFOK  bool
+	sftp      agent.SFTP // SFTP-01
+	sftpCalls []string
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -102,6 +104,20 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/domains") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jddd") {
 		f.domains(w, r, write)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/sftp") { // SFTP-01
+		if r.Method == "POST" {
+			b, _ := io.ReadAll(r.Body)
+			f.sftpCalls = append(f.sftpCalls, strings.TrimSpace(string(b)))
+			if strings.Contains(string(b), `"name":"taken"`) {
+				write(400, map[string]string{"error": "bad input: the name taken is taken on this server"})
+				return
+			}
+			write(200, map[string]bool{"changed": !strings.Contains(string(b), `"op":"dir-set","name":"ana","dir":"/"`)})
+			return
+		}
+		write(200, f.sftp)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/security") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jsec") {

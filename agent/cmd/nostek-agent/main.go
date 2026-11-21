@@ -197,6 +197,9 @@ func serve(cfg Config, m *sites.Manager) error {
 	if err := m.SyncWAF(); err != nil { // SEC-01 wave 3b: the WAF files follow site.json
 		fmt.Fprintln(os.Stderr, "waf files:", err)
 	}
+	if err := m.SyncSFTP(); err != nil { // SFTP-01: accounts follow the website's file user
+		fmt.Fprintln(os.Stderr, "sftp files:", err)
+	}
 	fmt.Println("nostek-agent", Version, "listening on", cfg.Socket)
 	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err

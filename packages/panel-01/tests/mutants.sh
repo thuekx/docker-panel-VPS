@@ -6,7 +6,7 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 MUTANTS=(
   's/\[ "$h" = "$EXPECT_HOST" \] || wrong_host/true/'                                 # host name not checked
   's/if \[ "$(host02_phase)" = DONE \]; then/if true; then/'                           # runs before backups are proven
-  's/\[ -z "$f" \] \&\& pass "only edge publishes ports" ||/true ||/'                  # port isolation not verified
+  's/\[ -z "$f" \] \&\& pass "only edge and sftp publish ports" ||/true ||/'                  # port isolation not verified
   's/chmod 600 "$CORE\/.env"/chmod 644 "$CORE\/.env"/'                                 # settings readable by all
   's/if \[ -d "$CORE" \]; then mv "$CORE" "$BK\/core" \&\& pass/if [ -d "$CORE" ]; then rm -rf "$CORE" \&\& pass/'  # revert deletes instead of moving aside
   's/  curl -sS -k --noproxy/  curl -sS --noproxy/'                                   # reachability check demands a certificate (bug of 2026-11-11)

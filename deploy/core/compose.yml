@@ -1,5 +1,5 @@
 # Nostek Panel core stack (PANEL-01). Installed by packages/panel-01 to /srv/nostek/core.
-# Only `edge` publishes ports. The panel never mounts the Docker socket; it reads Docker through a read-only socket
+# Only `edge` (80/443) and `sftp` (2222, SFTP-01) publish ports. The panel never mounts the Docker socket; it reads Docker through a read-only socket
 # proxy and changes sites only through nostek-agent (host service, fixed actions, socket in /run/nostek-agent).
 # Networks: nostek-panel = edge + panel only; nostek-edge = edge + site web servers (sites never reach the panel);
 # nostek-ctl = internal, panel/edge to the socket proxy.
@@ -102,6 +102,37 @@ services:
       start_period: 10s
     networks: [nostek-edge]
 
+  # SFTP-01: SFTP for the websites' files (no shell). Accounts per website come from the agent (<data>/sftp, read
+  # only here); each login is locked to its website's folder. Root inside the container only to give new files to
+  # the website's file user: every capability is dropped except those three. No network but its own.
+  sftp:
+    <<: *hardening
+    image: ${PANEL_IMAGE:?PANEL_IMAGE is required}
+    entrypoint: ["/nostek-sftp"]
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    tmpfs: [/tmp]
+    mem_limit: 512m
+    pids_limit: 256
+    ports:
+      - "2222:2222"
+    environment:
+      SFTP_CONFIG: /config
+      SFTP_STATE: /state
+    volumes:
+      - ${NOSTEK_DATA:-/srv/nostek}/sftp:/config:ro
+      - ${NOSTEK_DATA:-/srv/nostek}/sftp-state:/state
+      - ${NOSTEK_DATA:-/srv/nostek}/sites:/sites
+    healthcheck:
+      test: ["CMD", "/nostek-sftp", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks: [nostek-sftp]
+
   docker-api:
     <<: *hardening
     image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
@@ -161,3 +192,5 @@ networks:
   nostek-ctl:
     name: nostek-ctl
     internal: true
+  nostek-sftp:
+    name: nostek-sftp
