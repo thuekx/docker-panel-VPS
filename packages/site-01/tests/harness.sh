@@ -283,7 +283,6 @@ api POST /v1/sites/d-example-test/limits '{"ram":{"db":512,"php":512},"php":{"me
 ok "back to the standard" '[ "$CODE" = 200 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-php-1)" = 536870912 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-db-1)" = 536870912 ] && [ "$(docker exec np-site-d-example-test-php-1 php -r "echo ini_get(\"memory_limit\");")" = 256M ] && grep -q "client_max_body_size 128m;" "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/nginx.conf"'
 
 # --- DISK-01 disk usage: per website with a drill-down, the server view, clean-ups that keep every website
-# a clean-up may take minutes on a busy Docker: the panel waits up to 6 minutes, so does this harness
 head -c 3000000 /dev/zero > "$T/big.bin"; raw PUT '/v1/sites/d-example-test/files/content?path=/big.bin' "$T/big.bin"
 api GET '/v1/sites/d-example-test/disk?path=/'
 ok "website disk: its files, database and backups, the largest file first" '[ "$CODE" = 200 ] && python3 -c "import json,sys; d=json.load(sys.stdin); assert d[\"files\"]>=3000000 and d[\"database\"]>0 and d[\"backups\"]>0, d; assert d[\"rows\"][0][\"name\"]==\"big.bin\", d[\"rows\"]; assert d[\"big\"][0][\"path\"]==\"/big.bin\", d[\"big\"]" <<<"$BODY"'
@@ -291,6 +290,7 @@ api GET /v1/disk
 ok "server disk lists the websites and Docker images" '[ "$CODE" = 200 ] && python3 -c "import json,sys; d=json.load(sys.stdin); assert d[\"disk_bytes\"]>0 and len(d[\"sites\"])>=4, d; assert any(x[\"kind\"]==\"images\" and x[\"count\"]>0 for x in d[\"docker\"]), d" <<<"$BODY"'
 CLI_B="$(sed -n "/^  cli:/,/^  [a-z]/s/^    image: //p" "$CF_B" | head -1)"
 UP_BEFORE="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
+# a clean-up may take minutes on a busy Docker: the panel waits up to 6 minutes, so does this harness
 MAXT=360 api POST /v1/disk/clean '{"what":"images"}'; C1="$CODE"; B1="$BODY"; MAXT=360 api POST /v1/disk/clean '{"what":"build-cache"}'
 UP_AFTER="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 OUT="images clean: $C1 $B1"$'\n'"WP-CLI image: ${CLI_B:-none} $(docker image inspect -f '{{.Id}}' "$CLI_B" 2>&1 | head -1)"$'\n'"agent-build: $(docker image ls --format '{{.Repository}}:{{.Tag}}' nostek/agent-build | tr '\n' ' ')"$'\n'"containers before: $UP_BEFORE"$'\n'"containers after:  $UP_AFTER"$'\n'"$(docker ps -a --filter name=np-site- --format '{{.Names}} {{.Status}}')"
