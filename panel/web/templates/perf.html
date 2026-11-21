@@ -1,0 +1,60 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "perf.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (tabs $l $s "perf")}}
+{{with $d.Job}}{{$j := .}}
+{{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
+<section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
+  <div class="stat-head"><span><b class="ink">{{t $l $d.JobTitle}}</b></span>
+  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l $d.JobTitle}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <ol class="stepper">{{range $d.Steps}}
+    <li class="st-{{.State}}" data-step="{{.Key}}">
+      <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
+      <span class="txt"><span class="now">{{t $l (printf "perf.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "perf.step.%s" .Key)}}</span></span>
+    </li>{{end}}
+  </ol>
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l (printf "%s.wait" $d.JobTitle)}} <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p class="banner ok">{{t $l (printf "%s.done" $d.JobTitle)}}{{if $d.Backup}} {{t $l "perf.php.backup"}} <a href="/backup/{{$s.ID}}"><code>{{$d.Backup}}</code></a>{{end}}</p>{{end}}
+  {{if $j.Error}}<p class="banner warn">{{t $l (printf "%s.fail" $d.JobTitle)}}</p>
+  <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
+</section>
+{{end}}
+<section class="card wide tone c-teal" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-pulse"}}</span>{{t $l "perf.title"}}</h2>
+  <p class="muted">{{t $l "perf.help"}}</p>
+  {{if $d.Err}}<p class="err" role="alert">{{$d.Err}}</p>{{end}}
+</section>
+<section class="grid pair">
+{{with $v.PHP}}{{$p := .}}<article class="card tone c-violet" data-anim="card" id="php">
+  <div class="deploy-head"><h2>{{t $l "perf.php.title"}}</h2><span class="tag-srv c-violet">PHP {{.Current}}</span></div>
+  <p class="muted">{{t $l "perf.php.help"}}</p>
+  <form method="post" action="/perf/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="php">
+    <label>{{t $l "perf.php.to"}}
+      <select name="php" required>{{range .Choices}}<option value="{{.Version}}"{{if eq .Version $p.Current}} selected disabled{{else if .Why}} disabled{{end}}>PHP {{.Version}}{{if eq .Version $p.Current}} · {{t $l "perf.php.now"}}{{end}}{{if .EOL}} · {{t $l "perf.php.eol"}}{{end}}{{if .Why}} · {{.Why}}{{end}}</option>{{end}}</select></label>
+    <p class="muted small">{{t $l "perf.php.how"}}</p>
+    <button class="primary" type="submit" data-confirm="{{t $l "perf.php.ask"}}"{{if or $d.Running .Running}} disabled{{end}}>{{t $l "perf.php.go"}}</button>
+  </form>
+  {{if .Previous}}<form method="post" action="/perf/{{$s.ID}}" class="form row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="php"><input type="hidden" name="php" value="{{.Previous}}">
+    <span class="muted">{{t $l "perf.php.prev" .Previous}}</span>
+    <button class="ghost" type="submit" data-confirm="{{t $l "perf.php.ask"}}"{{if or $d.Running .Running}} disabled{{end}}>{{t $l "perf.php.back" .Previous}}</button>
+  </form>{{end}}
+</article>{{else}}<article class="card tone c-violet" data-anim="card" id="php">
+  <h2>{{t $l "perf.php.title"}}</h2>
+  <p class="muted">{{t $l "perf.php.none"}}</p>
+</article>{{end}}
+<article class="card tone c-blue" data-anim="card" id="optimize">
+  <div class="deploy-head"><h2>{{t $l "perf.opt.title"}}</h2>{{if or $v.Optimize.Compress $v.Optimize.CacheDays}}<span class="pill s-ok">{{t $l "perf.opt.on"}}</span>{{else}}<span class="pill s-unknown">{{t $l "perf.opt.off"}}</span>{{end}}</div>
+  <p class="muted">{{t $l "perf.opt.help"}}</p>
+  <form method="post" action="/perf/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="optimize">
+    <label class="check"><input type="checkbox" name="compress" value="1"{{if $v.Optimize.Compress}} checked{{end}}> {{t $l "perf.opt.compress"}}</label>
+    <p class="muted small">{{t $l "perf.opt.compress.help"}}</p>
+    <label>{{t $l "perf.opt.cache"}}
+      <select name="days"><option value="0"{{if eq $v.Optimize.CacheDays 0}} selected{{end}}>{{t $l "perf.opt.cache.off"}}</option>{{range $v.CacheDays}}<option value="{{.}}"{{if eq . $v.Optimize.CacheDays}} selected{{end}}>{{t $l "perf.opt.days" .}}</option>{{end}}</select></label>
+    <p class="muted small">{{t $l "perf.opt.cache.help"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "perf.opt.save"}}</button>
+  </form>
+</article>
+</section>
+{{end}}

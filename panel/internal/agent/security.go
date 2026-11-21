@@ -132,6 +132,9 @@ type SecurityChange struct {
 	Mode  string   `json:"mode,omitempty"`
 	Level int      `json:"level,omitempty"`
 	Rule  int      `json:"rule,omitempty"`
+	// optimize-set (PHP-01)
+	Compress bool `json:"compress,omitempty"`
+	Days     int  `json:"days,omitempty"`
 }
 
 // Security returns a website's edge rules.

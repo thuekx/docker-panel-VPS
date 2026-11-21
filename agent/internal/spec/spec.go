@@ -430,3 +430,6 @@ func phpLess(a, b string) bool {
 	fmt.Sscanf(b, "%d.%d", &bm, &bn)
 	return am < bm || (am == bm && an < bn)
 }
+
+// PHPLess is true when PHP version a is older than b ("8.2" < "8.10").
+func PHPLess(a, b string) bool { return phpLess(a, b) }

@@ -12,7 +12,7 @@
     {{else if $s.IsReady}}<tr><th>{{t $l "sites.server"}}</th><td><span class="tag-srv c-green">{{t $l "sites.server.ready"}}</span></td></tr>
     {{else}}<tr><th>{{t $l "sites.server"}}</th><td><span class="tag-srv {{if eq $s.Server "nginx"}}c-green{{else}}c-orange{{end}}">{{if eq $s.AppName "static"}}{{t $l "sites.server.static"}}{{else}}{{t $l (printf "sites.server.%s" $s.Server)}}{{end}}</span></td></tr>{{end}}
     {{if $s.IsNative}}<tr><th>{{t $l "engine.title"}}</th><td><span class="tag-srv c-green">{{t $l "engine.shown.native"}}</span></td></tr>{{end}}
-    {{if $s.PHP}}<tr><th>PHP</th><td><span class="tag-srv c-violet">PHP {{$s.PHP}}</span></td></tr>{{end}}
+    {{if $s.PHP}}<tr><th>PHP</th><td><span class="tag-srv c-violet">PHP {{$s.PHP}}</span> <a class="small" href="/perf/{{$s.ID}}#php">{{t $l "perf.php.change"}}</a></td></tr>{{end}}
     {{if $s.IsWP}}<tr><th>{{t $l "sites.wpurl"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a> · <a href="{{$s.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a></td></tr>
     <tr><th>{{t $l "sites.job.user"}}</th><td><code>{{$s.AdminUser}}</code></td></tr>{{else}}
     <tr><th>{{t $l "sites.url"}}</th><td><a href="{{$s.URL}}" target="_blank" rel="noopener noreferrer">{{$s.URL}}</a></td></tr>{{end}}

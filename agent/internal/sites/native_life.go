@@ -164,15 +164,21 @@ func (m *Manager) nativeStack(ctx context.Context, s Site) (Stack, error) {
 // nativeLimits writes a website's raised (or standard) limits into its PHP-FPM pool, service and Nginx server and
 // restarts its PHP; when it does not come back, the previous files are put back and started again.
 func (m *Manager) nativeLimits(ctx context.Context, s Site) error {
+	return m.nativeRewrite(ctx, s, "the new limits", "the previous ones")
+}
+
+// nativeRewrite writes a native website's files and site.json for s and restarts it; on a failure the previous
+// files come back and the website is started on them again (what and prev name the two states in the error).
+func (m *Manager) nativeRewrite(ctx context.Context, s Site, what, prev string) error {
 	if m.native == nil {
 		return errNativeOff
 	}
 	p := m.npaths
 	files := []string{p.fpmConf(s.ID), p.unit(s.ID), p.nginx(s.ID), filepath.Join(m.dir(s.ID), "site.json")}
-	prev := map[string][]byte{}
+	old := map[string][]byte{}
 	for _, f := range files {
 		if b, err := os.ReadFile(f); err == nil {
-			prev[f] = b
+			old[f] = b
 		}
 	}
 	apply := func(s Site) error {
@@ -193,7 +199,7 @@ func (m *Manager) nativeLimits(ctx context.Context, s Site) error {
 		return m.nginxReload(ctx)
 	}
 	putBack := func() {
-		for f, b := range prev {
+		for f, b := range old {
 			_ = writeFile(f, b, 0o644)
 		}
 	}
@@ -206,9 +212,9 @@ func (m *Manager) nativeLimits(ctx context.Context, s Site) error {
 	if out, err := restart(); err != nil {
 		putBack()
 		if out2, err2 := restart(); err2 != nil {
-			return fmt.Errorf("the website did not start with the new limits (%s), nor with the previous ones: %s", tail(out), tail(out2))
+			return fmt.Errorf("the website did not start with %s (%s), nor with %s: %s", what, tail(out), prev, tail(out2))
 		}
-		return fmt.Errorf("the website did not start with the new limits, it runs with the previous ones again: %s", tail(out))
+		return fmt.Errorf("the website did not start with %s, it runs with %s again: %s", what, prev, tail(out))
 	}
 	return nil
 }

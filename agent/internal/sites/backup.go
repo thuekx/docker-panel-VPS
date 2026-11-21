@@ -45,12 +45,12 @@ const (
 	BackupEvery = 10 * time.Minute
 )
 
-var backupRe = regexp.MustCompile(`^(manual|daily|before-restore|before-update|before-migrate)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
+var backupRe = regexp.MustCompile(`^(manual|daily|before-restore|before-update|before-migrate|before-php)-[0-9]{8}-[0-9]{6}\.tar\.gz$`)
 
 // Backup is one archive of a website.
 type Backup struct {
 	Name    string `json:"name"`
-	Kind    string `json:"kind"` // manual | daily | before-restore | before-update | before-migrate
+	Kind    string `json:"kind"` // manual | daily | before-restore | before-update | before-migrate | before-php
 	Size    int64  `json:"size"`
 	Created int64  `json:"created"`
 }
@@ -402,7 +402,7 @@ func (m *Manager) backup(ctx context.Context, j *Job, s Site, kind string) (stri
 	switch kind {
 	case "daily":
 		m.prune(s.ID, "daily", s.keep())
-	case "before-restore", "before-update", "before-migrate":
+	case "before-restore", "before-update", "before-migrate", "before-php":
 		m.prune(s.ID, kind, keepSafety)
 	}
 	return name, nil

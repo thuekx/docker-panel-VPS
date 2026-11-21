@@ -160,6 +160,29 @@ api POST "/v1/sites/$PID/security" '{"op":"errpage-off","code":404}'; J="$(jobid
 api POST "/v1/sites/$PID/security" '{"op":"mime-remove","type":"text/x-foo"}'; J="$(jobid)"; S3="$(wait_job "$J")"
 ok "Apache: rules removed, the mount goes with them" '[ "$S3" = done ] && ! grep -q apache.conf "$SITE01_TEST_ROOT/srv/nostek/sites/$PID/compose.yml" && edge "$P" / "200 "'
 
+# --- PHP-01: change the PHP version of the plain PHP website (backup first), and back
+printf '<?php echo "v=" . PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;\n' > "$T/v.php"; raw PUT "/v1/sites/$PID/files/content?path=/v.php" "$T/v.php"
+ok "PHP 8.4 before the change" 'grep -q "^v=8.4$" <<<"$(pget "https://$P/v.php")"'
+api POST "/v1/sites/$PID/php" '{"php":"8.4"}'; C1="$CODE"; api POST "/v1/sites/$PID/php" '{"php":"7.4"}'
+ok "the same version or one not offered is refused" '[ "$C1" = 400 ] && [ "$CODE" = 400 ]'
+api POST "/v1/sites/$PID/php" '{"php":"8.3"}'; J="$(jobid)"; C1="$CODE"
+ok "moved to PHP 8.3: served by 8.3, a before-php backup made" '[ "$C1" = 202 ] && [ "$(MAXT=60 wait_job "$J")" = done ] && edge "$P" /v.php "200 " && grep -q "^v=8.3$" <<<"$(pget "https://$P/v.php")" && ls "$SITE01_TEST_ROOT/srv/nostek/sites/$PID/backups/" | grep -q "^before-php-"'
+api GET "/v1/sites/$PID/perf"
+ok "Performance view: 8.3 now, 8.4 before" 'python3 -c "import json,sys; v=json.load(sys.stdin)[\"php\"]; sys.exit(0 if v[\"current\"]==\"8.3\" and v[\"previous\"]==\"8.4\" else 1)" <<<"$BODY"'
+api POST "/v1/sites/$PID/php" '{"php":"8.4"}'; J="$(jobid)"; C1="$CODE"
+ok "back to PHP 8.4 in one change" '[ "$C1" = 202 ] && [ "$(wait_job "$J")" = done ] && grep -q "^v=8.4$" <<<"$(pget "https://$P/v.php")" && grep -q "\"action\":\"php-change\".*PHP 8.4" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
+
+# --- PHP-01: Optimize Website at the edge (compression, browser cache for static files)
+python3 -c 'print("body { color: teal; }\n" * 200, end="")' > "$T/big.css"; raw PUT "/v1/sites/$SID/files/content?path=/big.css" "$T/big.css"
+heads() { curl -sk --noproxy '*' --max-time 20 --resolve "$S:443:127.0.0.1" -o /dev/null -D - -H 'Accept-Encoding: br' "https://$S$1" | tr -d '\r' | tr 'A-Z' 'a-z'; }
+ok "before: no Brotli, no cache header from the edge" '! grep -q "^content-encoding: br" <<<"$(heads /big.css)" && ! grep -q "max-age=604800" <<<"$(heads /logo.png)"'
+api POST "/v1/sites/$SID/security" '{"op":"optimize-set","days":3}'; C1="$CODE"
+ok "a cache time not offered is refused" '[ "$C1" = 400 ]'
+optim() { local got=""; for _ in $(seq 1 20); do got="$(heads "$1")"; grep -q "$2" <<<"$got" && return 0; sleep 1; done; echo "$got" | sed 's/^/    | /'; return 1; }
+ok "compression and 7 days of cache on" 'applied "{\"op\":\"optimize-set\",\"compress\":true,\"days\":7}" && optim /big.css "^content-encoding: br" && optim /logo.png "^cache-control: public, max-age=604800"'
+ok "the page keeps no long cache, images are not compressed, the redirect stays" 'grep -q "^content-encoding: br" <<<"$(heads /big.css)" && ! grep -q "max-age=604800" <<<"$(heads /)" && ! grep -q "^content-encoding" <<<"$(heads /logo.png)" && edge "www.$S" /a "301 https://$S/a"'
+ok "off again" 'applied "{\"op\":\"optimize-set\"}" && optim /logo.png "^content-type" && sleep 2 && ! grep -q "max-age=604800" <<<"$(heads /logo.png)" && ! grep -q "^content-encoding: br" <<<"$(heads /big.css)"'
+
 # --- SEC-01 wave 3: login attempts from the edge's access log, malware scan with ClamAV
 CONF="$SITE01_TEST_ROOT/etc/nostek-agent/config.json"
 agent_restart() {
