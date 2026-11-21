@@ -451,6 +451,25 @@ func (m *Manager) applyDomains(ctx context.Context, j *Job, prev, next Site) err
 
 // writeRoutes writes a website's names and redirects into its edge configuration and site.json.
 func (m *Manager) writeRoutes(ctx context.Context, s Site) error {
+	// SEC-01 wave 3b: the WAF's files come before routers that use them and go after routers that no longer do
+	if err := m.writeWAF(s); err != nil {
+		return err
+	}
+	prevWAF := false
+	if old, err := m.Get(s.ID); err == nil {
+		prevWAF = old.WAF != nil
+	}
+	err := m.writeRoutesOnly(ctx, s)
+	switch {
+	case err == nil && s.WAF == nil:
+		m.dropWAF(s.ID)
+	case err != nil && s.WAF != nil && !prevWAF:
+		m.dropWAF(s.ID) // turning it on failed: the routes are the previous ones again
+	}
+	return err
+}
+
+func (m *Manager) writeRoutesOnly(ctx context.Context, s Site) error {
 	if !s.IsNative() {
 		return m.writeLimits(ctx, s) // compose.yml (labels) and site.json; the containers follow with up -d
 	}

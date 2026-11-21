@@ -3,6 +3,22 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.26.0] — 2026-11-21
+
+### Added
+- **Web application firewall** on the Security tab (SEC-01 wave 3b), like cPanel's ModSecurity: Coraza with the
+  OWASP Core Rule Set checks every visit of the website before it reaches it. Off by default, per website:
+  - **Detect only** logs what would be blocked (start here), **Block** answers 403 to attacks such as SQL
+    injection, cross-site scripting and path traversal; paranoia level 1 or 2;
+  - the latest events and how often each rule matched, with **Switch off** for a rule that gives false alarms,
+    and paths to skip (for example `/wp-admin/`);
+  - works for every app and both engines; only the first 128 KB of a body are checked, so large uploads still
+    pass whole.
+
+### Changed
+- The core stack gets a `waf` service (from the panel image) and the folder `<data>/edge/waf`. Applied by the
+  panel update; until then the firewall cannot be turned on.
+
 ## [1.25.0] — 2026-11-21
 
 ### Added

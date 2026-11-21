@@ -56,6 +56,8 @@ type fakeAgent struct {
 	secJob    *agent.Job
 	secScan   agent.Scan   // SEC-01 wave 3
 	secLogins agent.Logins // SEC-01 wave 3
+	secWAF    agent.WAF    // SEC-01 wave 3b
+	secWAFOK  bool
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {

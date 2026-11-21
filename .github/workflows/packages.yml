@@ -36,7 +36,7 @@ jobs:
           if grep -qE "^(packages/native-01/|agent/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "native01=true" >> "$GITHUB_OUTPUT"; else echo "native01=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(packages/site-01/|agent/|panel/web/plugin/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "mig01=true" >> "$GITHUB_OUTPUT"; else echo "mig01=false" >> "$GITHUB_OUTPUT"; fi
           if grep -qE "^(packages/site-01/|agent/|deploy/core/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "dom01=true" >> "$GITHUB_OUTPUT"; else echo "dom01=false" >> "$GITHUB_OUTPUT"; fi
-          if grep -qE "^(packages/site-01/|agent/|deploy/core/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "sec01=true" >> "$GITHUB_OUTPUT"; else echo "sec01=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -qE "^(packages/site-01/|agent/|deploy/core/|panel/internal/waf/|panel/cmd/nostek-waf/|panel/go\.(mod|sum)|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "sec01=true" >> "$GITHUB_OUTPUT"; else echo "sec01=false" >> "$GITHUB_OUTPUT"; fi
   host-01:
     needs: select
     if: needs.select.outputs.host01 == 'true'
@@ -173,10 +173,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: panel/go.mod, cache: false }
       - name: shellcheck
         run: shellcheck -S warning packages/site-01/tests/security.sh
-      - name: harness (real Docker and a real Traefik edge as uid 65532; IP block, protected folder, hotlink)
-        run: sudo bash packages/site-01/tests/security.sh
+      - name: harness (real Docker and a real Traefik edge as uid 65532; IP block, protected folder, hotlink, malware scan, WAF)
+        run: sudo env "PATH=$PATH" bash packages/site-01/tests/security.sh
   native-01:
     needs: select
     if: needs.select.outputs.native01 == 'true'

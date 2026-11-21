@@ -46,7 +46,7 @@ new_env; run APPLY "${A[@]}" --src-commit 00000000000000000000000000000000000000
 
 # --- full life cycle on the real engine
 new_env; run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply passes" '[ $RC = 0 ] && has "RESULT PANEL-01 APPLY PASS" && [ "$(phase)" = APPLIED ]'
-ok ".env is 600, data dirs owned by panel user" '[ "$(stat -c %a "$(CORE)/.env")" = 600 ] && [ "$(stat -c %u "$PANEL01_TEST_ROOT/srv/nostek/panel")" = 65532 ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/edge/acme")" = 700 ] && [ "$(stat -c "%a %u" "$PANEL01_TEST_ROOT/srv/nostek/edge/logs")" = "700 65532" ]'
+ok ".env is 600, data dirs owned by panel user" '[ "$(stat -c %a "$(CORE)/.env")" = 600 ] && [ "$(stat -c %u "$PANEL01_TEST_ROOT/srv/nostek/panel")" = 65532 ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/edge/acme")" = 700 ] && [ "$(stat -c "%a %u" "$PANEL01_TEST_ROOT/srv/nostek/edge/logs")" = "700 65532" ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/edge/waf")" = 755 ]'
 ok "source fetched at the exact commit" '[ "$(git -C "$PANEL01_TEST_ROOT/srv/nostek/src/$COMMIT" rev-parse HEAD)" = "$COMMIT" ]'
 ok "only edge publishes, on 80 and 443" '[ "$(docker ps --filter label=com.docker.compose.project=nostek-core --format "{{.Ports}}" | grep -c "0.0.0.0:")" = 1 ] && docker ps --filter label=com.docker.compose.service=edge --format "{{.Ports}}" | grep -q "0.0.0.0:443->8443"'
 ok "http redirects, https serves the login" '[ "$(curl -s -o /dev/null -w "%{http_code}" -H "Host: '"$D"'" http://127.0.0.1/)" = 301 ] && curl -sk --resolve '"$D"':443:127.0.0.1 https://'"$D"'/login | grep -q "np_csrf\|name=\"password\""'

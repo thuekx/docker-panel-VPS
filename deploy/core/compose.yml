@@ -77,6 +77,31 @@ services:
       start_period: 10s
     networks: [nostek-edge, nostek-panel, nostek-ctl]
 
+  # SEC-01 wave 3b: the web application firewall (Coraza + OWASP CRS) from the panel image. The edge sends a
+  # website's visits here only while its WAF is on; the agent writes the websites' rules to <data>/edge/waf.
+  waf:
+    <<: *hardening
+    image: ${PANEL_IMAGE:?PANEL_IMAGE is required}
+    entrypoint: ["/nostek-waf"]
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs: [/tmp]
+    mem_limit: 1g
+    environment:
+      WAF_CONFIG: /config
+      WAF_LOG: /logs/waf.log
+    volumes:
+      - ${NOSTEK_DATA:-/srv/nostek}/edge/waf:/config:ro
+      - ${NOSTEK_DATA:-/srv/nostek}/edge/logs:/logs
+    healthcheck:
+      test: ["CMD", "/nostek-waf", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks: [nostek-edge]
+
   docker-api:
     <<: *hardening
     image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459

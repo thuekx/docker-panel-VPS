@@ -51,6 +51,9 @@ type loginState struct {
 	Offset int64                          `json:"offset"`
 	Since  int64                          `json:"since"` // when the agent first read the access log
 	Sites  map[string]map[string]*loginIP `json:"sites"`
+	// SEC-01 wave 3b: the WAF's log, read the same way; the last wafEventsKept events per website
+	WAFOffset int64                 `json:"waf_offset"`
+	WAF       map[string][]WAFEvent `json:"waf"`
 }
 
 type loginStore struct {
@@ -161,13 +164,60 @@ func (m *Manager) hostSites() map[string]string {
 	return out
 }
 
-// ReadLogins reads what the edge wrote since the last round.
+func (m *Manager) wafLog() string { return filepath.Join(filepath.Dir(m.accessLog()), "waf.log") }
+
+// readWAFLog reads the WAF's new events (ls.mu held).
+func (m *Manager) readWAFLog(ls *loginStore) {
+	f, err := os.Open(m.wafLog())
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return
+	}
+	if fi.Size() < ls.st.WAFOffset {
+		ls.st.WAFOffset = 0
+	}
+	if _, err := f.Seek(ls.st.WAFOffset, io.SeekStart); err != nil {
+		return
+	}
+	if ls.st.WAF == nil {
+		ls.st.WAF = map[string][]WAFEvent{}
+	}
+	rd := bufio.NewReaderSize(io.LimitReader(f, accessReadMax), 64<<10)
+	for {
+		line, err := rd.ReadBytes('\n')
+		if err != nil {
+			break
+		}
+		ls.st.WAFOffset += int64(len(line))
+		ls.dirty = true
+		var e WAFEvent
+		if json.Unmarshal(line, &e) != nil || e.Site == "" || e.Rule == 0 {
+			continue
+		}
+		ev := append(ls.st.WAF[e.Site], e)
+		if len(ev) > wafEventsKept {
+			ev = ev[len(ev)-wafEventsKept:]
+		}
+		ls.st.WAF[e.Site] = ev
+	}
+	if fi.Size() > accessLogMax && ls.st.WAFOffset >= fi.Size() {
+		if os.Truncate(m.wafLog(), 0) == nil {
+			ls.st.WAFOffset = 0
+		}
+	}
+}
+
+// ReadLogins reads what the edge wrote since the last round (the access log, then the WAF's log).
 func (m *Manager) ReadLogins() error {
 	ls := m.loginDB()
 	path := m.accessLog()
 	f, err := os.Open(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil // the edge has no access log yet (panel not updated)
+		return nil // the edge has no access log yet (panel not updated); the WAF comes with the same update
 	}
 	if err != nil {
 		return err
@@ -179,6 +229,7 @@ func (m *Manager) ReadLogins() error {
 	}
 	ls.mu.Lock()
 	defer ls.mu.Unlock()
+	m.readWAFLog(ls)
 	now := m.now()
 	if ls.st.Since == 0 {
 		ls.st.Since = now.Unix()

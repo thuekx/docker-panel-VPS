@@ -11,6 +11,7 @@ SCRIPT="$(realpath "$HERE/../site-01-agent.sh")"
 REPO="$(git -C "$HERE" rev-parse --show-toplevel)"
 COMMIT="$(git -C "$REPO" rev-parse HEAD)"
 STUBS="$REPO/packages/panel-01/tests/stubs"
+GO="$(command -v go || true)"   # builds the WAF binary (wave 3b); found before PATH is narrowed to the stubs
 TESTS=0; BAD=0; TMP_ALL="$(mktemp -d)"
 IP=198.51.100.7; ZONE=preview.example.test; D=panel.example.test
 MARK="# np-sec01-harness"
@@ -26,7 +27,7 @@ cleanup() {
     p="$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "$id" 2>/dev/null)"
     case "$p" in np-site-*) docker rm -f "$id" >/dev/null 2>&1 ;; esac
   done
-  docker rm -f np-sec-edge >/dev/null 2>&1
+  docker rm -f np-sec-edge nostek-core-waf-1 >/dev/null 2>&1
   docker network ls --format '{{.Name}}' | grep -E '^np-site-' | xargs -r docker network rm >/dev/null 2>&1
   docker network rm nostek-edge >/dev/null 2>&1
   sed -i "/$MARK\$/d" /etc/hosts
@@ -191,9 +192,36 @@ ok "the scan ran without network and left no container" '! docker ps -aq --filte
 api POST "/v1/sites/$SID/files/delete" '{"path":"/wp-content/evil.php"}'
 ok "moved to the file trash: shown as gone" 'api GET "/v1/sites/$SID/security" && grep -q "\"gone\":true" <<<"$BODY" && ! grep -q harness-malware-sample <<<"$(body /wp-content/evil.php)"'
 
+# --- SEC-01 wave 3b: the web application firewall, the real nostek-waf binary in a container named like the core one
+mkdir -p "$SITE01_TEST_ROOT/srv/nostek/edge/waf"; chmod 755 "$SITE01_TEST_ROOT/srv/nostek/edge/waf"
+change '{"op":"waf-set","mode":"detect","level":1}'
+ok "WAF refused while its service is missing" '[ "$CODE" = 400 ] && grep -q "PANEL-01 UPDATE" <<<"$BODY"'
+WAFBIN="$T/nostek-waf"
+(cd "$REPO/panel" && CGO_ENABLED=0 "$GO" build -trimpath -o "$WAFBIN" ./cmd/nostek-waf) >/dev/null 2>&1; chmod 755 "$WAFBIN"
+docker run -d --name nostek-core-waf-1 --user 65532:65532 --read-only --cap-drop ALL --tmpfs /tmp --network nostek-edge \
+  --entrypoint /nostek-waf -e WAF_CONFIG=/config -e WAF_LOG=/logs/waf.log \
+  -v "$WAFBIN:/nostek-waf:ro" -v "$SITE01_TEST_ROOT/srv/nostek/edge/waf:/config:ro" -v "$SITE01_TEST_ROOT/srv/nostek/edge/logs:/logs" \
+  --health-cmd "/nostek-waf healthcheck" --health-interval 2s --health-start-period 2s "$EDGEIMG" >/dev/null 2>&1
+wafup() { for _ in $(seq 1 30); do [ "$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' nostek-core-waf-1 2>/dev/null)" = "running healthy" ] && return 0; sleep 1; done; return 1; }
+ok "WAF service built and healthy" '[ -x "$WAFBIN" ] && wafup'
+SQLI="/?id=1%27%20OR%20%271%27=%271%27%20UNION%20SELECT%20password%20FROM%20users--"
+HDR=(-H "User-Agent: Mozilla/5.0 (harness)" -H "Accept: text/html")
+ok "WAF on in detect mode: an attack passes and is logged" 'applied "{\"op\":\"waf-set\",\"mode\":\"detect\",\"level\":1}" && grep -q "service: site-$SID-waf@file" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml" && edge "$S" "$SQLI" "200 " "${HDR[@]}" && edge "$S" / "200 " "${HDR[@]}" && grep -q "\"site\":\"$SID\".*\"action\":\"detected\"" "$SITE01_TEST_ROOT/srv/nostek/edge/logs/waf.log"'
+ok "rules and edge files: rules 0644 for the WAF, no secret" '[ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/edge/waf/$SID.json")" = 644 ] && grep -q "np-site-$SID-web-1:80" "$SITE01_TEST_ROOT/srv/nostek/edge/waf/$SID.json" && grep -q "nostek-core-waf-1:8090" "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic/waf-$SID.yml"'
+ok "block mode: the attack gets 403, a normal visit and a POST still reach the website (a static one answers 405)" 'applied "{\"op\":\"waf-set\",\"mode\":\"block\",\"level\":1}" && edge "$S" "$SQLI" "403 " "${HDR[@]}" && edge "$S" "/a?q=sepatu+murah" "200 " "${HDR[@]}" && edge "$S" /form "405 " "${HDR[@]}" -X POST --data "nama=Budi&pesan=halo"'
+ok "an attack in a form body is blocked" 'edge "$S" /form "403 " "${HDR[@]}" -X POST --data "q=<script>alert(document.cookie)</script>"'
+ok "a skipped path is not checked" 'applied "{\"op\":\"waf-skip-add\",\"path\":\"/free/\"}" && edge "$S" "/free/$SQLI" "200 " "${HDR[@]}" && edge "$S" "$SQLI" "403 " "${HDR[@]}"'
+wafseen() { api GET "/v1/sites/$SID/security"; python3 -c 'import json,sys; w=json.load(sys.stdin)["waf"]; sys.exit(0 if w["on"] and w["mode"]=="block" and w["blocked"]>=1 and w["rules"] and all(r["rule"]!=949110 for r in w["rules"]) else 1)' <<<"$BODY"; }
+ok "the agent shows the events and the rules that matched (within a minute)" 'for _ in $(seq 1 30); do wafseen && break; sleep 3; done; wafseen'
+RULES="$(python3 -c 'import json,sys; print(" ".join(sorted({str(e["rule"]) for e in json.load(sys.stdin)["waf"]["events"] if "UNION" in e["uri"] and "/free/" not in e["uri"] and 911000<=e["rule"]<959000 and e["rule"]//1000!=949})))' <<<"$BODY")"
+excl() { local r; for r in $RULES; do applied "{\"op\":\"waf-exclude-add\",\"rule\":$r}" || return 1; done; }
+ok "switching off the rules that matched lets the visit through" '[ -n "$RULES" ] && excl && edge "$S" "$SQLI" "200 " "${HDR[@]}"'
+ok "WAF off: an attack reaches the website again, the files go" 'applied "{\"op\":\"waf-off\"}" && edge "$S" /form "405 " "${HDR[@]}" -X POST --data "q=<script>alert(document.cookie)</script>" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/edge/waf/$SID.json" ] && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic/waf-$SID.yml" ] && ! grep -q -- "-waf@file" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml"'
+ok "audit records the WAF changes" 'grep -q "waf-set" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log" && grep -q "waf-off" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
+
 ok "no security router left in the website's labels" '! grep -E "site-$SID-(block|protect|hotlink|deny)" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml"'
 
 cleanup; TMP_ALL="$(mktemp -d)"
-LEFT="$(docker ps -aq --filter name=np-site- --filter name=np-sec-edge | wc -l)"
+LEFT="$(docker ps -aq --filter name=np-site- --filter name=np-sec-edge --filter name=nostek-core-waf-1 | wc -l)"
 if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT SEC-01 HARNESS PASS tests=$TESTS sisa_uji=0"; exit 0; fi
 echo "RESULT SEC-01 HARNESS FAIL bad=$BAD/$TESTS sisa_uji=$LEFT"; exit 1

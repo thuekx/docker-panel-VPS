@@ -33,12 +33,20 @@ type securityData struct {
 	Allow   string // allowed sites of hotlink protection, one per line
 	Codes   []codeRow
 	// wave 3
-	Scanning bool   // a malware scan of this website runs (other changes stay possible)
-	JobTitle string // the job card's title key
-	Logins   []loginRow
-	Since    string // when the login attempts started to be counted
-	ScanAt   string // when the last scan finished
-	ScanMin  int    // how long it took, in minutes (at least 1)
+	Scanning  bool   // a malware scan of this website runs (other changes stay possible)
+	JobTitle  string // the job card's title key
+	Logins    []loginRow
+	Since     string // when the login attempts started to be counted
+	ScanAt    string // when the last scan finished
+	ScanMin   int    // how long it took, in minutes (at least 1)
+	WAFEvents []wafRow
+}
+
+// wafRow is one firewall event with its time as text.
+type wafRow struct {
+	agent.WAFEvent
+	When     string
+	Excluded bool
 }
 
 // loginRow is one address of the login attempts, with its last visit as text.
@@ -88,6 +96,13 @@ func (s *Server) securityPage(w http.ResponseWriter, r *http.Request) {
 		d.Logins = append(d.Logins, loginRow{LoginIP: x, Last: clock(x.LastSeen)})
 	}
 	d.Since = clock(v.Logins.Since)
+	for _, e := range v.WAF.Events {
+		row := wafRow{WAFEvent: e, When: clock(e.Time)}
+		for _, x := range v.WAF.Exclude {
+			row.Excluded = row.Excluded || x == e.Rule
+		}
+		d.WAFEvents = append(d.WAFEvents, row)
+	}
 	if l := v.Scan.Last; l != nil {
 		d.ScanAt = clock(l.Finished)
 		d.ScanMin = int((l.Finished-l.Started)/60) + 1
@@ -225,6 +240,29 @@ func (s *Server) securityAction(w http.ResponseWriter, r *http.Request) {
 	case "mime-remove":
 		c.Type = f.Get("type")
 		detail += " " + c.Type
+	case "waf-set": // SEC-01 wave 3b; "off" in the mode list turns it off
+		c.Mode = f.Get("mode")
+		c.Level, _ = strconv.Atoi(f.Get("level"))
+		if c.Mode == "off" {
+			c = agent.SecurityChange{Op: "waf-off"}
+			detail = site.ID + " waf-off"
+			break
+		}
+		detail += " " + c.Mode + " level " + strconv.Itoa(c.Level)
+	case "waf-exclude-add", "waf-exclude-remove":
+		c.Rule, _ = strconv.Atoi(strings.TrimSpace(f.Get("rule")))
+		if c.Rule <= 0 {
+			back(s.tr.T(l, "sec.waf.rule.need"))
+			return
+		}
+		detail += " " + strconv.Itoa(c.Rule)
+	case "waf-skip-add", "waf-skip-remove":
+		c.Path = strings.TrimSpace(f.Get("path"))
+		if c.Path == "" || len(c.Path) > 200 {
+			back(s.tr.T(l, "sec.waf.path.need"))
+			return
+		}
+		detail += " " + c.Path
 	default:
 		http.Error(w, "bad request", 400)
 		return

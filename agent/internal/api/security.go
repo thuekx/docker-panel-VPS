@@ -58,6 +58,12 @@ func securityDetail(c sites.SecurityChange) string {
 		return c.Op + " " + c.Type + " " + c.Exts
 	case "mime-remove":
 		return c.Op + " " + c.Type
+	case "waf-set":
+		return fmt.Sprintf("%s %s level %d", c.Op, c.Mode, c.Level)
+	case "waf-exclude-add", "waf-exclude-remove":
+		return fmt.Sprintf("%s %d", c.Op, c.Rule)
+	case "waf-skip-add", "waf-skip-remove":
+		return c.Op + " " + c.Path
 	}
 	return c.Op
 }

@@ -35,6 +35,39 @@ type Security struct {
 	Job         *Job        `json:"job"`
 	Logins      Logins      `json:"logins"`
 	Scan        Scan        `json:"scan"`
+	WAF         WAF         `json:"waf"`
+	WAFReady    bool        `json:"waf_ready"`
+}
+
+// WAFEvent is one rule the firewall matched on a visit (SEC-01 wave 3b).
+type WAFEvent struct {
+	Time   int64  `json:"t"`
+	IP     string `json:"ip"`
+	URI    string `json:"uri"`
+	Rule   int    `json:"rule"`
+	Msg    string `json:"msg"`
+	Data   string `json:"data"`
+	Action string `json:"action"`
+}
+
+// WAFRule is how often a rule matched.
+type WAFRule struct {
+	Rule     int    `json:"rule"`
+	Msg      string `json:"msg"`
+	Count    int    `json:"count"`
+	Excluded bool   `json:"excluded"`
+}
+
+// WAF is a website's firewall: its setting and latest events.
+type WAF struct {
+	On       bool       `json:"on"`
+	Mode     string     `json:"mode"`
+	Paranoia int        `json:"paranoia"`
+	Exclude  []int      `json:"exclude"`
+	Skip     []string   `json:"skip"`
+	Blocked  int        `json:"blocked"`
+	Events   []WAFEvent `json:"events"`
+	Rules    []WAFRule  `json:"rules"`
 }
 
 // LoginIP is one address that tried to log in to the website (SEC-01 wave 3).
@@ -96,6 +129,9 @@ type SecurityChange struct {
 	Code  int      `json:"code,omitempty"`
 	Type  string   `json:"type,omitempty"`
 	Exts  string   `json:"exts,omitempty"`
+	Mode  string   `json:"mode,omitempty"`
+	Level int      `json:"level,omitempty"`
+	Rule  int      `json:"rule,omitempty"`
 }
 
 // Security returns a website's edge rules.
