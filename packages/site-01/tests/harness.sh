@@ -291,7 +291,11 @@ ok "server disk lists the websites and Docker images" '[ "$CODE" = 200 ] && pyth
 CLI_B="$(sed -n "/^  cli:/,/^  [a-z]/s/^    image: //p" "$CF_B" | head -1)"
 UP_BEFORE="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
 api POST /v1/disk/clean '{"what":"images"}'; C1="$CODE"; api POST /v1/disk/clean '{"what":"build-cache"}'
-ok "clean-ups keep every website running, the WP-CLI image a website names and the panel's own images" '[ "$C1" = 200 ] && [ "$CODE" = 200 ] && [ -n "$CLI_B" ] && docker image inspect "$CLI_B" >/dev/null 2>&1 && [ -n "$(docker image ls -q nostek/agent-build)" ] && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$UP_BEFORE" ]'
+UP_AFTER="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
+OUT="containers before: $UP_BEFORE"$'\n'"containers after:  $UP_AFTER"$'\n'"$(docker ps -a --filter name=np-site- --format '{{.Names}} {{.Status}}')"
+ok "clean-ups answer and keep the WP-CLI image a website names and the panel's own images" '[ "$C1" = 200 ] && [ "$CODE" = 200 ] && [ -n "$CLI_B" ] && docker image inspect "$CLI_B" >/dev/null 2>&1 && [ -n "$(docker image ls -q nostek/agent-build)" ]'
+ok "clean-ups keep every website running" '[ "$UP_AFTER" = "$UP_BEFORE" ]'
+OUT=""
 
 # --- APP-01 Laravel (real build from the official images + Composer from packagist: needs outbound internet to
 # deb.debian.org, packagist.org and github.com). HARNESS_LARAVEL=0 skips only this part and says so in RESULT.
