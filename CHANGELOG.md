@@ -18,6 +18,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ## [1.26.0] — 2026-11-21
 
+Running on the production server since 2026-11-21 22:11 WIB.
+
 ### Added
 - **Web application firewall** on the Security tab (SEC-01 wave 3b), like cPanel's ModSecurity: Coraza with the
   OWASP Core Rule Set checks every visit of the website before it reaches it. Off by default, per website:

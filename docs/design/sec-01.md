@@ -1,7 +1,7 @@
 # Website security (SEC-01)
 
 Status: wave 1 [LIVE] v1.23.0 (2026-11-20 22:42 WIB); wave 2 [LIVE] v1.24.0 (2026-11-21 14:52 WIB); wave 3a
-[LIVE] v1.25.0 (2026-11-21 20:36 WIB; malware scan, login attempts); wave 3b [BUILT] v1.26.0 (web application firewall). Roadmap slot 12b, after DOM-01. Like the cPanel pages IP Blocker,
+[LIVE] v1.25.0 (2026-11-21 20:36 WIB; malware scan, login attempts); wave 3b [LIVE] v1.26.0 (2026-11-21 22:11 WIB; web application firewall). Roadmap slot 12b, after DOM-01. Like the cPanel pages IP Blocker,
 Directory Privacy and Hotlink Protection, for one website at a time, on a new **Security** tab.
 
 ## Waves (SEC-1)
