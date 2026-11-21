@@ -69,12 +69,16 @@ edge() { local h="$1" p="$2" w="$3" got=""; shift 3; for _ in $(seq 1 20); do go
 [ -n "$EDGEIMG" ] || { echo "RESULT SEC-01 HARNESS FAIL edge image not found"; exit 1; }
 cleanup; TMP_ALL="$(mktemp -d)"; T="$(mktemp -d "$TMP_ALL/t.XXXX")"; chmod 0755 "$TMP_ALL" "$T"
 export SITE01_TEST_ROOT="$T/root" SITE01_TEST_REPO="file://$REPO"
-mkdir -p "$SITE01_TEST_ROOT/var/lib/nostek/panel-01" "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic"; echo "phase=APPLIED" > "$SITE01_TEST_ROOT/var/lib/nostek/panel-01/state"
+mkdir -p "$SITE01_TEST_ROOT/var/lib/nostek/panel-01" "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic" "$SITE01_TEST_ROOT/srv/nostek/edge/logs"; echo "phase=APPLIED" > "$SITE01_TEST_ROOT/var/lib/nostek/panel-01/state"
 chmod 0755 "$SITE01_TEST_ROOT" "$SITE01_TEST_ROOT/srv" "$SITE01_TEST_ROOT/srv/nostek" "$SITE01_TEST_ROOT/srv/nostek/edge" "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic"
+chown 65532:65532 "$SITE01_TEST_ROOT/srv/nostek/edge/logs"; chmod 700 "$SITE01_TEST_ROOT/srv/nostek/edge/logs"
+# the access log flags exactly as the core stack sets them (SEC-01 wave 3)
+mapfile -t LOGFLAGS < <(grep -oE -- '--accessLog[^ ]*' "$REPO/deploy/core/compose.yml")
 docker network create nostek-edge >/dev/null
 GW="$(docker network inspect nostek-edge -f '{{(index .IPAM.Config 0).Gateway}}')"
 docker run -d --name np-sec-edge --user 65532:65532 --group-add "$(stat -c %g /var/run/docker.sock)" --network nostek-edge -p 127.0.0.1:443:8443 \
-  -v /var/run/docker.sock:/var/run/docker.sock:ro -v "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic:/dynamic:ro" "$EDGEIMG" \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro -v "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic:/dynamic:ro" -v "$SITE01_TEST_ROOT/srv/nostek/edge/logs:/logs" "$EDGEIMG" \
+  "${LOGFLAGS[@]}" \
   --global.checkNewVersion=false --global.sendAnonymousUsage=false --log.level=INFO \
   --entryPoints.websecure.address=:8443 --entryPoints.websecure.http.tls=true \
   --providers.docker=true --providers.docker.exposedByDefault=false --providers.docker.network=nostek-edge \
@@ -154,6 +158,38 @@ ok "Apache: the 404 page and the MIME type work" '[ "$C1" = 202 ] && [ "$S1" = d
 api POST "/v1/sites/$PID/security" '{"op":"errpage-off","code":404}'; J="$(jobid)"; wait_job "$J" >/dev/null
 api POST "/v1/sites/$PID/security" '{"op":"mime-remove","type":"text/x-foo"}'; J="$(jobid)"; S3="$(wait_job "$J")"
 ok "Apache: rules removed, the mount goes with them" '[ "$S3" = done ] && ! grep -q apache.conf "$SITE01_TEST_ROOT/srv/nostek/sites/$PID/compose.yml" && edge "$P" / "200 "'
+
+# --- SEC-01 wave 3: login attempts from the edge's access log, malware scan with ClamAV
+CONF="$SITE01_TEST_ROOT/etc/nostek-agent/config.json"
+agent_restart() {
+  stop_agents
+  NOSTEK_AGENT_CONFIG="$CONF" DOCKER_CONFIG="$SITE01_TEST_ROOT/var/lib/nostek-agent/docker" nohup "$SITE01_TEST_ROOT/usr/local/sbin/nostek-agent" serve >> "$SITE01_TEST_ROOT/var/log/nostek-agent/test-agent.log" 2>&1 &
+  for _ in $(seq 1 50); do api GET /v1/health; [ "$CODE" = 200 ] && return 0; sleep 0.2; done
+  return 1
+}
+for _ in 1 2 3 4 5 6; do curl -sk --noproxy '*' --max-time 10 --resolve "$S:443:127.0.0.1" -o /dev/null -X POST --data 'log=admin&pwd=x' "https://$S/wp-login.php"; done
+curl -sk --noproxy '*' --max-time 10 --resolve "$S:443:127.0.0.1" -o /dev/null "https://$S/wp-login.php"   # a GET is no login try
+ok "the edge writes its access log, a few fields and no headers" '[ -s "$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log" ] && grep -q "\"RequestPath\":\"/wp-login.php\"" "$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log" && ! grep -qi "user-agent\|request_" "$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log"'
+logins6() { api GET "/v1/sites/$SID/security"; python3 -c 'import json,sys; l=json.load(sys.stdin)["logins"]; sys.exit(0 if l["active"] and l["day"]==6 and l["ips"][0]["ip"]==sys.argv[1] and l["ips"][0]["last_path"]=="/wp-login.php" else 1)' "$GW" <<<"$BODY"; }
+ok "login attempts counted per address within a minute (POSTs only)" 'for _ in $(seq 1 30); do logins6 && break; sleep 3; done; logins6'
+ok "the address blocked from the list: marked blocked, then unblocked" 'applied "{\"op\":\"block-add\",\"ip\":\"$GW\"}" && api GET "/v1/sites/$SID/security" && grep -q "\"blocked\":true" <<<"$BODY" && applied "{\"op\":\"block-remove\",\"ip\":\"$GW\"}" && edge "$S" / "200 "'
+ok "kept in logins.json (0600)" '[ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/security/logins.json")" = 600 ]'
+
+printf 'harness-malware-sample-%s\n' "$COMMIT" > "$T/evil.php"
+api POST "/v1/sites/$SID/files/mkdir" '{"path":"/wp-content"}'
+raw PUT "/v1/sites/$SID/files/content?path=/wp-content/evil.php" "$T/evil.php"; C1="$CODE"
+mkdir -p "$T/clamdb"; printf '%s:%s:Harness.Test.Sample\n' "$(md5sum < "$T/evil.php" | cut -d" " -f1)" "$(stat -c %s "$T/evil.php")" > "$T/clamdb/harness.hdb"; chmod -R a+rX "$T/clamdb"
+python3 - "$CONF" "$T/clamdb" <<'PY'
+import json, sys
+c = json.load(open(sys.argv[1])); c["clam_test_db"] = sys.argv[2]
+json.dump(c, open(sys.argv[1], "w"), indent=2)
+PY
+ok "test agent restarted with the harness signatures" '[ "$C1" = 200 ] && agent_restart'
+api POST "/v1/sites/$SID/security/scan"; J="$(jobid)"; C2="$CODE"
+ok "malware scan finds the planted file, and only it" '[ "$C2" = 202 ] && [ "$(wait_job "$J")" = done ] && api GET "/v1/sites/$SID/security" && python3 -c "import json,sys; s=json.load(sys.stdin)[\"scan\"][\"last\"]; f=s[\"found\"]; sys.exit(0 if len(f)==1 and f[0][\"path\"]==\"/wp-content/evil.php\" and f[0][\"signature\"].startswith(\"Harness.Test.Sample\") and s[\"files\"]>=3 and not s[\"error\"] else 1)" <<<"$BODY"'
+ok "the scan ran without network and left no container" '! docker ps -aq --filter label=nostek.scan | grep -q . && grep -q "\"action\":\"malware-scan\"" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
+api POST "/v1/sites/$SID/files/delete" '{"path":"/wp-content/evil.php"}'
+ok "moved to the file trash: shown as gone" 'api GET "/v1/sites/$SID/security" && grep -q "\"gone\":true" <<<"$BODY" && ! grep -q harness-malware-sample <<<"$(body /wp-content/evil.php)"'
 
 ok "no security router left in the website's labels" '! grep -E "site-$SID-(block|protect|hotlink|deny)" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml"'
 

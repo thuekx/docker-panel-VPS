@@ -61,3 +61,15 @@ func securityDetail(c sites.SecurityChange) string {
 	}
 	return c.Op
 }
+
+// securityScan starts a malware scan of the website's files (SEC-01 wave 3).
+func (s *Server) securityScan(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	job, err := s.M.StartScan(id)
+	if err != nil {
+		s.fail(w, r, "malware-scan", id, err)
+		return
+	}
+	s.note(r, "malware-scan", id, "ok", "job "+job)
+	writeJSON(w, 202, map[string]string{"job": job})
+}

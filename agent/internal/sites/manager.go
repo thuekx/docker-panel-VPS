@@ -75,6 +75,10 @@ type Config struct {
 	// and an extra CA for the harness's throwaway HTTPS old site
 	MigrateTestAllow []netip.Prefix
 	MigrateTestCA    string
+	// SEC-01 harness only: a folder of test signatures; the malware scan then never runs freshclam
+	ClamTestDB string
+	// SEC-01 wave 3: the edge's access log ("" = <data>/edge/logs/access.log)
+	AccessLog string
 }
 
 // Manager owns all site directories. One change runs at a time.
@@ -93,6 +97,10 @@ type Manager struct {
 	hookWait  map[string]bool
 	hookRetry time.Duration
 	memFn     func() int // RES-01: the server's memory in MB (tests replace it)
+	memFreeFn func() int // SEC-01: the server's free memory in MB (tests replace it)
+	scanMu    sync.Mutex // one malware scan at a time
+	logins    *loginStore
+	loginOnce sync.Once
 	// NATIVE-01: the native engine (nil native = not installed on this server)
 	native     *NativeConfig
 	host       HostRunner

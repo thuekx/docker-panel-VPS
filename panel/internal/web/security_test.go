@@ -23,6 +23,15 @@ func (f *fakeAgent) security(w http.ResponseWriter, r *http.Request, write func(
 		write(200, f.secJob)
 		return
 	}
+	if r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/security/scan") {
+		f.secCalls = append(f.secCalls, "scan")
+		if f.secScan.Job != nil && f.secScan.Job.State == "running" {
+			write(409, map[string]string{"error": "busy: another malware scan runs now"})
+			return
+		}
+		write(202, map[string]string{"job": "jsec0000000000002"})
+		return
+	}
 	if r.Method == "POST" {
 		b, _ := io.ReadAll(r.Body)
 		f.secCalls = append(f.secCalls, strings.TrimSpace(string(b)))
@@ -39,7 +48,8 @@ func (f *fakeAgent) security(w http.ResponseWriter, r *http.Request, write func(
 	}
 	write(200, agent.Security{Blocked: []string{"198.51.100.9", "2001:db8::/32"}, Protected: []agent.Protected{{Path: "/admin", Users: []string{"ana", "budi"}}, {Path: "/solo", Users: []string{"cici"}}},
 		Hotlink: &agent.Hotlink{Allow: []string{"google.com"}}, HotlinkExts: []string{"jpg", "png"}, Job: f.secJob,
-		WebServer: true, ErrorCodes: []int{403, 404, 503}, ErrorPages: []int{404}, ErrorDir: "/.nostek-errors", MIME: []agent.MIME{{Type: "application/wasm", Exts: []string{"wasm"}}}})
+		WebServer: true, ErrorCodes: []int{403, 404, 503}, ErrorPages: []int{404}, ErrorDir: "/.nostek-errors", MIME: []agent.MIME{{Type: "application/wasm", Exts: []string{"wasm"}}},
+		Logins: f.secLogins, Scan: f.secScan})
 }
 
 func TestSecurityPage(t *testing.T) {
@@ -147,5 +157,88 @@ func TestSecurityPage(t *testing.T) {
 	_, audit, _ := e.get(e.c, "/audit")
 	if !strings.Contains(audit, "voltix-id block-add 203.0.113.7") || !strings.Contains(audit, "protect-set /admin user ana") || strings.Contains(audit, "$2a$") {
 		t.Error("audit lacks the security changes or holds a hash")
+	}
+}
+
+func TestSecurityWave3(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+	_, body, _ := e.get(e.c, "/security/voltix-id")
+	for _, want := range []string{"Not counting yet", "Not scanned yet.", `name="op" value="scan"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("empty page lacks %q", want)
+		}
+	}
+	f.secLogins = agent.Logins{Active: true, Since: 1700000000, Day: 41, DayFail: 40, Week: 50, IPs: []agent.LoginIP{
+		{IP: "198.51.100.7", Day: 40, DayFail: 40, Week: 45, LastSeen: 1700003600, LastPath: "/wp-login.php"},
+		{IP: "192.0.2.9", Day: 1, Week: 5, LastSeen: 1700000000, LastPath: "/xmlrpc.php", Blocked: true}}}
+	f.secScan = agent.Scan{MinMB: 1400, Last: &agent.ScanResult{Started: 1700000000, Finished: 1700000130, Files: 1543,
+		Signatures: "3627845 signatures, ClamAV 1.5.5", Found: []agent.ScanFound{
+			{Path: "/wp-content/uploads/<b>shell.php", Signature: "Php.Webshell-1"}, {Path: "/old.js", Signature: "Js.Agent-2", Gone: true}}}}
+	for _, lang := range []string{"id", "en"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		for _, j := range []*agent.Job{nil, {ID: "jsec0000000000002", Kind: "malware-scan", Site: "voltix-id", State: "running", Steps: []string{"signatures", "scan"}},
+			{ID: "jsec0000000000002", Kind: "malware-scan", Site: "voltix-id", State: "failed", Steps: []string{"signatures"}, Error: "downloading the signatures failed"}} {
+			f.secScan.Job, f.secJob = j, j
+			code, body, _ := e.get(e.c, "/security/voltix-id?job=jsec0000000000002")
+			if code != 200 || missingKey.MatchString(body) || strings.Contains(body, "%!") {
+				t.Errorf("%s %v: %d %v", lang, j, code, missingKey.FindString(body))
+			}
+		}
+	}
+	f.secScan.Job, f.secJob = &agent.Job{ID: "jsec0000000000002", Kind: "malware-scan", Site: "voltix-id", State: "running", Steps: []string{"scan"}}, nil
+	_, body, _ = e.get(e.c, "/security/voltix-id")
+	for _, want := range []string{
+		"Last 24 hours: <b>41</b> (40 failed)",
+		`name="op" value="block-add"><input type="hidden" name="ip" value="198.51.100.7">`,
+		`<span class="pill s-bad">Blocked</span>`,
+		"2 file(s) look like malware",
+		"&lt;b&gt;shell.php",
+		`href="/files/voltix-id?path=%2fwp-content%2fuploads"`,
+		`name="op" value="scan-trash"><input type="hidden" name="path" value="/wp-content/uploads/&lt;b&gt;shell.php">`,
+		"Removed",
+		"Malware scan</b>", // the running scan shows as its own job
+		"Scan running…",
+		"Last scan ", "(3 min)", "1543 files",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, `name="op" value="block-add"><input type="hidden" name="ip" value="192.0.2.9">`) {
+		t.Error("a blocked address offers Block")
+	}
+	// a running scan does not lock the other changes
+	if strings.Contains(body, `type="submit" data-busy="Working…" disabled>Block`) {
+		t.Error("blocking is locked during a scan")
+	}
+	f.secScan.Job = nil
+	for _, c := range []struct {
+		form url.Values
+		loc  string
+	}{
+		{url.Values{"op": {"scan"}}, "/security/voltix-id?job=jsec0000000000002#job"},
+		{url.Values{"op": {"scan-trash"}, "path": {"/wp-content/uploads/shell.php"}}, "err="},
+		{url.Values{"op": {"scan-trash"}, "path": {"/wp-content/uploads/shell.php"}, "confirm": {"1"}}, "done=trashed#scan"},
+	} {
+		if code, _, h := e.post(e.c, "/security/voltix-id", c.form, "/security/voltix-id"); code != 303 || !strings.Contains(h.Get("Location"), c.loc) {
+			t.Errorf("%v: %d %s", c.form, code, h.Get("Location"))
+		}
+	}
+	if code, _, _ := e.post(e.c, "/security/voltix-id", url.Values{"op": {"scan-trash"}, "path": {"relative"}, "confirm": {"1"}}, "/security/voltix-id"); code != 400 {
+		t.Errorf("relative path: %d", code)
+	}
+	f.secScan.Job = &agent.Job{State: "running"}
+	if _, _, h := e.post(e.c, "/security/voltix-id", url.Values{"op": {"scan"}}, "/security/voltix-id"); !strings.Contains(h.Get("Location"), "err=") {
+		t.Errorf("second scan: %s", h.Get("Location"))
+	}
+	if strings.Join(f.ops, ",") != "delete /wp-content/uploads/shell.php" {
+		t.Errorf("file ops %v", f.ops)
+	}
+	_, audit, _ := e.get(e.c, "/audit")
+	if !strings.Contains(audit, "malware-trash") || !strings.Contains(audit, "voltix-id /wp-content/uploads/shell.php") {
+		t.Error("audit lacks the scan actions")
 	}
 }

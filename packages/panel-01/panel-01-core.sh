@@ -204,9 +204,9 @@ write_core() {
       [ -n "$ACME_CA" ] && echo "ACME_CA_SERVER=$ACME_CA"
     } > "$CORE/.env" )
   chmod 600 "$CORE/.env"
-  mkdir -p "$NOSTEK/panel" "$NOSTEK/edge/acme" "$VARLIB/backup"
-  chown "$PANEL_UID:$PANEL_UID" "$NOSTEK/panel" "$NOSTEK/edge/acme"
-  chmod 700 "$NOSTEK/panel" "$NOSTEK/edge/acme"
+  mkdir -p "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs" "$VARLIB/backup"
+  chown "$PANEL_UID:$PANEL_UID" "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs"
+  chmod 700 "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs"
   pass "core files in $CORE (.env 600, data dirs owned by the panel user)"
 }
 

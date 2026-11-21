@@ -153,6 +153,9 @@ type SecurityView struct {
 	ErrorDir   string   `json:"error_dir"`
 	MIME       []MIME   `json:"mime"`
 	Job        *JobView `json:"job,omitempty"`
+	// wave 3
+	Logins LoginsView `json:"logins"`
+	Scan   ScanView   `json:"scan"`
 }
 
 // Security returns a website's edge rules.
@@ -174,6 +177,10 @@ func (m *Manager) Security(id string) (SecurityView, error) {
 	}
 	if v.Protected == nil {
 		v.Protected = []Protected{}
+	}
+	v.Logins = m.Logins(s)
+	if v.Scan, err = m.Scan(id); err != nil {
+		return SecurityView{}, err
 	}
 	for _, j := range m.jobs.List() {
 		if j.Kind == "security" && j.Site == id && (v.Job == nil || j.Started.After(v.Job.Started)) {
