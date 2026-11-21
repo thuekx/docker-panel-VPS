@@ -46,9 +46,9 @@ new_env; run APPLY "${A[@]}" --src-commit 00000000000000000000000000000000000000
 
 # --- full life cycle on the real engine
 new_env; run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "apply passes" '[ $RC = 0 ] && has "RESULT PANEL-01 APPLY PASS" && [ "$(phase)" = APPLIED ]'
-ok ".env is 600, data dirs owned by panel user" '[ "$(stat -c %a "$(CORE)/.env")" = 600 ] && [ "$(stat -c %u "$PANEL01_TEST_ROOT/srv/nostek/panel")" = 65532 ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/edge/acme")" = 700 ] && [ "$(stat -c "%a %u" "$PANEL01_TEST_ROOT/srv/nostek/edge/logs")" = "700 65532" ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/edge/waf")" = 755 ]'
+ok ".env is 600, data dirs owned by panel user" '[ "$(stat -c %a "$(CORE)/.env")" = 600 ] && [ "$(stat -c %u "$PANEL01_TEST_ROOT/srv/nostek/panel")" = 65532 ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/edge/acme")" = 700 ] && [ "$(stat -c "%a %u" "$PANEL01_TEST_ROOT/srv/nostek/edge/logs")" = "700 65532" ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/edge/waf")" = 755 ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/sftp")" = 700 ] && [ "$(stat -c %a "$PANEL01_TEST_ROOT/srv/nostek/sftp-state")" = 700 ]'
 ok "source fetched at the exact commit" '[ "$(git -C "$PANEL01_TEST_ROOT/srv/nostek/src/$COMMIT" rev-parse HEAD)" = "$COMMIT" ]'
-ok "only edge publishes, on 80 and 443" '[ "$(docker ps --filter label=com.docker.compose.project=nostek-core --format "{{.Ports}}" | grep -c "0.0.0.0:")" = 1 ] && docker ps --filter label=com.docker.compose.service=edge --format "{{.Ports}}" | grep -q "0.0.0.0:443->8443"'
+ok "only edge (80, 443) and sftp (2222) publish" '[ "$(docker ps --filter label=com.docker.compose.project=nostek-core --format "{{.Ports}}" | grep -c "0.0.0.0:")" = 2 ] && docker ps --filter label=com.docker.compose.service=sftp --format "{{.Ports}}" | grep -q "0.0.0.0:2222->2222" && docker ps --filter label=com.docker.compose.service=edge --format "{{.Ports}}" | grep -q "0.0.0.0:443->8443"'
 ok "http redirects, https serves the login" '[ "$(curl -s -o /dev/null -w "%{http_code}" -H "Host: '"$D"'" http://127.0.0.1/)" = 301 ] && curl -sk --resolve '"$D"':443:127.0.0.1 https://'"$D"'/login | grep -q "np_csrf\|name=\"password\""'
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "second apply refused" '[ $RC = 3 ]'
 run SETUP-LINK "${A[@]}"; L1="$(grep -oE "https://$D/setup/[A-Za-z0-9_-]+" <<<"$OUT")"; ok "setup link printed" '[ $RC = 0 ] && [ -n "$L1" ] && has "valid_until="'
@@ -56,7 +56,7 @@ run SETUP-LINK "${A[@]}"; ok "new setup link cancels the old one" '[ $RC = 0 ] &
 run ADMIN-ROTATE "${A[@]}" --email nobody@example.test; ok "rotate for unknown admin refused" '[ $RC = 3 ]'
 run VERIFY "${A[@]}"; ok "verify passes" '[ $RC = 0 ] && has "RESULT PANEL-01 VERIFY PASS" && has "sisa_uji=0" && has "socket proxy refuses writes"'
 docker run -d --name np-test-pub -p 127.0.0.1:18080:8080 "nostek/panel:v$(tr -d "[:space:]" < "$REPO/VERSION")" >/dev/null 2>&1
-run VERIFY "${A[@]}"; ok "verify fails when another container publishes ports" '[ $RC = 1 ] && has "other than edge publish"'
+run VERIFY "${A[@]}"; ok "verify fails when another container publishes ports" '[ $RC = 1 ] && has "other than edge and sftp publish"'
 docker rm -f np-test-pub >/dev/null 2>&1
 echo keep > "$PANEL01_TEST_ROOT/srv/nostek/panel/marker"
 run REVERT "${A[@]}"; ok "revert stops stack, moves core aside, keeps data" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -d "$(CORE)" ] && ls -d "$PANEL01_TEST_ROOT"/var/backups/nostek/panel-01/*-revert/core >/dev/null 2>&1 && [ -f "$PANEL01_TEST_ROOT/srv/nostek/panel/marker" ] && [ -z "$(docker ps -q --filter label=com.docker.compose.project=nostek-core)" ]'

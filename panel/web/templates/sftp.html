@@ -1,0 +1,66 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "sftp.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (tabs $l $s "sftp")}}
+<section class="card wide tone c-teal" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "sftp.title"}}</h2>
+  <p class="muted">{{t $l "sftp.help"}}</p>
+  {{if $d.Err}}<p class="banner warn">{{$d.Err}}</p>{{else if not $v.Ready}}<p class="banner warn">{{t $l "sftp.notready"}}</p>{{end}}
+  <dl class="deploy-src">
+    <dt>{{t $l "sftp.host"}}</dt><dd><code>{{$d.Host}}</code></dd>
+    <dt>{{t $l "sftp.port"}}</dt><dd><code>{{$v.Port}}</code></dd>
+    <dt>{{t $l "sftp.proto"}}</dt><dd>SFTP ({{t $l "sftp.proto.note"}})</dd>
+  </dl>
+  <p class="muted small">{{t $l "sftp.client"}}</p>
+</section>
+
+<section class="card wide tone c-blue" data-anim="card" id="accounts">
+  <h2>{{t $l "sftp.accounts"}}</h2>
+  {{if $v.Accounts}}<div class="table-wrap"><table class="dom">
+    <thead><tr><th>{{t $l "sftp.c.name"}}</th><th>{{t $l "sftp.c.dir"}}</th><th>{{t $l "sftp.c.login"}}</th><th><span class="sr-only">{{t $l "dom.col.act"}}</span></th></tr></thead>
+    <tbody>{{range $v.Accounts}}{{$a := .}}
+      <tr id="acc-{{$a.Name}}"><td><code>{{$a.Name}}</code><br><span class="muted small"><code>sftp://{{$a.Name}}@{{$d.Host}}:{{$v.Port}}</code></span></td>
+        <td><code>{{$a.Dir}}</code>
+          <form method="post" action="/sftp/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="dir-set"><input type="hidden" name="name" value="{{$a.Name}}">
+            <label class="sr-only" for="dir-{{$a.Name}}">{{t $l "sftp.c.dir"}}</label><input id="dir-{{$a.Name}}" name="dir" value="{{$a.Dir}}" maxlength="512" autocomplete="off" spellcheck="false">
+            <button class="ghost small" type="submit">{{t $l "sftp.dir.save"}}</button></form></td>
+        <td>{{if $a.Password}}<span class="pill s-ok">{{t $l "sftp.password"}}</span>{{end}} {{if $a.Keys}}<span class="pill s-run">{{t $l "sftp.keys" (len $a.Keys)}}</span>{{end}}
+          <ul class="plain small">{{range $a.Keys}}
+            <li><code>{{.Type}}</code> {{.Comment}} <span class="muted"><code>{{.Fingerprint}}</code></span>
+              <form method="post" action="/sftp/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="key-remove"><input type="hidden" name="name" value="{{$a.Name}}"><input type="hidden" name="fingerprint" value="{{.Fingerprint}}">
+                <button class="ghost danger-text small" type="submit">{{t $l "sftp.key.remove"}}</button></form></li>{{end}}
+          </ul></td>
+        <td>
+          <details><summary class="small">{{t $l "sftp.manage"}}</summary>
+            <form method="post" action="/sftp/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="password-set"><input type="hidden" name="name" value="{{$a.Name}}">
+              <label>{{t $l "sftp.pass.new"}}<input type="password" name="password" minlength="12" maxlength="72" autocomplete="new-password" required></label>
+              <label>{{t $l "sec.prot.pass2"}}<input type="password" name="password2" minlength="12" maxlength="72" autocomplete="new-password" required></label>
+              <button class="secondary small" type="submit">{{if $a.Password}}{{t $l "sftp.pass.change"}}{{else}}{{t $l "sftp.pass.set"}}{{end}}</button></form>
+            {{if and $a.Password $a.Keys}}<form method="post" action="/sftp/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="password-remove"><input type="hidden" name="name" value="{{$a.Name}}">
+              <button class="ghost small" type="submit">{{t $l "sftp.pass.remove"}}</button></form>{{end}}
+            <form method="post" action="/sftp/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="key-add"><input type="hidden" name="name" value="{{$a.Name}}">
+              <label>{{t $l "sftp.key"}}<textarea name="key" rows="3" placeholder="ssh-ed25519 AAAA… nama@laptop" spellcheck="false" required></textarea></label>
+              <button class="secondary small" type="submit">{{t $l "sftp.key.add"}}</button></form>
+            <form method="post" action="/sftp/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="user-remove"><input type="hidden" name="name" value="{{$a.Name}}">
+              <label class="check small"><input type="checkbox" name="confirm" value="1" required> {{t $l "dom.remove.sure"}}</label>
+              <button class="ghost danger-text small" type="submit">{{t $l "sftp.remove"}}</button></form>
+          </details></td></tr>{{end}}
+    </tbody></table></div>{{else}}<p class="muted">{{t $l "sftp.none"}}</p>{{end}}
+</section>
+
+<section class="card wide tone c-violet" data-anim="card" id="add">
+  <h2>{{t $l "sftp.add"}}</h2>
+  <form method="post" action="/sftp/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="user-add">
+    <label>{{t $l "sftp.c.name"}}<input name="name" pattern="[a-z][a-z0-9_.\-]{2,31}" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
+    <p class="muted small">{{t $l "sftp.name.help"}}</p>
+    <label>{{t $l "sftp.c.dir"}}<input name="dir" value="/" maxlength="512" autocomplete="off" spellcheck="false"></label>
+    <p class="muted small">{{t $l "sftp.dir.help"}}</p>
+    <label>{{t $l "sec.prot.pass"}}<input type="password" name="password" minlength="12" maxlength="72" autocomplete="new-password"></label>
+    <label>{{t $l "sec.prot.pass2"}}<input type="password" name="password2" minlength="12" maxlength="72" autocomplete="new-password"></label>
+    <label>{{t $l "sftp.key.opt"}}<textarea name="key" rows="3" placeholder="ssh-ed25519 AAAA… nama@laptop" spellcheck="false"></textarea></label>
+    <p class="muted small">{{t $l "sftp.auth.help"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err (not $v.Ready)}} disabled{{end}}>{{t $l "sftp.add.save"}}</button>
+  </form>
+</section>
+{{end}}

@@ -290,8 +290,12 @@ api GET /v1/disk
 ok "server disk lists the websites and Docker images" '[ "$CODE" = 200 ] && python3 -c "import json,sys; d=json.load(sys.stdin); assert d[\"disk_bytes\"]>0 and len(d[\"sites\"])>=4, d; assert any(x[\"kind\"]==\"images\" and x[\"count\"]>0 for x in d[\"docker\"]), d" <<<"$BODY"'
 CLI_B="$(sed -n "/^  cli:/,/^  [a-z]/s/^    image: //p" "$CF_B" | head -1)"
 UP_BEFORE="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
-api POST /v1/disk/clean '{"what":"images"}'; C1="$CODE"; api POST /v1/disk/clean '{"what":"build-cache"}'
-ok "clean-ups keep every website running, the WP-CLI image a website names and the panel's own images" '[ "$C1" = 200 ] && [ "$CODE" = 200 ] && [ -n "$CLI_B" ] && docker image inspect "$CLI_B" >/dev/null 2>&1 && [ -n "$(docker image ls -q nostek/agent-build)" ] && [ "$(docker ps -q --filter name=np-site- | sort | tr "\n" " ")" = "$UP_BEFORE" ]'
+api POST /v1/disk/clean '{"what":"images"}'; C1="$CODE"; B1="$BODY"; api POST /v1/disk/clean '{"what":"build-cache"}'
+UP_AFTER="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"
+OUT="images clean: $C1 $B1"$'\n'"WP-CLI image: ${CLI_B:-none} $(docker image inspect -f '{{.Id}}' "$CLI_B" 2>&1 | head -1)"$'\n'"agent-build: $(docker image ls --format '{{.Repository}}:{{.Tag}}' nostek/agent-build | tr '\n' ' ')"$'\n'"containers before: $UP_BEFORE"$'\n'"containers after:  $UP_AFTER"$'\n'"$(docker ps -a --filter name=np-site- --format '{{.Names}} {{.Status}}')"
+ok "clean-ups answer and keep the WP-CLI image a website names and the panel's own images" '[ "$C1" = 200 ] && [ "$CODE" = 200 ] && [ -n "$CLI_B" ] && docker image inspect "$CLI_B" >/dev/null 2>&1 && [ -n "$(docker image ls -q nostek/agent-build)" ]'
+ok "clean-ups keep every website running" '[ "$UP_AFTER" = "$UP_BEFORE" ]'
+OUT=""
 
 # --- APP-01 Laravel (real build from the official images + Composer from packagist: needs outbound internet to
 # deb.debian.org, packagist.org and github.com). HARNESS_LARAVEL=0 skips only this part and says so in RESULT.

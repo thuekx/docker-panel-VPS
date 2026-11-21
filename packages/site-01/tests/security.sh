@@ -27,7 +27,7 @@ cleanup() {
     p="$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "$id" 2>/dev/null)"
     case "$p" in np-site-*) docker rm -f "$id" >/dev/null 2>&1 ;; esac
   done
-  docker rm -f np-sec-edge nostek-core-waf-1 >/dev/null 2>&1
+  docker rm -f np-sec-edge nostek-core-waf-1 nostek-core-sftp-1 >/dev/null 2>&1
   docker network ls --format '{{.Name}}' | grep -E '^np-site-' | xargs -r docker network rm >/dev/null 2>&1
   docker network rm nostek-edge >/dev/null 2>&1
   sed -i "/$MARK\$/d" /etc/hosts
@@ -219,9 +219,46 @@ ok "switching off the rules that matched lets the visit through" '[ -n "$RULES" 
 ok "WAF off: an attack reaches the website again, the files go" 'applied "{\"op\":\"waf-off\"}" && edge "$S" /form "405 " "${HDR[@]}" -X POST --data "q=<script>alert(document.cookie)</script>" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/edge/waf/$SID.json" ] && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic/waf-$SID.yml" ] && ! grep -q -- "-waf@file" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml"'
 ok "audit records the WAF changes" 'grep -q "waf-set" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log" && grep -q "waf-off" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
 
+# --- SFTP-01: SFTP accounts, the real nostek-sftp binary in a container named like the core one (port 2222)
+sftpc() { api POST "/v1/sites/$SID/sftp" "$1"; }
+ssh-keygen -q -t ed25519 -N "" -C harness@sftp -f "$T/sftpkey" >/dev/null; ssh-keygen -q -t ed25519 -N "" -C other -f "$T/otherkey" >/dev/null
+SKEY="$(cat "$T/sftpkey.pub")"
+sftpc "{\"op\":\"user-add\",\"name\":\"harness.s\",\"key\":\"$SKEY\"}"
+ok "SFTP account refused while its service is missing" '[ "$CODE" = 400 ] && grep -q "PANEL-01 UPDATE" <<<"$BODY"'
+SFTPBIN="$T/nostek-sftp"
+(cd "$REPO/panel" && CGO_ENABLED=0 "$GO" build -trimpath -o "$SFTPBIN" ./cmd/nostek-sftp) >/dev/null 2>&1; chmod 755 "$SFTPBIN"
+mkdir -p "$SITE01_TEST_ROOT/srv/nostek/sftp" "$SITE01_TEST_ROOT/srv/nostek/sftp-state"; chmod 700 "$SITE01_TEST_ROOT/srv/nostek/sftp" "$SITE01_TEST_ROOT/srv/nostek/sftp-state"
+docker run -d --name nostek-core-sftp-1 --user 0:0 --read-only --cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE --cap-add FOWNER \
+  --security-opt no-new-privileges:true --tmpfs /tmp -p 127.0.0.1:2222:2222 --entrypoint /nostek-sftp -e SFTP_CONFIG=/config -e SFTP_STATE=/state \
+  -v "$SFTPBIN:/nostek-sftp:ro" -v "$SITE01_TEST_ROOT/srv/nostek/sftp:/config:ro" -v "$SITE01_TEST_ROOT/srv/nostek/sftp-state:/state" \
+  -v "$SITE01_TEST_ROOT/srv/nostek/sites:/sites" --health-cmd "/nostek-sftp healthcheck" --health-interval 2s --health-start-period 2s "$EDGEIMG" >/dev/null 2>&1
+sftpup() { for _ in $(seq 1 30); do [ "$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' nostek-core-sftp-1 2>/dev/null)" = "running healthy" ] && return 0; sleep 1; done; return 1; }
+ok "SFTP service built and healthy, host key kept 0600" 'sftpup && [ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/sftp-state/host_ed25519_key")" = 600 ]'
+SSHOPT=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 -o LogLevel=ERROR)
+# sf USER KEY BATCH: run an sftp batch, output in SOUT; the service picks up a new account within 3 seconds
+sf() { local u="$1" k="$2" b="$3" i; for i in 1 2 3 4 5 6; do SOUT="$(printf '%b' "$b" | timeout 30 sftp "${SSHOPT[@]}" -i "$k" -P 2222 -b - "$u@127.0.0.1" 2>&1)" && return 0; [ "$i" = 6 ] || sleep 1; done; return 1; }
+sftpc "{\"op\":\"user-add\",\"name\":\"harness.s\",\"key\":\"$SKEY\"}"; C1="$CODE"
+ok "account with a key made; its file 0600 in <data>/sftp, no key or hash in site.json" '[ "$C1" = 200 ] && [ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/sftp/$SID.json")" = 600 ] && ! grep -q "harness@sftp" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/site.json"'
+printf 'via sftp\n' > "$T/up.txt"
+ok "upload, folder, rename over SFTP; served by the website" 'sf harness.s "$T/sftpkey" "mkdir /sftpdir\nput $T/up.txt /sftpdir/up.txt\nrename /sftpdir/up.txt /sftpdir/up2.txt\nls -l /sftpdir\n" && grep -q up2.txt <<<"$SOUT" && grep -q "via sftp" <<<"$(body /sftpdir/up2.txt)"'
+OWN="$(stat -c %u "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/index.html" 2>/dev/null || echo 33)"
+ok "new files and folders belong to the website's file user" '[ "$(stat -c %u "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/sftpdir/up2.txt")" = "$OWN" ] && [ "$(stat -c %u "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/sftpdir")" = "$OWN" ]'
+ok "no way out: .. stays in the website, host files and links refused" 'sf harness.s "$T/sftpkey" "cd ../../..\npwd\n" && grep -q "Remote working directory: /$" <<<"$SOUT" && ! sf harness.s "$T/sftpkey" "get /etc/passwd $T/pw\n" && [ ! -e "$T/pw" ] && ! sf harness.s "$T/sftpkey" "get ../../site.json $T/sj\n" && ! sf harness.s "$T/sftpkey" "symlink /etc /etclink\n"'
+ok "no shell, no command, no port forward" '! timeout 20 ssh "${SSHOPT[@]}" -i "$T/sftpkey" -p 2222 harness.s@127.0.0.1 id >/dev/null 2>&1 && ! timeout 20 ssh "${SSHOPT[@]}" -i "$T/sftpkey" -p 2222 -N -o ExitOnForwardFailure=yes -L 127.0.0.1:2299:127.0.0.1:22 harness.s@127.0.0.1 >/dev/null 2>&1'
+ok "another key and an unknown account are refused" '! sf harness.s "$T/otherkey" "pwd\n" && ! sf nobody.s "$T/sftpkey" "pwd\n"'
+sftpc '{"op":"dir-set","name":"harness.s","dir":"/sftpdir"}'; C1="$CODE"
+ok "an account limited to a folder sees only that folder" '[ "$C1" = 200 ] && sleep 4 && sf harness.s "$T/sftpkey" "ls /\n" && grep -q up2.txt <<<"$SOUT" && ! grep -q index.html <<<"$SOUT"'
+sftpc '{"op":"dir-set","name":"harness.s","dir":"/nope"}'; C1="$CODE"
+sftpc "{\"op\":\"user-add\",\"name\":\"harness.s\",\"key\":\"$SKEY\"}"; C2="$CODE"
+ok "a missing folder and a taken name are refused" '[ "$C1" = 400 ] && [ "$C2" = 400 ]'
+api GET "/v1/sites/$SID/sftp"
+ok "the agent shows the account with its key fingerprint, never the key" 'python3 -c "import json,sys; v=json.load(sys.stdin); a=v[\"accounts\"][0]; sys.exit(0 if v[\"ready\"] and v[\"port\"]==2222 and a[\"name\"]==\"harness.s\" and a[\"dir\"]==\"/sftpdir\" and a[\"keys\"][0][\"fingerprint\"].startswith(\"SHA256:\") and not a[\"password\"] else 1)" <<<"$BODY" && ! grep -q "AAAA" <<<"$BODY"'
+sftpc '{"op":"user-remove","name":"harness.s"}'; C1="$CODE"
+ok "account removed: no login, file gone, audit lines" '[ "$C1" = 200 ] && sleep 4 && ! sf harness.s "$T/sftpkey" "pwd\n" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/sftp/$SID.json" ] && grep -q "\"action\":\"sftp\".*user-add harness.s" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
+
 ok "no security router left in the website's labels" '! grep -E "site-$SID-(block|protect|hotlink|deny)" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml"'
 
 cleanup; TMP_ALL="$(mktemp -d)"
-LEFT="$(docker ps -aq --filter name=np-site- --filter name=np-sec-edge --filter name=nostek-core-waf-1 | wc -l)"
+LEFT="$(docker ps -aq --filter name=np-site- --filter name=np-sec-edge --filter name=nostek-core-waf-1 --filter name=nostek-core-sftp-1 | wc -l)"
 if [ "$BAD" = 0 ] && [ "$LEFT" = 0 ]; then echo "RESULT SEC-01 HARNESS PASS tests=$TESTS sisa_uji=0"; exit 0; fi
 echo "RESULT SEC-01 HARNESS FAIL bad=$BAD/$TESTS sisa_uji=$LEFT"; exit 1

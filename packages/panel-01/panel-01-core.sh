@@ -102,6 +102,7 @@ foreign_publishers() {
     ports="$(docker port "$id" 2>/dev/null)"
     [ -z "$ports" ] && continue
     [ "$name" = "edge|nostek-core|${name##*|}" ] && continue
+    [ "$name" = "sftp|nostek-core|${name##*|}" ] && continue   # SFTP-01: port 2222
     echo "${name##*|}"
   done
 }
@@ -130,11 +131,11 @@ preflight() {
   progress 4/7 "DNS $DOMAIN"
   local a; a="$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')"
   if printf '%s\n' $a | grep -qxF "$EXPECT_IP"; then pass "$DOMAIN points to $EXPECT_IP"; else fail "$DOMAIN does not point to $EXPECT_IP (found: ${a:-nothing})"; fi
-  progress 5/7 "ports 80/443"
-  local busy; busy="$(ss -ltnH '( sport = :80 or sport = :443 )' 2>/dev/null | wc -l)"
-  if [ "$busy" = 0 ]; then pass "ports 80/443 free"
-  elif [ "$(state_get phase)" = APPLIED ]; then info "ports 80/443 in use by the panel edge (already applied)"
-  else fail "ports 80/443 already in use by another program"; fi
+  progress 5/7 "ports 80/443/2222"
+  local busy; busy="$(ss -ltnH '( sport = :80 or sport = :443 or sport = :2222 )' 2>/dev/null | wc -l)"
+  if [ "$busy" = 0 ]; then pass "ports 80/443/2222 free"
+  elif [ "$(state_get phase)" = APPLIED ]; then info "ports 80/443/2222 in use by the panel (already applied)"
+  else fail "ports 80/443/2222 already in use by another program"; fi
   progress 6/7 "resources"
   local disk; disk="$(df -Pm "${R:-/}" 2>/dev/null | awk 'NR==2{print $4}')"
   if [ "${disk:-0}" -ge 3000 ]; then pass "disk free ${disk} MB"; else fail "need at least 3000 MB free disk (found ${disk:-?})"; fi
@@ -204,21 +205,26 @@ write_core() {
       [ -n "$ACME_CA" ] && echo "ACME_CA_SERVER=$ACME_CA"
     } > "$CORE/.env" )
   chmod 600 "$CORE/.env"
-  mkdir -p "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs" "$NOSTEK/edge/waf" "$VARLIB/backup"
+  mkdir -p "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs" "$NOSTEK/edge/waf" "$NOSTEK/sftp" "$NOSTEK/sftp-state" "$NOSTEK/sites" "$VARLIB/backup"
   chmod 755 "$NOSTEK/edge/waf"   # the agent writes the WAF rules of each website here (root, 0644)
+  chmod 700 "$NOSTEK/sftp" "$NOSTEK/sftp-state"   # SFTP accounts (bcrypt hashes) and the SFTP host key, root only
+  # Docker publishes 2222 past ufw anyway; the rule keeps "ufw status" honest about what is open
+  if [ -z "$R" ] && command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+    ufw allow 2222/tcp comment "sftp (nostek)" >/dev/null 2>&1 && info "ufw: 2222/tcp allowed (SFTP)"
+  fi
   chown "$PANEL_UID:$PANEL_UID" "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs"
   chmod 700 "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs"
   pass "core files in $CORE (.env 600, data dirs owned by the panel user)"
 }
 
 wait_healthy() {
-  local e p w
+  local e p w f
   for _ in $(seq 1 45); do
-    e="$(svc_state edge)"; p="$(svc_state panel)"; w="$(svc_state waf)"
-    [ "$e" = "running healthy" ] && [ "$p" = "running healthy" ] && [ "$w" = "running healthy" ] && { pass "edge, panel and waf healthy"; return 0; }
+    e="$(svc_state edge)"; p="$(svc_state panel)"; w="$(svc_state waf)"; f="$(svc_state sftp)"
+    [ "$e" = "running healthy" ] && [ "$p" = "running healthy" ] && [ "$w" = "running healthy" ] && [ "$f" = "running healthy" ] && { pass "edge, panel, waf and sftp healthy"; return 0; }
     sleep 2
   done
-  echo "FAIL not healthy: edge=$e panel=$p waf=$w"; return 1
+  echo "FAIL not healthy: edge=$e panel=$p waf=$w sftp=$f"; return 1
 }
 
 rollback() {
@@ -270,8 +276,8 @@ start_core() {
   dc up -d --remove-orphans >/dev/null 2>&1 || rollback "compose up failed"
   wait_healthy || rollback "containers did not become healthy"
   local f; f="$(foreign_publishers)"
-  [ -z "$f" ] || rollback "containers other than edge publish ports: $f"
-  pass "only edge publishes ports"
+  [ -z "$f" ] || rollback "containers other than edge and sftp publish ports: $f"
+  pass "only edge and sftp publish ports"
   local reach=""
   for _ in $(seq 1 15); do reach="$(https_check /healthz)"; [ "$reach" = 200 ] && break; sleep 2; done
   [ "$reach" = 200 ] || rollback "panel not reachable through the edge (https answered ${reach:-nothing})"
@@ -317,10 +323,10 @@ verify() {
   progress 2/6 "phase"; [ "$(state_get phase)" = APPLIED ] && pass "phase APPLIED (version $(state_get release), commit $(state_get commit))" || fail "phase is $(state_get phase), not APPLIED"
   progress 3/6 "containers"
   local s
-  for s in edge panel waf; do [ "$(svc_state $s)" = "running healthy" ] && pass "$s running healthy" || fail "$s: $(svc_state $s)"; done
+  for s in edge panel waf sftp; do [ "$(svc_state $s)" = "running healthy" ] && pass "$s running healthy" || fail "$s: $(svc_state $s)"; done
   case "$(svc_state docker-api)" in running*) pass "docker-api running" ;; *) fail "docker-api: $(svc_state docker-api)" ;; esac
   progress 4/6 "isolation"
-  local f; f="$(foreign_publishers)"; [ -z "$f" ] && pass "only edge publishes ports" || fail "containers other than edge publish ports: $f"
+  local f; f="$(foreign_publishers)"; [ -z "$f" ] && pass "only edge and sftp publish ports" || fail "containers other than edge and sftp publish ports: $f"
   if dc exec -T docker-api wget -q -O /dev/null --post-data= http://127.0.0.1:2375/containers/create >/dev/null 2>&1; then fail "socket proxy accepts writes"; else pass "socket proxy refuses writes"; fi
   progress 5/6 "web"
   local h; h="$(curl -sS --noproxy '*' --max-time 8 -o /dev/null -w '%{http_code}' -H "Host: $DOMAIN" http://127.0.0.1/ 2>/dev/null)"

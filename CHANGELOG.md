@@ -3,7 +3,22 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.27.0] — 2026-11-21
+
+### Added
+- **SFTP accounts** on a new SFTP tab (SFTP-01), like cPanel's FTP Accounts: logins for FileZilla, WinSCP or
+  Cyberduck on port **2222**, each locked to the website's folder or a folder inside it, with a password, public
+  keys, or both. File transfer only: no shell, no commands. New files belong to the website's file user. After
+  10 wrong logins within 10 minutes an address is refused for 30 minutes. A change of folder, password or keys
+  ends the account's open connections.
+
+### Changed
+- The core stack gets an `sftp` service (from the panel image) that publishes port 2222, and the folders
+  `<data>/sftp` and `<data>/sftp-state`. Applied by the panel update; until then no account can be made.
+
 ## [1.26.0] — 2026-11-21
+
+Running on the production server since 2026-11-21 22:11 WIB.
 
 ### Added
 - **Web application firewall** on the Security tab (SEC-01 wave 3b), like cPanel's ModSecurity: Coraza with the
@@ -20,6 +35,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   panel update; until then the firewall cannot be turned on.
 
 ## [1.25.0] — 2026-11-21
+
+Running on the production server since 2026-11-21 20:36 WIB.
 
 ### Added
 - **Malware scan** on the Security tab (SEC-01 wave 3), like cPanel's Virus Scanner: ClamAV checks every file of
