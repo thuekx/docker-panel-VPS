@@ -126,6 +126,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/sites/{id}/deploykey", s.siteDeployKey)
 	mux.HandleFunc("GET /v1/sites/{id}/images", s.images)
 	mux.HandleFunc("POST /v1/sites/{id}/images/update", s.imageUpdate)
+	mux.HandleFunc("GET /v1/sites/{id}/perf", s.perf)
+	mux.HandleFunc("POST /v1/sites/{id}/php", s.phpChange)
 	mux.HandleFunc("GET /v1/sites/{id}/limits", s.limits)
 	mux.HandleFunc("POST /v1/sites/{id}/limits", s.limitsSet)
 	mux.HandleFunc("GET /v1/sites/{id}/disk", s.siteDisk)

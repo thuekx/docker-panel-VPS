@@ -64,6 +64,8 @@ func securityDetail(c sites.SecurityChange) string {
 		return fmt.Sprintf("%s %d", c.Op, c.Rule)
 	case "waf-skip-add", "waf-skip-remove":
 		return c.Op + " " + c.Path
+	case "optimize-set":
+		return fmt.Sprintf("%s compress %t cache %d days", c.Op, c.Compress, c.Days)
 	}
 	return c.Op
 }

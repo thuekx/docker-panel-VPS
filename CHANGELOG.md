@@ -3,6 +3,19 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.28.0] — 2026-11-21
+
+### Added
+- **Change the PHP version** of a website on a new Performance tab (PHP-01), like cPanel's MultiPHP Manager, for
+  WordPress, plain PHP and Laravel websites on both engines: a backup ("before PHP change") is made first, then the
+  website restarts on the new version; if it does not start healthy it runs on its previous PHP again. The page
+  offers **Back to PHP x.y** after a change. Laravel cannot go below the PHP its version needs; a native website
+  offers the versions installed on the server. Only the containers that follow PHP get new images; the others
+  keep theirs (newer ones stay with Update image).
+- **Optimize Website** on the same tab, for every app and both engines: the edge compresses text answers (Brotli,
+  zstd or gzip) and can tell browsers to keep styles, scripts, images, fonts and media for 1, 7, 30 or 365 days.
+  Off by default.
+
 ## [1.27.0] — 2026-11-21
 
 ### Added

@@ -65,6 +65,10 @@ type Site struct {
 	MIME       []MIME `json:"mime,omitempty"`
 	// SEC-01 wave 3b: the web application firewall (nil = off)
 	WAF *WAF `json:"waf,omitempty"`
+	// PHP-01: the PHP version before the last change (the way back)
+	PrevPHP string `json:"prev_php,omitempty"`
+	// PHP-01: compression and browser cache at the edge (nil = off)
+	Optimize *Optimize `json:"optimize,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
@@ -188,8 +192,8 @@ func (s Site) labels() []string {
 		)
 		if h.Name != canon {
 			l = append(l, fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s-canon`, r, rid))
-		} else if len(redirs) > 0 {
-			l = append(l, fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s`, r, strings.Join(redirs, ",")))
+		} else if mw := s.servedMiddlewares(); len(mw) > 0 {
+			l = append(l, fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s`, r, strings.Join(mw, ",")))
 		}
 	}
 	return append(l, s.securityLabels()...)

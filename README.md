@@ -40,6 +40,7 @@ choose its own stack.
 | 🌐 **Domains** | Extra names, redirects per path, and a DNS and certificate check for every name of a website. |
 | 🛡️ **Security** | IP blocker, password-protected folders and hotlink protection at the edge; custom error pages and MIME types per website; malware scan (ClamAV), a login-attempts view with one-press blocking, and a web application firewall (Coraza + OWASP CRS, off by default). |
 | 🔑 **SFTP** | SFTP accounts per website on port 2222, locked to the website's folder, with a password or keys; no shell. |
+| ⚡ **Performance** | Change the PHP version of a website with a backup first and a one-click way back; compression and browser cache at the edge. |
 | 🕒 **Time zone aware** | Every time on screen shows its zone. |
 
 ## How it works
