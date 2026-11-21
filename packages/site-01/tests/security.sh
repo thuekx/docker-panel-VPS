@@ -211,12 +211,11 @@ logins6() { api GET "/v1/sites/$SID/security"; python3 -c 'import json,sys; l=js
 ok "login attempts counted per address within a minute (POSTs only)" 'for _ in $(seq 1 30); do logins6 && break; sleep 3; done; logins6'
 # --- OPS-01: visitor statistics from the same log
 curl -sk --noproxy '*' --max-time 10 --resolve "$S:443:127.0.0.1" -o /dev/null -A 'Mozilla/5.0 Harness' -e 'https://ref.example.test/x' "https://$S/logo.png"
-curl -sk --noproxy '*' --max-time 10 --resolve "$S:443:127.0.0.1" -o /dev/null -A 'Mozilla/5.0 Harness' "https://$S/no-such-page"
 metrics_ok() { api GET "/v1/sites/$SID/metrics?days=1"; python3 -c '
 import json,sys
 v=json.load(sys.stdin); d=v["days"][-1]
 ok = v["active"] and d["requests"]>=9 and d["visitors"]>=1 and d["bots"]>=7 and d["bytes"]>0 and d["s4"]>=1
-ok = ok and any(r["key"]=="ref.example.test" for r in v["refs"]) and any(e["key"].endswith(" /no-such-page") for e in v["errors"])
+ok = ok and any(r["key"]=="ref.example.test" for r in v["refs"]) and any(e["key"]=="404 /gone.png" for e in v["errors"])
 ok = ok and any("\"GET /logo.png\"" in l and "Mozilla/5.0 Harness" in l for l in v["raw"])
 sys.exit(0 if ok else 1)' <<<"$BODY"; }
 ok "statistics: visits, bots, bandwidth, referrer, errors and raw lines counted within a minute" 'for _ in $(seq 1 30); do metrics_ok && break; sleep 3; done; metrics_ok'
