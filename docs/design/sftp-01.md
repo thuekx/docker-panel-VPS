@@ -1,6 +1,6 @@
 # SFTP accounts (SFTP-01)
 
-Status: [BUILT] v1.27.0, 2026-11-21. Roadmap slot 12c, after SEC-01. Like cPanel's FTP Accounts, for one website
+Status: [LIVE] v1.27.0, 2026-11-22 00:41 WIB (built 2026-11-21). Roadmap slot 12c, after SEC-01. Like cPanel's FTP Accounts, for one website
 at a time, on a new **SFTP** tab. Port 2222 (decision SFTP-1).
 
 ## What a user gets

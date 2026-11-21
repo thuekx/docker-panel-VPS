@@ -1,6 +1,6 @@
 # PHP version and Optimize Website (PHP-01)
 
-Status: [BUILT] v1.28.0, 2026-11-21. Roadmap slot 12d, after SFTP-01. Like cPanel's MultiPHP Manager and Optimize
+Status: [LIVE] v1.28.0, 2026-11-22 00:41 WIB (built 2026-11-21). Roadmap slot 12d, after SFTP-01. Like cPanel's MultiPHP Manager and Optimize
 Website, for one website at a time, on a new **Performance** tab (decision PHP-1).
 
 ## Change the PHP version

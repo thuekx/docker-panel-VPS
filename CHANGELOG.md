@@ -21,6 +21,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ## [1.28.0] — 2026-11-21
 
+Running on the production server since 2026-11-22 00:41 WIB.
+
 ### Added
 - **Change the PHP version** of a website on a new Performance tab (PHP-01), like cPanel's MultiPHP Manager, for
   WordPress, plain PHP and Laravel websites on both engines: a backup ("before PHP change") is made first, then the
@@ -33,6 +35,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   Off by default.
 
 ## [1.27.0] — 2026-11-21
+
+Running on the production server since 2026-11-22 00:41 WIB.
 
 ### Added
 - **SFTP accounts** on a new SFTP tab (SFTP-01), like cPanel's FTP Accounts: logins for FileZilla, WinSCP or
