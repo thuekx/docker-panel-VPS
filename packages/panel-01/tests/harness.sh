@@ -56,7 +56,7 @@ run SETUP-LINK "${A[@]}"; ok "new setup link cancels the old one" '[ $RC = 0 ] &
 run ADMIN-ROTATE "${A[@]}" --email nobody@example.test; ok "rotate for unknown admin refused" '[ $RC = 3 ]'
 run VERIFY "${A[@]}"; ok "verify passes" '[ $RC = 0 ] && has "RESULT PANEL-01 VERIFY PASS" && has "sisa_uji=0" && has "socket proxy refuses writes"'
 docker run -d --name np-test-pub -p 127.0.0.1:18080:8080 "nostek/panel:v$(tr -d "[:space:]" < "$REPO/VERSION")" >/dev/null 2>&1
-run VERIFY "${A[@]}"; ok "verify fails when another container publishes ports" '[ $RC = 1 ] && has "other than edge publish"'
+run VERIFY "${A[@]}"; ok "verify fails when another container publishes ports" '[ $RC = 1 ] && has "other than edge and sftp publish"'
 docker rm -f np-test-pub >/dev/null 2>&1
 echo keep > "$PANEL01_TEST_ROOT/srv/nostek/panel/marker"
 run REVERT "${A[@]}"; ok "revert stops stack, moves core aside, keeps data" '[ $RC = 0 ] && [ "$(phase)" = REVERTED ] && [ ! -d "$(CORE)" ] && ls -d "$PANEL01_TEST_ROOT"/var/backups/nostek/panel-01/*-revert/core >/dev/null 2>&1 && [ -f "$PANEL01_TEST_ROOT/srv/nostek/panel/marker" ] && [ -z "$(docker ps -q --filter label=com.docker.compose.project=nostek-core)" ]'
