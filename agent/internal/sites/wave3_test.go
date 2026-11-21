@@ -66,7 +66,7 @@ func TestMalwareScan(t *testing.T) {
 		t.Fatalf("%+v", v)
 	}
 	v, err := m.Security(id)
-	if err != nil || v.Scan.Last == nil || len(v.Scan.Last.Found) != 2 || v.Scan.Job == nil {
+	if err != nil || v.Scan.Last == nil || len(v.Scan.Last.Found) != 2 || v.Scan.Job == nil || v.Scan.Last.Finished < v.Scan.Last.Started {
 		t.Fatalf("%+v %v", v.Scan, err)
 	}
 	// a found file that is gone (moved to the file trash) shows as such

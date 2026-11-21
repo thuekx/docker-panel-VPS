@@ -186,7 +186,7 @@ json.dump(c, open(sys.argv[1], "w"), indent=2)
 PY
 ok "test agent restarted with the harness signatures" '[ "$C1" = 200 ] && agent_restart'
 api POST "/v1/sites/$SID/security/scan"; J="$(jobid)"; C2="$CODE"
-ok "malware scan finds the planted file, and only it" '[ "$C2" = 202 ] && [ "$(wait_job "$J")" = done ] && api GET "/v1/sites/$SID/security" && python3 -c "import json,sys; s=json.load(sys.stdin)[\"scan\"][\"last\"]; f=s[\"found\"]; sys.exit(0 if len(f)==1 and f[0][\"path\"]==\"/wp-content/evil.php\" and f[0][\"signature\"].startswith(\"Harness.Test.Sample\") and s[\"files\"]>=3 and not s[\"error\"] else 1)" <<<"$BODY"'
+ok "malware scan finds the planted file, and only it" '[ "$C2" = 202 ] && [ "$(wait_job "$J")" = done ] && api GET "/v1/sites/$SID/security" && python3 -c "import json,sys; s=json.load(sys.stdin)[\"scan\"][\"last\"]; f=s[\"found\"]; sys.exit(0 if len(f)==1 and f[0][\"path\"]==\"/wp-content/evil.php\" and f[0][\"signature\"].startswith(\"Harness.Test.Sample\") and s[\"files\"]>=3 and s[\"finished\"]>=s[\"started\"]>0 and not s.get(\"error\") else 1)" <<<"$BODY"'
 ok "the scan ran without network and left no container" '! docker ps -aq --filter label=nostek.scan | grep -q . && grep -q "\"action\":\"malware-scan\"" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
 api POST "/v1/sites/$SID/files/delete" '{"path":"/wp-content/evil.php"}'
 ok "moved to the file trash: shown as gone" 'api GET "/v1/sites/$SID/security" && grep -q "\"gone\":true" <<<"$BODY" && ! grep -q harness-malware-sample <<<"$(body /wp-content/evil.php)"'
