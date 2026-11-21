@@ -1,6 +1,7 @@
 # Website security (SEC-01)
 
-Status: wave 1 [LIVE] v1.23.0 (2026-11-20 22:42 WIB); wave 2 [BUILT] v1.24.0, 2026-11-21. Roadmap slot 12b, after DOM-01. Like the cPanel pages IP Blocker,
+Status: wave 1 [LIVE] v1.23.0 (2026-11-20 22:42 WIB); wave 2 [LIVE] v1.24.0 (2026-11-21 14:52 WIB); wave 3a
+[BUILT] v1.25.0 (malware scan, login attempts), wave 3b (WAF) next. Roadmap slot 12b, after DOM-01. Like the cPanel pages IP Blocker,
 Directory Privacy and Hotlink Protection, for one website at a time, on a new **Security** tab.
 
 ## Waves (SEC-1)
@@ -8,7 +9,8 @@ Directory Privacy and Hotlink Protection, for one website at a time, on a new **
 |---|---|---|
 | 1 (v1.23.0) | IP blocker, password-protected folders, hotlink protection | the edge (Traefik), so every app and both engines get the same rules |
 | 2 (v1.24.0) | custom error pages, MIME types | the website's web server (Nginx/Apache in Docker, host Nginx for native) |
-| 3 | web application firewall (Coraza with the OWASP Core Rule Set, off by default), malware scan of the website files (ClamAV), brute-force monitor view | edge plugin / scheduled job |
+| 3a (v1.25.0) | malware scan of the website files (ClamAV), login attempts (brute-force monitor view) | throwaway ClamAV containers / the edge's access log read by the agent |
+| 3b (v1.26.0) | web application firewall (Coraza with the OWASP Core Rule Set, off by default) | a WAF service the edge asks before each visit |
 
 ## Why at the edge
 Every visit enters through the edge, whatever the website runs (WordPress, PHP, Node, Go, Python, ready apps) and
@@ -78,6 +80,43 @@ Rules in the web server:
 - WordPress and frameworks answer 404 for their own routes through PHP; the pages cover what the web server
   answers itself (missing files, 403, PHP not answering: 502/503/504).
 
+## Wave 3a: malware scan and login attempts
+
+### Malware scan (like cPanel's Virus Scanner)
+- Pressed on the Security tab; one scan at a time on the server, and only with at least 1400 MB of memory free
+  (clamscan holds every signature in memory, about 1.1 GB). It does not hold the change lock: the website can be
+  changed while it runs.
+- Step `signatures`: `freshclam` in a throwaway container of the pinned official image
+  (`clamav/clamav:1.5.5_base`, no signatures inside) as the image's clamav user (100), with network, no
+  capabilities, read-only root, 512 MB. The signatures live in `<data>/clamav/db`; freshclam runs only when they
+  are older than 12 hours (ClamAV's mirrors limit how often a server may ask). A failed update with older
+  signatures present is a warning on the result; without any it fails the scan.
+- Step `scan`: `clamscan` in a throwaway container with **no network**, the website folder mounted read-only, the
+  signatures read-only, read-only root, all capabilities dropped except DAC_READ_SEARCH (to read files of other
+  owners), 2 GB, 1 CPU, at most 60 minutes. Files over 64 MB are skipped.
+- The result is `malware-scan.json` in the website folder (0600): time, files scanned, signatures used, and at most
+  500 found files with the signature name. Nothing is changed by the scan. The page offers **Move to file trash**
+  (the File Manager's trash, restorable for 7 days) per found file, with "sure" ticked; a removed file shows as
+  removed.
+- The harness uses a fixed test signature (`clam_test_db` in the agent config, never set on a real server).
+
+### Login attempts (like cPanel's cPHulk history)
+- The edge writes an access log (`<data>/edge/logs/access.log`, owned by the edge user): JSON with six fields only
+  (address, host, method, path, status, time), no headers, no cookies.
+- Every minute the agent reads what is new and keeps only POSTs to login pages: WordPress `wp-login.php` and
+  `xmlrpc.php`, and `/login`, `/signin`, `/user/login`, `/administrator`, `/admin/login`, `/auth/login`,
+  `/api/login`, `/api/auth/login` (any case, optional closing slash). The host decides the website (every name,
+  preview names too); other visits are dropped at once.
+- Per website and address: hourly buckets for 7 days, at most 2000 addresses (the least recent go first), in
+  `<data>/security/logins.json` (0600) with the read offset, so a restart neither loses nor double counts. Once
+  the log is past 32 MB and fully read, the agent empties it (the edge appends, so it keeps writing).
+- A failed login is counted where the answer shows it: WordPress shows the form again (200) on a wrong password
+  and redirects on a right one; 401, 403, 422 and 429 are refusals. Other answers count as attempts only.
+- The page shows the totals of the last 24 hours and 7 days and the 25 busiest addresses with their last try and
+  page; **Block** adds an address to the IP blocker (same job as wave 1); blocked addresses are marked. Nothing is
+  blocked automatically.
+- Until the panel update has given the edge its access log, the card says it is not counting yet.
+
 ## Limits (known)
 - Behind a proxy or CDN in front of the server (for example Cloudflare's orange cloud) the edge sees the proxy's
   address, so the IP blocker cannot tell visitors apart. Block at the CDN in that case.
@@ -85,6 +124,15 @@ Rules in the web server:
   them; on another server set the passwords again.
 
 ## Tests
+- Wave 3a: unit tests for the clamscan output, the container options (no network, read-only website, no
+  website mount for freshclam), freshclam at most every 12 hours, a failed update with and without older
+  signatures, the memory check and one scan at a time; login pages and failure rules, counting per address and
+  hour, a half-written line, IPv4-mapped addresses, a host with a port, blocked networks, kept across a restart,
+  an emptied log, the log emptied past 32 MB. Panel: both cards in both languages and every scan job state,
+  Block, Move to file trash (needs "sure"), audit lines. Harness: the real edge with the core stack's access log
+  flags; six POSTs to `/wp-login.php` counted for the edge's address within a minute (a GET is not), blocked from
+  the list; a real ClamAV scan with a harness signature finds the planted file and only it, leaves no container,
+  and shows it as removed after the move to the file trash.
 - Wave 2: unit tests for both servers and native, content-type checks, starter page never overwritten; harness: a
   static website on Nginx (404 and 403 pages, an edited page served, a new and a replaced MIME type, back to the
   standard after removal) and a PHP website on Apache (404 page, MIME type, mount removed); the native-01 harness
