@@ -26,7 +26,7 @@ Nostek Panel
 │   ├── NATIVE-01 optional native site engine ● LIVE v1.20.0 2026-11-16
 │   ├── MIG-01 WordPress migration (plugin + cPanel backup) ● LIVE v1.21.0 2026-11-19
 │   ├── DOM-01 domains, redirects, DNS check ● LIVE v1.22.0 2026-11-20
-│   ├── SEC-01 IP blocker, folder password, hotlink ● LIVE v1.23.0 2026-11-20 (wave 1); error pages, MIME ● LIVE v1.24.0 2026-11-21 (wave 2); malware scan, login attempts ● BUILT v1.25.0 (wave 3a); WAF ○ (wave 3b)
+│   ├── SEC-01 IP blocker, folder password, hotlink ● LIVE v1.23.0 2026-11-20 (wave 1); error pages, MIME ● LIVE v1.24.0 2026-11-21 (wave 2); malware scan, login attempts ● BUILT v1.25.0 (wave 3a); WAF ● BUILT v1.26.0 (wave 3b)
 │   ├── EDITOR-1 code editor in the File Manager (CodeMirror 6) ● LIVE v1.24.0 2026-11-21
 │   ├── SFTP-01 SFTP per website ......................... ○
 │   ├── PHP-01 change PHP version, optimize website ...... ○

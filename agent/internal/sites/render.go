@@ -63,6 +63,8 @@ type Site struct {
 	// SEC-01 wave 2: codes with a page of their own, and extra MIME types, in the website's web server
 	ErrorPages []int  `json:"error_pages,omitempty"`
 	MIME       []MIME `json:"mime,omitempty"`
+	// SEC-01 wave 3b: the web application firewall (nil = off)
+	WAF *WAF `json:"waf,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
@@ -182,7 +184,7 @@ func (s Site) labels() []string {
 			fmt.Sprintf("traefik.http.routers.%s.rule: Host(`%s`)", r, h.Name),
 			fmt.Sprintf(`traefik.http.routers.%s.entrypoints: websecure`, r),
 			fmt.Sprintf(`traefik.http.routers.%s.tls.certresolver: le`, r),
-			fmt.Sprintf(`traefik.http.routers.%s.service: %s`, r, rid),
+			fmt.Sprintf(`traefik.http.routers.%s.service: %s`, r, s.wafService(true)),
 		)
 		if h.Name != canon {
 			l = append(l, fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s-canon`, r, rid))

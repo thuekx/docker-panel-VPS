@@ -49,7 +49,7 @@ func (f *fakeAgent) security(w http.ResponseWriter, r *http.Request, write func(
 	write(200, agent.Security{Blocked: []string{"198.51.100.9", "2001:db8::/32"}, Protected: []agent.Protected{{Path: "/admin", Users: []string{"ana", "budi"}}, {Path: "/solo", Users: []string{"cici"}}},
 		Hotlink: &agent.Hotlink{Allow: []string{"google.com"}}, HotlinkExts: []string{"jpg", "png"}, Job: f.secJob,
 		WebServer: true, ErrorCodes: []int{403, 404, 503}, ErrorPages: []int{404}, ErrorDir: "/.nostek-errors", MIME: []agent.MIME{{Type: "application/wasm", Exts: []string{"wasm"}}},
-		Logins: f.secLogins, Scan: f.secScan})
+		Logins: f.secLogins, Scan: f.secScan, WAF: f.secWAF, WAFReady: f.secWAFOK})
 }
 
 func TestSecurityPage(t *testing.T) {
@@ -240,5 +240,75 @@ func TestSecurityWave3(t *testing.T) {
 	_, audit, _ := e.get(e.c, "/audit")
 	if !strings.Contains(audit, "malware-trash") || !strings.Contains(audit, "voltix-id /wp-content/uploads/shell.php") {
 		t.Error("audit lacks the scan actions")
+	}
+}
+
+func TestSecurityWAF(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+	_, body, _ := e.get(e.c, "/security/voltix-id")
+	if !strings.Contains(body, `id="waf"`) || !strings.Contains(body, "panel update") {
+		t.Errorf("WAF card without the service lacks the update note")
+	}
+	f.secWAFOK = true
+	f.secWAF = agent.WAF{On: true, Mode: "block", Paranoia: 2, Exclude: []int{941100}, Skip: []string{"/wp-admin/"}, Blocked: 3,
+		Events: []agent.WAFEvent{{Time: 1700000000, IP: "203.0.113.9", URI: "/?id=<script>", Rule: 949110, Msg: "Inbound Anomaly Score Exceeded", Action: "blocked"},
+			{Time: 1700000000, IP: "203.0.113.9", URI: "/?id=1", Rule: 942100, Msg: "SQL Injection Attack Detected via libinjection", Action: "detected"}},
+		Rules: []agent.WAFRule{{Rule: 942100, Msg: "SQL Injection Attack Detected via libinjection", Count: 9}, {Rule: 941100, Msg: "XSS", Count: 1, Excluded: true}}}
+	for _, lang := range []string{"id", "en"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		code, body, _ := e.get(e.c, "/security/voltix-id")
+		if code != 200 || missingKey.MatchString(body) || strings.Contains(body, "%!") {
+			t.Errorf("%s: %d %v", lang, code, missingKey.FindString(body))
+		}
+	}
+	_, body, _ = e.get(e.c, "/security/voltix-id")
+	for _, want := range []string{
+		`<option value="block" selected>`, `<option value="2" selected>`,
+		`name="op" value="waf-exclude-add"><input type="hidden" name="rule" value="942100">`,
+		`name="op" value="waf-exclude-remove"><input type="hidden" name="rule" value="941100">`,
+		`name="op" value="waf-skip-remove"><input type="hidden" name="path" value="/wp-admin/">`,
+		"/?id=&lt;script&gt;",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "comes with the panel update") {
+		t.Error("update note shown although the service runs")
+	}
+	f.secCalls = nil
+	for _, c := range []struct {
+		form url.Values
+		want string
+	}{
+		{url.Values{"op": {"waf-set"}, "mode": {"detect"}, "level": {"1"}}, `{"op":"waf-set","mode":"detect","level":1}`},
+		{url.Values{"op": {"waf-set"}, "mode": {"off"}, "level": {"1"}}, `{"op":"waf-off"}`},
+		{url.Values{"op": {"waf-exclude-add"}, "rule": {" 942100 "}}, `{"op":"waf-exclude-add","rule":942100}`},
+		{url.Values{"op": {"waf-exclude-remove"}, "rule": {"941100"}}, `{"op":"waf-exclude-remove","rule":941100}`},
+		{url.Values{"op": {"waf-skip-add"}, "path": {"/api/"}}, `{"op":"waf-skip-add","path":"/api/"}`},
+		{url.Values{"op": {"waf-skip-remove"}, "path": {"/wp-admin/"}}, `{"op":"waf-skip-remove","path":"/wp-admin/"}`},
+	} {
+		if code, _, h := e.post(e.c, "/security/voltix-id", c.form, "/security/voltix-id"); code != 303 || strings.Contains(h.Get("Location"), "err=") {
+			t.Errorf("%v: %d %s", c.form, code, h.Get("Location"))
+		}
+		if len(f.secCalls) == 0 || f.secCalls[len(f.secCalls)-1] != c.want {
+			t.Errorf("%v sent %v", c.form, f.secCalls)
+		}
+	}
+	n := len(f.secCalls)
+	for _, bad := range []url.Values{{"op": {"waf-exclude-add"}, "rule": {"abc"}}, {"op": {"waf-skip-add"}, "path": {" "}}} {
+		if _, _, h := e.post(e.c, "/security/voltix-id", bad, "/security/voltix-id"); !strings.Contains(h.Get("Location"), "err=") {
+			t.Errorf("%v: %s", bad, h.Get("Location"))
+		}
+	}
+	if len(f.secCalls) != n {
+		t.Error("bad input reached the agent")
+	}
+	_, audit, _ := e.get(e.c, "/audit")
+	if !strings.Contains(audit, "voltix-id waf-off") || !strings.Contains(audit, "942100") {
+		t.Error("audit lacks the WAF changes")
 	}
 }

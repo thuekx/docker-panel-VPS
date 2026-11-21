@@ -194,6 +194,9 @@ func serve(cfg Config, m *sites.Manager) error {
 	go m.BackupLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
 	go m.CronLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
 	go m.LoginLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
+	if err := m.SyncWAF(); err != nil { // SEC-01 wave 3b: the WAF files follow site.json
+		fmt.Fprintln(os.Stderr, "waf files:", err)
+	}
 	fmt.Println("nostek-agent", Version, "listening on", cfg.Socket)
 	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err

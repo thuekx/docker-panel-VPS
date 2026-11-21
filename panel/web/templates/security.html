@@ -105,6 +105,63 @@
   </form>
 </article>
 </section>{{else}}<section class="card wide" data-anim="card"><p class="muted">{{t $l "sec.noweb"}}</p></section>{{end}}
+<section class="card wide tone c-teal" data-anim="card" id="waf">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "sec.waf.title"}}</h2>
+  <p class="muted">{{t $l "sec.waf.help"}}</p>
+  <p class="facts"><span>{{if $v.WAF.On}}{{if eq $v.WAF.Mode "block"}}<span class="pill s-ok">{{t $l "sec.waf.m.block"}}</span>{{else}}<span class="pill s-run">{{t $l "sec.waf.m.detect"}}</span>{{end}} <span class="muted small">{{t $l "sec.waf.level" $v.WAF.Paranoia}}</span>{{else}}<span class="pill s-unknown">{{t $l "sec.off"}}</span>{{end}}</span>
+    {{if $v.WAF.On}}<span class="muted small">{{t $l "sec.waf.blocked" $v.WAF.Blocked}}</span>{{end}}</p>
+  {{if and (not $v.WAFReady) (not $v.WAF.On)}}<p class="banner warn">{{t $l "sec.waf.notready"}}</p>{{end}}
+  <form method="post" action="/security/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="waf-set">
+    <label>{{t $l "sec.waf.mode"}}<select name="mode">
+      <option value="off"{{if not $v.WAF.On}} selected{{end}}>{{t $l "sec.waf.m.off"}}</option>
+      <option value="detect"{{if and $v.WAF.On (eq $v.WAF.Mode "detect")}} selected{{end}}>{{t $l "sec.waf.m.detect"}}</option>
+      <option value="block"{{if and $v.WAF.On (eq $v.WAF.Mode "block")}} selected{{end}}>{{t $l "sec.waf.m.block"}}</option></select></label>
+    <label>{{t $l "sec.waf.paranoia"}}<select name="level">
+      <option value="1"{{if ne $v.WAF.Paranoia 2}} selected{{end}}>{{t $l "sec.waf.p1"}}</option>
+      <option value="2"{{if eq $v.WAF.Paranoia 2}} selected{{end}}>{{t $l "sec.waf.p2"}}</option></select></label>
+    <p class="muted small">{{t $l "sec.waf.note"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running (and (not $v.WAFReady) (not $v.WAF.On))}} disabled{{end}}>{{t $l "sec.waf.save"}}</button>
+  </form>
+  {{if $v.WAF.On}}
+  <h3>{{t $l "sec.waf.rules"}}</h3>
+  {{if $v.WAF.Rules}}<div class="table-wrap"><table class="dom">
+    <thead><tr><th>{{t $l "sec.waf.c.rule"}}</th><th>{{t $l "sec.waf.c.msg"}}</th><th>{{t $l "sec.waf.c.count"}}</th><th><span class="sr-only">{{t $l "dom.col.act"}}</span></th></tr></thead>
+    <tbody>{{range $v.WAF.Rules}}
+      <tr><td><code>{{.Rule}}</code></td><td class="small">{{.Msg}}</td><td>{{.Count}}</td>
+        <td>{{if .Excluded}}<span class="pill s-unknown">{{t $l "sec.waf.excluded"}}</span>{{else}}<form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="waf-exclude-add"><input type="hidden" name="rule" value="{{.Rule}}">
+          <button class="ghost small" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "sec.waf.exclude"}}</button></form>{{end}}</td></tr>{{end}}
+    </tbody></table></div>{{else}}<p class="muted">{{t $l "sec.waf.none"}}</p>{{end}}
+  <section class="grid pair">
+  <div>
+    <h3>{{t $l "sec.waf.off.title"}}</h3>
+    {{if $v.WAF.Exclude}}<ul class="plain">{{range $v.WAF.Exclude}}
+      <li><form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="waf-exclude-remove"><input type="hidden" name="rule" value="{{.}}">
+        <code>{{.}}</code> <button class="ghost danger-text small" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "sec.waf.include"}}</button></form></li>{{end}}
+    </ul>{{else}}<p class="muted small">{{t $l "sec.waf.off.none"}}</p>{{end}}
+    <form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="waf-exclude-add">
+      <label>{{t $l "sec.waf.c.rule"}}<input name="rule" inputmode="numeric" pattern="[0-9]{6}" placeholder="942100" maxlength="6" required></label>
+      <button class="secondary small" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "sec.waf.exclude"}}</button></form>
+  </div>
+  <div>
+    <h3>{{t $l "sec.waf.skip.title"}}</h3>
+    {{if $v.WAF.Skip}}<ul class="plain">{{range $v.WAF.Skip}}
+      <li><form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="waf-skip-remove"><input type="hidden" name="path" value="{{.}}">
+        <code>{{.}}</code> <button class="ghost danger-text small" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "dom.remove"}}</button></form></li>{{end}}
+    </ul>{{else}}<p class="muted small">{{t $l "sec.waf.skip.none"}}</p>{{end}}
+    <form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="waf-skip-add">
+      <label>{{t $l "sec.waf.path"}}<input name="path" placeholder="/wp-admin/" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="200" required></label>
+      <button class="secondary small" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "sec.waf.skip"}}</button></form>
+  </div>
+  </section>
+  <h3>{{t $l "sec.waf.events"}}</h3>
+  {{if $d.WAFEvents}}<div class="table-wrap"><table class="dom">
+    <thead><tr><th>{{t $l "sec.login.c.last"}}</th><th>{{t $l "sec.login.ip"}}</th><th>{{t $l "sec.waf.c.rule"}}</th><th>{{t $l "sec.waf.c.req"}}</th></tr></thead>
+    <tbody>{{range $d.WAFEvents}}
+      <tr><td class="small">{{.When}}{{if eq .Action "blocked"}} <span class="pill s-bad">{{t $l "sec.waf.a.blocked"}}</span>{{end}}</td><td><code>{{.IP}}</code></td>
+        <td><code>{{.Rule}}</code> <span class="small muted">{{.Msg}}</span></td><td><code class="small">{{.URI}}</code></td></tr>{{end}}
+    </tbody></table></div>{{else}}<p class="muted">{{t $l "sec.waf.none"}}</p>{{end}}
+  {{end}}
+</section>
 <section class="card wide tone c-blue" data-anim="card" id="logins">
   <h2><span class="h-ico" aria-hidden="true">{{template "ico-user"}}</span>{{t $l "sec.login.title"}}</h2>
   <p class="muted">{{t $l "sec.login.help"}}</p>

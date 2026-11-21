@@ -8,6 +8,7 @@ RUN go mod download && go mod verify
 COPY . .
 ARG VERSION=dev
 RUN go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/nostek-panel ./cmd/nostek-panel \
+ && go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/nostek-waf ./cmd/nostek-waf \
  && mkdir -p /out/data
 
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
@@ -19,6 +20,8 @@ LABEL org.opencontainers.image.title="Nostek Panel" \
       org.opencontainers.image.source="https://github.com/thuekx/docker-panel-VPS" \
       org.opencontainers.image.licenses="MIT"
 COPY --from=build /out/nostek-panel /nostek-panel
+# the edge's WAF (SEC-01 wave 3b) runs from this image as its own container: entrypoint /nostek-waf
+COPY --from=build /out/nostek-waf /nostek-waf
 COPY --from=build --chown=65532:65532 /out/data /data
 USER 65532:65532
 ENV NP_DB=/data/panel.db NP_LISTEN=:8080 NP_DISK=/data

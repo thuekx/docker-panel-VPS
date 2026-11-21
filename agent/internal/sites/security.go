@@ -156,6 +156,9 @@ type SecurityView struct {
 	// wave 3
 	Logins LoginsView `json:"logins"`
 	Scan   ScanView   `json:"scan"`
+	WAF    WAFView    `json:"waf"`
+	// WAFReady is true when the firewall service runs (the panel update brings it)
+	WAFReady bool `json:"waf_ready"`
 }
 
 // Security returns a website's edge rules.
@@ -179,6 +182,8 @@ func (m *Manager) Security(id string) (SecurityView, error) {
 		v.Protected = []Protected{}
 	}
 	v.Logins = m.Logins(s)
+	v.WAF = m.wafView(s)
+	v.WAFReady = m.wafReady(context.Background())
 	if v.Scan, err = m.Scan(id); err != nil {
 		return SecurityView{}, err
 	}
@@ -199,9 +204,12 @@ type SecurityChange struct {
 	User  string   `json:"user,omitempty"`
 	Hash  string   `json:"hash,omitempty"` // bcrypt, made by the panel
 	Allow []string `json:"allow,omitempty"`
-	Code  int      `json:"code,omitempty"` // errpage-on | errpage-off
-	Type  string   `json:"type,omitempty"` // mime-add | mime-remove
-	Exts  string   `json:"exts,omitempty"` // mime-add: "tex ltx"
+	Code  int      `json:"code,omitempty"`  // errpage-on | errpage-off
+	Type  string   `json:"type,omitempty"`  // mime-add | mime-remove
+	Exts  string   `json:"exts,omitempty"`  // mime-add: "tex ltx"
+	Mode  string   `json:"mode,omitempty"`  // waf-set: detect | block
+	Level int      `json:"level,omitempty"` // waf-set: paranoia level 1 or 2
+	Rule  int      `json:"rule,omitempty"`  // waf-exclude-add | waf-exclude-remove
 }
 
 // nextSecurity applies a change to a copy of the website; auth holds the password file it needs (path -> users).
@@ -222,6 +230,9 @@ func (m *Manager) nextSecurity(s Site, c SecurityChange) (Site, map[string]map[s
 		return -1
 	}
 	if ok, err := nextWebRules(s, &next, c); ok {
+		return next, auth, err
+	}
+	if ok, err := m.nextWAF(s, &next, c); ok {
 		return next, auth, err
 	}
 	switch c.Op {
@@ -502,7 +513,6 @@ func (s Site) securityEdge(dollar string) ([]edgeRouter, []edgeMiddleware) {
 // securityLabels renders the security routers as Traefik labels.
 func (s Site) securityLabels() []string {
 	rs, ms := s.securityEdge("$$")
-	rid := "site-" + s.ID
 	var l []string
 	for _, m := range ms {
 		switch m.kind {
@@ -521,7 +531,7 @@ func (s Site) securityLabels() []string {
 			fmt.Sprintf(`traefik.http.routers.%s.priority: "%d"`, r.name, r.priority),
 			fmt.Sprintf(`traefik.http.routers.%s.entrypoints: websecure`, r.name),
 			fmt.Sprintf(`traefik.http.routers.%s.tls.certresolver: le`, r.name),
-			fmt.Sprintf(`traefik.http.routers.%s.service: %s`, r.name, rid),
+			fmt.Sprintf(`traefik.http.routers.%s.service: %s`, r.name, s.wafService(true)),
 			fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s`, r.name, strings.Join(r.middlewares, ",")))
 	}
 	return l
@@ -531,11 +541,10 @@ func (s Site) securityLabels() []string {
 // routers and of middlewares).
 func (s Site) securityEdgeYAML() (routers, middlewares string) {
 	rs, ms := s.securityEdge("$")
-	rid := "site-" + s.ID
 	var r, m strings.Builder
 	for _, x := range rs {
 		fmt.Fprintf(&r, "    %s:\n      rule: %q\n      priority: %d\n      entryPoints: [websecure]\n      service: %s\n      tls:\n        certResolver: le\n      middlewares: [%s]\n",
-			x.name, x.rule, x.priority, rid, strings.Join(x.middlewares, ", "))
+			x.name, x.rule, x.priority, s.wafService(false), strings.Join(x.middlewares, ", "))
 	}
 	for _, x := range ms {
 		switch x.kind {

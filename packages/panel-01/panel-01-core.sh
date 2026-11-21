@@ -204,20 +204,21 @@ write_core() {
       [ -n "$ACME_CA" ] && echo "ACME_CA_SERVER=$ACME_CA"
     } > "$CORE/.env" )
   chmod 600 "$CORE/.env"
-  mkdir -p "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs" "$VARLIB/backup"
+  mkdir -p "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs" "$NOSTEK/edge/waf" "$VARLIB/backup"
+  chmod 755 "$NOSTEK/edge/waf"   # the agent writes the WAF rules of each website here (root, 0644)
   chown "$PANEL_UID:$PANEL_UID" "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs"
   chmod 700 "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs"
   pass "core files in $CORE (.env 600, data dirs owned by the panel user)"
 }
 
 wait_healthy() {
-  local e p
+  local e p w
   for _ in $(seq 1 45); do
-    e="$(svc_state edge)"; p="$(svc_state panel)"
-    [ "$e" = "running healthy" ] && [ "$p" = "running healthy" ] && { pass "edge and panel healthy"; return 0; }
+    e="$(svc_state edge)"; p="$(svc_state panel)"; w="$(svc_state waf)"
+    [ "$e" = "running healthy" ] && [ "$p" = "running healthy" ] && [ "$w" = "running healthy" ] && { pass "edge, panel and waf healthy"; return 0; }
     sleep 2
   done
-  echo "FAIL not healthy: edge=$e panel=$p"; return 1
+  echo "FAIL not healthy: edge=$e panel=$p waf=$w"; return 1
 }
 
 rollback() {
@@ -316,7 +317,7 @@ verify() {
   progress 2/6 "phase"; [ "$(state_get phase)" = APPLIED ] && pass "phase APPLIED (version $(state_get release), commit $(state_get commit))" || fail "phase is $(state_get phase), not APPLIED"
   progress 3/6 "containers"
   local s
-  for s in edge panel; do [ "$(svc_state $s)" = "running healthy" ] && pass "$s running healthy" || fail "$s: $(svc_state $s)"; done
+  for s in edge panel waf; do [ "$(svc_state $s)" = "running healthy" ] && pass "$s running healthy" || fail "$s: $(svc_state $s)"; done
   case "$(svc_state docker-api)" in running*) pass "docker-api running" ;; *) fail "docker-api: $(svc_state docker-api)" ;; esac
   progress 4/6 "isolation"
   local f; f="$(foreign_publishers)"; [ -z "$f" ] && pass "only edge publishes ports" || fail "containers other than edge publish ports: $f"
