@@ -6,18 +6,18 @@
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
 <section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
-  <div class="stat-head"><span><b class="ink">{{t $l "sec.job"}}</b></span>
+  <div class="stat-head"><span><b class="ink">{{t $l $d.JobTitle}}</b></span>
   <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
-  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l "sec.job"}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l $d.JobTitle}}"><i data-pct="{{$d.Percent}}"></i></div>
   <ol class="stepper">{{range $d.Steps}}
     <li class="st-{{.State}}" data-step="{{.Key}}">
       <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
       <span class="txt"><span class="now">{{t $l (printf "sec.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "sec.step.%s" .Key)}}</span></span>
     </li>{{end}}
   </ol>
-  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "sec.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if eq $j.State "done"}}<p class="banner ok">{{t $l "sec.job.done"}}</p>{{end}}
-  {{if $j.Error}}<p class="banner warn">{{t $l "sec.job.fail"}}</p>
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l (printf "%s.wait" $d.JobTitle)}} <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p class="banner ok">{{t $l (printf "%s.done" $d.JobTitle)}}</p>{{end}}
+  {{if $j.Error}}<p class="banner warn">{{t $l (printf "%s.fail" $d.JobTitle)}}</p>
   <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
 </section>
 {{end}}
@@ -105,6 +105,54 @@
   </form>
 </article>
 </section>{{else}}<section class="card wide" data-anim="card"><p class="muted">{{t $l "sec.noweb"}}</p></section>{{end}}
+<section class="card wide tone c-blue" data-anim="card" id="logins">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-user"}}</span>{{t $l "sec.login.title"}}</h2>
+  <p class="muted">{{t $l "sec.login.help"}}</p>
+  {{if not $v.Logins.Active}}<p class="banner warn">{{t $l "sec.login.off"}}</p>{{else}}
+  <p class="facts"><span>{{t $l "sec.login.day"}} <b>{{$v.Logins.Day}}</b> ({{t $l "sec.login.failn" $v.Logins.DayFail}})</span>
+    <span>{{t $l "sec.login.week"}} <b>{{$v.Logins.Week}}</b></span>
+    {{if $d.Since}}<span class="muted small">{{t $l "sec.login.since" $d.Since}}</span>{{end}}</p>
+  {{if $d.Logins}}<div class="table-wrap"><table class="dom">
+    <thead><tr><th>{{t $l "sec.login.ip"}}</th><th>{{t $l "sec.login.c.day"}}</th><th>{{t $l "sec.login.c.fail"}}</th><th>{{t $l "sec.login.c.week"}}</th><th>{{t $l "sec.login.c.last"}}</th><th><span class="sr-only">{{t $l "dom.col.act"}}</span></th></tr></thead>
+    <tbody>{{range $d.Logins}}
+      <tr>
+        <td><code>{{.IP}}</code></td>
+        <td>{{.Day}}</td>
+        <td>{{if .DayFail}}<b>{{.DayFail}}</b>{{else}}0{{end}}</td>
+        <td>{{.Week}}</td>
+        <td><span class="small">{{.Last}}</span> <code class="small muted">{{.LastPath}}</code></td>
+        <td>{{if .Blocked}}<span class="pill s-bad">{{t $l "sec.login.blocked"}}</span>{{else}}<form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="block-add"><input type="hidden" name="ip" value="{{.IP}}">
+          <button class="ghost danger-text small" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "sec.login.block"}}</button></form>{{end}}</td>
+      </tr>{{end}}
+    </tbody></table></div>{{else}}<p class="muted">{{t $l "sec.login.none"}}</p>{{end}}
+  <p class="muted small">{{t $l "sec.login.note"}}</p>{{end}}
+</section>
+<section class="card wide tone c-violet" data-anim="card" id="scan">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "sec.scan.title"}}</h2>
+  <p class="muted">{{t $l "sec.scan.help" $v.Scan.MinMB}}</p>
+  {{with $v.Scan.Last}}{{$r := .}}
+  <p class="facts"><span>{{t $l "sec.scan.at" $d.ScanAt $d.ScanMin}}</span><span>{{t $l "sec.scan.files" $r.Files}}</span>{{if $r.Signatures}}<span class="muted small">{{$r.Signatures}}</span>{{end}}</p>
+  {{if $r.Warning}}<p class="banner warn">{{$r.Warning}}</p>{{end}}
+  {{if $r.Error}}<p class="banner warn">{{t $l "sec.scan.failed"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$r.Error}}</pre></details>
+  {{else if $r.Found}}<p class="banner warn" role="alert">{{t $l "sec.scan.found" (len $r.Found)}}</p>
+  <div class="table-wrap"><table class="dom">
+    <thead><tr><th>{{t $l "sec.scan.c.file"}}</th><th>{{t $l "sec.scan.c.sig"}}</th><th><span class="sr-only">{{t $l "dom.col.act"}}</span></th></tr></thead>
+    <tbody>{{range $r.Found}}
+      <tr>
+        <td><a href="/files/{{$s.ID}}?path={{dirof .Path}}"><code>{{.Path}}</code></a></td>
+        <td><code class="small">{{.Signature}}</code></td>
+        <td>{{if .Gone}}<span class="pill s-ok">{{t $l "sec.scan.gone"}}</span>{{else}}<form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="scan-trash"><input type="hidden" name="path" value="{{.Path}}">
+          <label class="check small"><input type="checkbox" name="confirm" value="1" required> {{t $l "dom.remove.sure"}}</label>
+          <button class="ghost danger-text small" type="submit">{{t $l "sec.scan.trash"}}</button></form>{{end}}</td>
+      </tr>{{end}}
+    </tbody></table></div>
+  {{if $r.More}}<p class="muted small">{{t $l "sec.scan.more" $r.More}}</p>{{end}}
+  <p class="muted small">{{t $l "sec.scan.note"}}</p>
+  {{else}}<p class="banner ok">{{t $l "sec.scan.clean"}}</p>{{end}}
+  {{else}}<p class="muted">{{t $l "sec.scan.never"}}</p>{{end}}
+  <form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="scan">
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Scanning}} disabled{{end}}>{{if $d.Scanning}}{{t $l "sec.scan.running"}}{{else}}{{t $l "sec.scan.go"}}{{end}}</button></form>
+</section>
 {{if $d.Err}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
 <p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
 {{end}}

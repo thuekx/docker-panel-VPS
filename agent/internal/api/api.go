@@ -116,6 +116,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/domains", s.domainsChange)
 	mux.HandleFunc("GET /v1/sites/{id}/security", s.security)
 	mux.HandleFunc("POST /v1/sites/{id}/security", s.securityChange)
+	mux.HandleFunc("POST /v1/sites/{id}/security/scan", s.securityScan)
 	mux.HandleFunc("GET /v1/trash", s.trash)
 	mux.HandleFunc("POST /v1/trash/{entry}/restore", s.restore)
 	mux.HandleFunc("POST /v1/trash/{entry}/remove", s.removeTrash)

@@ -54,6 +54,8 @@ type fakeAgent struct {
 	domSame   bool     // DOM-01: the next change changes nothing
 	secCalls  []string // SEC-01: bodies of the security changes
 	secJob    *agent.Job
+	secScan   agent.Scan   // SEC-01 wave 3
+	secLogins agent.Logins // SEC-01 wave 3
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {

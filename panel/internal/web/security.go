@@ -32,6 +32,26 @@ type securityData struct {
 	YourIP  string
 	Allow   string // allowed sites of hotlink protection, one per line
 	Codes   []codeRow
+	// wave 3
+	Scanning bool   // a malware scan of this website runs (other changes stay possible)
+	JobTitle string // the job card's title key
+	Logins   []loginRow
+	Since    string // when the login attempts started to be counted
+	ScanAt   string // when the last scan finished
+	ScanMin  int    // how long it took, in minutes (at least 1)
+}
+
+// loginRow is one address of the login attempts, with its last visit as text.
+type loginRow struct {
+	agent.LoginIP
+	Last string
+}
+
+func clock(unix int64) string {
+	if unix <= 0 {
+		return ""
+	}
+	return time.Unix(unix, 0).Format("2006-01-02 15:04")
 }
 
 // codeRow is one error code on the page: on or off, and its page in the File Manager.
@@ -48,7 +68,7 @@ func (s *Server) securityPage(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := s.agentCtx(r, 30*time.Second)
 	defer cancel()
-	d := securityData{Site: site, YourIP: s.clientIP(r)}
+	d := securityData{Site: site, YourIP: s.clientIP(r), JobTitle: "sec.job"}
 	v, err := s.ag.Security(ctx, site.ID)
 	if err != nil {
 		d.Err = err.Error()
@@ -64,16 +84,31 @@ func (s *Server) securityPage(w http.ResponseWriter, r *http.Request) {
 		}
 		d.Codes = append(d.Codes, row)
 	}
+	for _, x := range v.Logins.IPs {
+		d.Logins = append(d.Logins, loginRow{LoginIP: x, Last: clock(x.LastSeen)})
+	}
+	d.Since = clock(v.Logins.Since)
+	if l := v.Scan.Last; l != nil {
+		d.ScanAt = clock(l.Finished)
+		d.ScanMin = int((l.Finished-l.Started)/60) + 1
+	}
 	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
-		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && j.Kind == "security" {
+		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && (j.Kind == "security" || j.Kind == "malware-scan") {
 			d.Job = &j
 		}
 	}
 	if d.Job == nil && v.Job != nil && (v.Job.State == "running" || r.URL.Query().Get("job") != "") {
 		d.Job = v.Job
 	}
+	if d.Job == nil && v.Scan.Job != nil && v.Scan.Job.State == "running" {
+		d.Job = v.Scan.Job
+	}
+	d.Scanning = v.Scan.Job != nil && v.Scan.Job.State == "running"
+	if d.Job != nil && d.Job.Kind == "malware-scan" {
+		d.JobTitle = "sec.scan.job"
+	}
 	if d.Job != nil {
-		d.Running = d.Job.State == "running"
+		d.Running = d.Job.State == "running" && d.Job.Kind == "security"
 		d.Steps, d.Percent = jobProgress(*d.Job, agent.Site{})
 	}
 	s.render(w, r, "security", page{Title: s.tr.T(s.lang(r), "sec.title") + " · " + site.Domain, Active: "sites", Data: d,
@@ -97,6 +132,36 @@ func (s *Server) securityAction(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	base := "/security/" + site.ID
 	back := func(msg string) { http.Redirect(w, r, base+"?err="+url.QueryEscape(msg), http.StatusSeeOther) }
+	switch f.Get("op") {
+	case "scan": // SEC-01 wave 3: malware scan of the website's files
+		job, err := s.ag.StartScan(ctx, site.ID)
+		if err != nil {
+			s.audit1(u, r, "malware-scan", site.ID+" failed: "+err.Error())
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "malware-scan", site.ID)
+		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
+		return
+	case "scan-trash": // a file the scan found goes to the website's file trash (restorable for 7 days)
+		p := f.Get("path")
+		if !strings.HasPrefix(p, "/") || len(p) > 4096 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		if f.Get("confirm") != "1" {
+			back(s.tr.T(l, "sec.confirm.need"))
+			return
+		}
+		if _, err := s.ag.FileOp(ctx, site.ID, "delete", p, "", ""); err != nil {
+			s.audit1(u, r, "malware-trash", site.ID+" "+p+" failed: "+err.Error())
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "malware-trash", site.ID+" "+p)
+		http.Redirect(w, r, base+"?done=trashed#scan", http.StatusSeeOther)
+		return
+	}
 	c := agent.SecurityChange{Op: f.Get("op")}
 	detail := site.ID + " " + c.Op
 	switch c.Op {

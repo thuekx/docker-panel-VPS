@@ -33,6 +33,55 @@ type Security struct {
 	ErrorDir    string      `json:"error_dir"`
 	MIME        []MIME      `json:"mime"`
 	Job         *Job        `json:"job"`
+	Logins      Logins      `json:"logins"`
+	Scan        Scan        `json:"scan"`
+}
+
+// LoginIP is one address that tried to log in to the website (SEC-01 wave 3).
+type LoginIP struct {
+	IP       string `json:"ip"`
+	Day      int    `json:"day"`
+	DayFail  int    `json:"day_fail"`
+	Week     int    `json:"week"`
+	LastSeen int64  `json:"last_seen"`
+	LastPath string `json:"last_path"`
+	Blocked  bool   `json:"blocked"`
+}
+
+// Logins is the login attempts of the last 24 hours and 7 days; Active is false until the edge writes its log.
+type Logins struct {
+	Active  bool      `json:"active"`
+	Since   int64     `json:"since"`
+	Day     int       `json:"day"`
+	DayFail int       `json:"day_fail"`
+	Week    int       `json:"week"`
+	IPs     []LoginIP `json:"ips"`
+}
+
+// ScanFound is one file the malware scan flagged.
+type ScanFound struct {
+	Path      string `json:"path"`
+	Signature string `json:"signature"`
+	Gone      bool   `json:"gone"`
+}
+
+// ScanResult is the last malware scan of a website.
+type ScanResult struct {
+	Started    int64       `json:"started"`
+	Finished   int64       `json:"finished"`
+	Files      int         `json:"files"`
+	Found      []ScanFound `json:"found"`
+	More       int         `json:"more"`
+	Signatures string      `json:"signatures"`
+	Warning    string      `json:"warning"`
+	Error      string      `json:"error"`
+}
+
+// Scan is the malware card: the last result and the scan that runs now.
+type Scan struct {
+	Last  *ScanResult `json:"last"`
+	Job   *Job        `json:"job"`
+	MinMB int         `json:"min_mb"`
 }
 
 // SecurityChange is one change: op block-add | block-remove | protect-set | protect-user-remove | protect-remove |
@@ -61,4 +110,12 @@ func (c *Client) ChangeSecurity(ctx context.Context, id string, ch SecurityChang
 		Job string `json:"job"`
 	}
 	return v.Job, c.call(ctx, "POST", site(id)+"/security", ch, &v)
+}
+
+// StartScan starts a malware scan of the website's files.
+func (c *Client) StartScan(ctx context.Context, id string) (string, error) {
+	var v struct {
+		Job string `json:"job"`
+	}
+	return v.Job, c.call(ctx, "POST", site(id)+"/security/scan", nil, &v)
 }

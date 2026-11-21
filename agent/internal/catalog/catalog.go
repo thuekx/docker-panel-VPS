@@ -62,6 +62,9 @@ const (
 	// Postgres is the PostgreSQL a PHP, Laravel, Node.js, Go or Python website may choose instead of MariaDB.
 	Postgres = "postgres:18-trixie@sha256:b9f6b8ff03b62f3cfd9d9ba3fe56226a9991c79d3fb46fd46536263bf02be553"
 	Nginx    = "nginx:1.30-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+	// ClamAV is the malware scanner of the Security tab (SEC-01 wave 3): the official image without signatures;
+	// freshclam keeps them in <data>/clamav.
+	ClamAV = "clamav/clamav:1.5.5_base@sha256:7e43db777ae70ed9b60e75fcbdfda6f462c710565c69ccff2ed83a7ec5aba417"
 )
 
 // PHP returns the entry for a version.

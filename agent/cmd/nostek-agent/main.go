@@ -41,6 +41,8 @@ type Config struct {
 	// A real server never sets them.
 	MigrateTestAllow []string `json:"migrate_test_allow,omitempty"`
 	MigrateTestCA    string   `json:"migrate_test_ca,omitempty"`
+	// SEC-01 test harness only: a folder of test signatures for the malware scan (no freshclam).
+	ClamTestDB string `json:"clam_test_db,omitempty"`
 }
 
 func loadConfig(path string) (Config, error) {
@@ -79,6 +81,9 @@ func loadConfig(path string) (Config, error) {
 	if c.MigrateTestCA != "" && !filepath.IsAbs(c.MigrateTestCA) {
 		return c, errors.New("config: migrate_test_ca must be an absolute path")
 	}
+	if c.ClamTestDB != "" && !filepath.IsAbs(c.ClamTestDB) {
+		return c, errors.New("config: clam_test_db must be an absolute path")
+	}
 	return c, nil
 }
 
@@ -101,12 +106,12 @@ func main() {
 		os.Exit(2)
 	}
 	sc := sites.Config{Data: cfg.Data, PublicIPv4: cfg.PublicIPv4, PanelDomain: cfg.PanelDomain,
-		PreviewZone: cfg.PreviewZone, MigrateTestCA: cfg.MigrateTestCA}
+		PreviewZone: cfg.PreviewZone, MigrateTestCA: cfg.MigrateTestCA, ClamTestDB: cfg.ClamTestDB}
 	for _, p := range cfg.MigrateTestAllow {
 		sc.MigrateTestAllow = append(sc.MigrateTestAllow, netip.MustParsePrefix(p))
 	}
-	if len(sc.MigrateTestAllow) > 0 || sc.MigrateTestCA != "" {
-		fmt.Fprintln(os.Stderr, "warning: migrate_test_allow / migrate_test_ca are set: test harness only")
+	if len(sc.MigrateTestAllow) > 0 || sc.MigrateTestCA != "" || sc.ClamTestDB != "" {
+		fmt.Fprintln(os.Stderr, "warning: migrate_test_allow / migrate_test_ca / clam_test_db are set: test harness only")
 	}
 	m := sites.New(sc, sites.ExecRunner{}, nil)
 	// NATIVE-01: native.json next to the config turns the native engine on; a broken one leaves Docker only
@@ -188,6 +193,7 @@ func serve(cfg Config, m *sites.Manager) error {
 	}()
 	go m.BackupLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
 	go m.CronLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
+	go m.LoginLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
 	fmt.Println("nostek-agent", Version, "listening on", cfg.Socket)
 	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err

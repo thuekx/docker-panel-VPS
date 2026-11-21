@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -113,6 +114,7 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 			"list4": func(a, b, c, d string) []string { return []string{a, b, c, d} },
 			"list":  func(a ...string) []string { return a },
 			"join":  strings.Join,
+			"dirof": func(p string) string { return path.Dir(p) },
 			"add3":  func(a, b, c int) int { return a + b + c },
 			"len1": func(s string) int {
 				if s == "" {

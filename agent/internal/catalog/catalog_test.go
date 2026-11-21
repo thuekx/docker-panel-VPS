@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-var pinned = regexp.MustCompile(`^[a-z0-9./-]+:[a-z0-9.-]+@sha256:[0-9a-f]{64}$`)
+var pinned = regexp.MustCompile(`^[a-z0-9./-]+:[a-z0-9._-]+@sha256:[0-9a-f]{64}$`)
 
 func TestEveryImagePinned(t *testing.T) {
-	imgs := []string{CLI, MariaDB, Nginx, Composer}
+	imgs := []string{CLI, MariaDB, Nginx, Composer, ClamAV}
 	for _, p := range All() {
 		imgs = append(imgs, p.Apache, p.FPM, p.CLI)
 	}

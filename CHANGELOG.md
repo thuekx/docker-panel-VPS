@@ -3,7 +3,25 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.25.0] — 2026-11-21
+
+### Added
+- **Malware scan** on the Security tab (SEC-01 wave 3), like cPanel's Virus Scanner: ClamAV checks every file of
+  the website for known malware. The signatures are updated at most every 12 hours; the scan itself runs with no
+  network and reads the files only. Found files are listed with what was found and can be moved to the File
+  Manager's trash (restorable for 7 days). One scan runs at a time and needs about 1.4 GB of free memory.
+- **Login attempts** on the Security tab, like cPanel's cPHulk history: every try to log in to the website
+  (WordPress `wp-login.php` and `xmlrpc.php`, and the usual login pages of other apps) per address, for the last
+  24 hours and 7 days, with failed logins where the answer shows them. **Block** adds an address to the IP
+  blocker in one press. Nothing is blocked automatically.
+
+### Changed
+- The edge writes an access log for the login attempts (`<data>/edge/logs`, six fields, no headers); the agent
+  reads it every minute and empties it once it passes 32 MB. Applied by the panel update.
+
 ## [1.24.0] — 2026-11-21
+
+Running on the production server since 2026-11-21 14:52 WIB.
 
 ### Added
 - **Code editor in the File Manager** (EDITOR-1): editing a file now opens CodeMirror 6 (MIT), served by the panel
