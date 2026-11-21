@@ -78,6 +78,33 @@
     <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "sec.prot.go"}}</button>
   </form>
 </section>
+{{if $v.WebServer}}<section class="grid pair">
+<article class="card tone c-rose" data-anim="card" id="errpages">
+  <h2>{{t $l "sec.err.title"}}</h2>
+  <p class="muted">{{t $l "sec.err.help" $v.ErrorDir}}</p>
+  <ul class="plain err-codes">{{range $d.Codes}}
+    <li><form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{if .On}}errpage-off{{else}}errpage-on{{end}}"><input type="hidden" name="code" value="{{.Code}}">
+      <span><b class="mono">{{.Code}}</b> <span class="muted small">{{t $l (printf "sec.err.%d" .Code)}}</span></span>
+      {{if .On}}<span class="pill s-ok">{{t $l "sec.on"}}</span> <a class="ghost btn small" href="/files/{{$s.ID}}/edit?path={{.Path}}">{{t $l "sec.err.edit"}}</a>{{end}}
+      <button class="{{if .On}}ghost danger-text{{else}}secondary{{end}} small" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{if .On}}{{t $l "sec.hot.off"}}{{else}}{{t $l "sec.err.on"}}{{end}}</button></form></li>{{end}}
+  </ul>
+  <p class="muted small">{{t $l "sec.err.note"}}</p>
+</article>
+<article class="card tone c-green" data-anim="card" id="mime">
+  <h2>{{t $l "sec.mime.title"}}</h2>
+  <p class="muted">{{t $l "sec.mime.help"}}</p>
+  {{if $v.MIME}}<ul class="plain">{{range $v.MIME}}
+    <li><form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="mime-remove"><input type="hidden" name="type" value="{{.Type}}">
+      <span><code>{{.Type}}</code> <span class="muted">{{range $i, $e := .Exts}}{{if $i}} {{end}}.{{$e}}{{end}}</span></span>
+      <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "dom.remove"}}</button></form></li>{{end}}
+  </ul>{{else}}<p class="muted">{{t $l "sec.mime.none"}}</p>{{end}}
+  <form method="post" action="/security/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="mime-add">
+    <label>{{t $l "sec.mime.type"}}<input name="type" placeholder="application/wasm" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="200" required></label>
+    <label>{{t $l "sec.mime.exts"}}<input name="exts" placeholder="wasm" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="400" required></label>
+    <button class="secondary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "sec.mime.go"}}</button>
+  </form>
+</article>
+</section>{{else}}<section class="card wide" data-anim="card"><p class="muted">{{t $l "sec.noweb"}}</p></section>{{end}}
 {{if $d.Err}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
 <p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
 {{end}}

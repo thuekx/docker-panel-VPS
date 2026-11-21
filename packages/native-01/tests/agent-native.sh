@@ -67,6 +67,11 @@ ok "its database lives in the host MariaDB, reachable by its own user only" 'mar
 api POST /v1/sites '{"domain":"sta.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"","app":"static","engine":"native"}'
 JS="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 ok "a native static website is created without PHP or a database" '[ "$(wait_job "$JS")" = done ] && [ ! -e /etc/systemd/system/nostek-php-sta-example-test.service ] && serves "sta-example-test.$ZONE"'
+# SEC-01 wave 2 on the host Nginx: an error page of its own and an extra MIME type
+api POST /v1/sites/sta-example-test/security '{"op":"errpage-on","code":404}'; JE="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"; SE="$(wait_job "$JE")"
+api POST /v1/sites/sta-example-test/security '{"op":"mime-add","type":"text/x-foo","exts":"foo"}'; JM="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"; SM="$(wait_job "$JM")"
+echo x > /srv/nostek/sites/sta-example-test/wp/a.foo; chown "$(stat -c %U /srv/nostek/sites/sta-example-test/wp)" /srv/nostek/sites/sta-example-test/wp/a.foo
+ok "native: the 404 page and the MIME type are served by the host Nginx" '[ "$SE" = done ] && [ "$SM" = done ] && [ "$(served "sta-example-test.$ZONE" /gone.png)" = 404 ] && grep -q "<b>404</b>" /tmp/np-native-page && curl -s -o /dev/null -D - --max-time 20 -H "Host: sta-example-test.$ZONE" "http://$GW:8088/a.foo" | tr -d "\r" | grep -qi "^content-type: text/x-foo"'
 
 # the website's PHP tries to step outside; every attempt must fail (a listener on loopback stands for the panel)
 python3 -m http.server 18099 --bind 127.0.0.1 >/dev/null 2>&1 & LOOP=$!

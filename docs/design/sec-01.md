@@ -1,13 +1,13 @@
 # Website security (SEC-01)
 
-Status: wave 1 [BUILT] v1.23.0, 2026-11-19. Roadmap slot 12b, after DOM-01. Like the cPanel pages IP Blocker,
+Status: wave 1 [LIVE] v1.23.0 (2026-11-20 22:42 WIB); wave 2 [BUILT] v1.24.0, 2026-11-21. Roadmap slot 12b, after DOM-01. Like the cPanel pages IP Blocker,
 Directory Privacy and Hotlink Protection, for one website at a time, on a new **Security** tab.
 
 ## Waves (SEC-1)
 | Wave | What | Where it runs |
 |---|---|---|
 | 1 (v1.23.0) | IP blocker, password-protected folders, hotlink protection | the edge (Traefik), so every app and both engines get the same rules |
-| 2 | custom error pages, MIME types | the website's web server (Nginx/Apache in Docker, host Nginx for native) |
+| 2 (v1.24.0) | custom error pages, MIME types | the website's web server (Nginx/Apache in Docker, host Nginx for native) |
 | 3 | web application firewall (Coraza with the OWASP Core Rule Set, off by default), malware scan of the website files (ClamAV), brute-force monitor view | edge plugin / scheduled job |
 
 ## Why at the edge
@@ -53,6 +53,31 @@ the edge file and an Nginx reload). On a failure the previous password files, ro
 removed folder's file is deleted only after the routes no longer use it. Removing a website for good from the
 trash deletes its password files, unless a website with the same id exists again.
 
+## Wave 2: error pages and MIME types
+Only for websites with their own web server: WordPress, plain PHP, Laravel and static (Docker and native). Node,
+Go, Python and ready apps answer every request themselves; the page says so.
+
+| Change | Rule |
+|---|---|
+| Error page on | one of 400, 401, 403, 404, 500, 502, 503, 504. The job writes a starter page `/.nostek-errors/<code>.html` in the website folder (`/public/.nostek-errors/` for Laravel) unless the file is there, then the web server rules. Twice = no job. |
+| Error page off | the rule goes; the file stays (it may be turned on again). |
+| MIME type add | a content type (`type/subtype`, lower case, no parameters) and 1-20 extensions; an extension belongs to one type only (adding it to another moves it); at most 50 types. Adding to an existing type merges the extensions. |
+| MIME type remove | by its type. |
+
+Rules in the web server:
+- **Nginx** (Docker and native): a marked block at the end of the server block, rewritten on every change:
+  `error_page <code> /.nostek-errors/<code>.html;`, `location ^~ /.nostek-errors/ {}` (wins over the dot-file
+  deny), and one full `types {}` block. A `types` block replaces the inherited map and `mime.types` is itself a
+  `types` block, so the block holds Nginx's standard map (embedded from Nginx 1.30, minus the website's own
+  extensions) plus the website's types (FINDING SEC-01-F2).
+- **Apache** (Docker): `apache.conf` with `ErrorDocument` and `AddType`, mounted as
+  `/etc/apache2/conf-enabled/zz-nostek.conf` only while there are rules (a mount of a missing file would make Docker
+  create a folder).
+- Docker websites recreate their web containers when the file changes; native websites check (`nginx -t`) and
+  reload the host Nginx. A failure puts the previous files back.
+- WordPress and frameworks answer 404 for their own routes through PHP; the pages cover what the web server
+  answers itself (missing files, 403, PHP not answering: 502/503/504).
+
 ## Limits (known)
 - Behind a proxy or CDN in front of the server (for example Cloudflare's orange cloud) the edge sees the proxy's
   address, so the IP blocker cannot tell visitors apart. Block at the CDN in that case.
@@ -60,6 +85,10 @@ trash deletes its password files, unless a website with the same id exists again
   them; on another server set the passwords again.
 
 ## Tests
+- Wave 2: unit tests for both servers and native, content-type checks, starter page never overwritten; harness: a
+  static website on Nginx (404 and 403 pages, an edited page served, a new and a replaced MIME type, back to the
+  standard after removal) and a PHP website on Apache (404 page, MIME type, mount removed); the native-01 harness
+  checks the host Nginx.
 - Agent unit tests: address checks, every refusal, labels and the native edge file, password file content and
   mode, no hash in site.json, roll-back of password files on a failed job.
 - Panel tests: page in both languages and every job state, every form, only a bcrypt hash reaches the agent, no

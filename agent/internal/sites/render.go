@@ -60,6 +60,9 @@ type Site struct {
 	BlockIPs  []string    `json:"block_ips,omitempty"`
 	Protected []Protected `json:"protected,omitempty"`
 	Hotlink   *Hotlink    `json:"hotlink,omitempty"`
+	// SEC-01 wave 2: codes with a page of their own, and extra MIME types, in the website's web server
+	ErrorPages []int  `json:"error_pages,omitempty"`
+	MIME       []MIME `json:"mime,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
@@ -378,10 +381,10 @@ func (s Site) wpServices(b *strings.Builder, p catalog.PHPVersion) {
     volumes:
       - ./wp:/var/www/html
       - ./php.ini:/usr/local/etc/php/conf.d/zz-nostek.ini:ro
-%s    labels:
+%s%s    labels:
 %s
     networks: [back, nostek-edge]
-`, p.Apache, wpEnv, wpHealth, indent(s.labels(), 6))
+`, p.Apache, wpEnv, s.apacheMount(), wpHealth, indent(s.labels(), 6))
 	} else {
 		fmt.Fprintf(b, `  php:
     <<: *site
@@ -464,10 +467,10 @@ func (s Site) phpServices(b *strings.Builder, p catalog.PHPVersion) {
 %s%s%s    volumes:
       - ./wp:/var/www/html
       - ./php.ini:/usr/local/etc/php/conf.d/zz-nostek.ini:ro
-%s    labels:
+%s%s    labels:
 %s
     networks: [back, nostek-edge]
-`, img(p.Apache), dep, env, sec, phpHealth, indent(s.labels(), 6))
+`, img(p.Apache), dep, env, sec, s.apacheMount(), phpHealth, indent(s.labels(), 6))
 		return
 	}
 	fmt.Fprintf(b, `  php:

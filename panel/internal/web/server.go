@@ -4,6 +4,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -216,10 +217,20 @@ func (s *Server) Handler() http.Handler {
 	return s.headers(mux)
 }
 
+// csp is the Content-Security-Policy; a nonce lets the code editor (EDITOR-1, CodeMirror) add its own <style>
+// elements on the one page that loads it, every other page allows only the panel's own stylesheets.
+func csp(styleNonce string) string {
+	style := "style-src 'self'"
+	if styleNonce != "" {
+		style += " 'nonce-" + styleNonce + "'"
+	}
+	return "default-src 'self'; img-src 'self' data:; " + style + "; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+}
+
 func (s *Server) headers(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
-		h.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+		h.Set("Content-Security-Policy", csp(""))
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("X-Frame-Options", "DENY")
@@ -414,6 +425,7 @@ type page struct {
 	User                              *store.User
 	Version                           string
 	Now                               string
+	Nonce                             string // style nonce of the code editor page
 	Data                              any
 }
 
@@ -430,6 +442,13 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	if p.CSRF == "" {
 		if sess := sessOf(r); sess != nil {
 			p.CSRF = sess.CSRF
+		}
+	}
+	if d, ok := p.Data.(editData); ok && name == "fileedit" && !d.TooBig && !d.Binary {
+		var b [18]byte
+		if _, err := rand.Read(b[:]); err == nil {
+			p.Nonce = base64.RawURLEncoding.EncodeToString(b[:])
+			w.Header().Set("Content-Security-Policy", csp(p.Nonce))
 		}
 	}
 	var buf bytes.Buffer

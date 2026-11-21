@@ -263,7 +263,43 @@
     var f = document.querySelector("form[data-editor]");
     if (!f) return;
     var ta = f.querySelector("textarea"), flag = f.querySelector("[data-dirty]"), dirty = false;
-    ta.addEventListener("input", function () { dirty = true; if (flag) flag.hidden = false; });
+    var mark = function () { dirty = true; if (flag) flag.hidden = false; };
+    var save = function () { dirty = false; f.requestSubmit ? f.requestSubmit() : f.submit(); };
+    // EDITOR-1: CodeMirror 6 (vendor/codemirror.js, loaded deferred by this page); the textarea stays the form field
+    // and the fallback when the bundle is missing
+    if (window.NostekEditor) {
+      try {
+        var ed = window.NostekEditor.mount(ta, {name: ta.getAttribute("data-name"), nonce: ta.getAttribute("data-nonce"), onChange: mark, onSave: save});
+        var bar = f.querySelector("[data-editor-bar]"), card = f.closest(".card");
+        if (bar) {
+          bar.hidden = false;
+          var l = bar.querySelector("[data-ed-lang]"); if (l) l.textContent = ed.lang;
+          bar.addEventListener("click", function (e) {
+            var b = e.target.closest("button[data-ed]"); if (!b) return;
+            var what = b.getAttribute("data-ed");
+            if (what === "search") ed.search();
+            if (what === "wrap") b.setAttribute("aria-pressed", String(ed.toggleWrap()));
+            if (what === "full" && card) {
+              // the browser's own full screen (Esc leaves it); the card fills it
+              if (document.fullscreenElement) document.exitFullscreen();
+              else if (card.requestFullscreen) card.requestFullscreen().catch(function () {});
+            }
+            ed.focus();
+          });
+          document.addEventListener("fullscreenchange", function () {
+            var on = document.fullscreenElement === card, fb = bar.querySelector('[data-ed="full"]');
+            card.classList.toggle("ed-full", on); if (fb) fb.setAttribute("aria-pressed", String(on));
+          });
+          var fbtn = bar.querySelector('[data-ed="full"]');
+          if (fbtn && !(card && card.requestFullscreen)) fbtn.hidden = true;
+        }
+        if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { ed.syncTheme(); });
+        f.addEventListener("submit", function () { dirty = false; });
+        window.addEventListener("beforeunload", function (e) { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+        return;
+      } catch (err) { ta.hidden = false; }
+    }
+    ta.addEventListener("input", mark);
     ta.addEventListener("keydown", function (e) {
       if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();

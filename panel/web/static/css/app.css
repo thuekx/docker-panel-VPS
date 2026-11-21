@@ -290,6 +290,27 @@ form[data-upload] .progress i{transition:width .25s linear}
 .grow{flex:1 1 220px}
 textarea.code{font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;min-height:220px;resize:vertical}
 form[data-editor] textarea.code{min-height:62vh}
+.err-codes li form{flex-wrap:wrap;gap:8px}
+.err-codes li form>span:first-of-type{flex:1 1 160px}
+/* EDITOR-1: CodeMirror 6 */
+.ed-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}
+.ed-bar button[aria-pressed="true"]{color:var(--teal-l);border-color:var(--teal-l)}
+form[data-editor] .cm-editor{height:62vh;border:1px solid var(--line,rgba(127,127,127,.25));border-radius:12px;overflow:hidden;font-size:13px}
+form[data-editor] .cm-editor.cm-focused{outline:2px solid color-mix(in srgb,var(--teal-l) 55%,transparent);outline-offset:1px}
+form[data-editor] .cm-scroller{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.55}
+/* the editor's own find/replace panel: undo the panel's global form styles, in the panel's look */
+.cm-editor .cm-panels{background:var(--bg2);border-color:var(--line);color:var(--ink)}
+.cm-editor .cm-search{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 10px;font-size:13px}
+.cm-editor .cm-search label{display:inline-flex;flex-direction:row;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.cm-editor .cm-search input[type=checkbox]{width:auto;margin:0;padding:0}
+.cm-editor .cm-search .cm-textfield{width:auto;min-width:180px;flex:1 1 180px;padding:6px 10px;border-radius:8px;font-size:13px}
+.cm-editor .cm-search .cm-button{background:var(--hover);background-image:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:5px 10px;font:500 12px var(--font)}
+.cm-editor .cm-search br{display:none}
+.cm-editor .cm-search button[name=close]{position:static;margin-left:auto;padding:4px 8px;background:none;color:var(--muted);font-size:16px}
+.cm-tooltip-autocomplete{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+.card.ed-full{background:var(--bg2);border-radius:0;padding:16px 20px;overflow:auto}
+.card.ed-full form[data-editor] .cm-editor{height:calc(100vh - 170px)}
+@media (max-width:640px){form[data-editor] .cm-editor{height:70vh;font-size:12.5px}}
 .sql-res{margin-top:14px}
 .sql-table td{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;max-width:420px;white-space:pre-wrap;word-break:break-word;vertical-align:top}
 .sql-table th{font-size:12px;white-space:nowrap}
