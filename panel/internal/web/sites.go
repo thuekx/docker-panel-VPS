@@ -229,6 +229,7 @@ var jobKindSteps = map[string][]string{
 	"domains":      {"routes"}, // "addresses" and "check" run only when the main address moves
 	"security":     {"routes"},
 	"malware-scan": {"signatures", "scan"},
+	"optimize":     {"routes"}, // PHP-01; a PHP change takes its steps from the website (phpSteps)
 }
 
 // createSteps is the order of the steps a create of this website runs, so the list is right from the first poll
@@ -257,6 +258,9 @@ type stepRow struct {
 // steps with a state each, and the share of finished steps in percent.
 func jobProgress(j agent.Job, site agent.Site) ([]stepRow, int) {
 	keys := append([]string{}, jobKindSteps[j.Kind]...)
+	if j.Kind == "php" && site.ID != "" {
+		keys = phpSteps(site)
+	}
 	if (j.Kind == "" || j.Kind == "create") && site.ID != "" {
 		keys = createSteps(site)
 	} else if j.Kind == "" || j.Kind == "create" { // the site is unknown: guess from what the agent reported

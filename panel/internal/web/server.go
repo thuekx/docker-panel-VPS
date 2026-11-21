@@ -92,7 +92,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -208,6 +208,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /security/{id}", s.need(true, s.securityAction))
 	mux.HandleFunc("GET /sftp/{id}", s.need(true, s.sftpPage))
 	mux.HandleFunc("POST /sftp/{id}", s.need(true, s.sftpAction))
+	mux.HandleFunc("GET /perf/{id}", s.need(true, s.perfPage))
+	mux.HandleFunc("POST /perf/{id}", s.need(true, s.perfAction))
 	mux.HandleFunc("GET /db/{id}", s.need(true, s.dbPage))
 	mux.HandleFunc("POST /db/{id}", s.need(true, s.dbAction))
 	mux.HandleFunc("GET /db/{id}/backups/{name}", s.need(true, s.dbBackup))

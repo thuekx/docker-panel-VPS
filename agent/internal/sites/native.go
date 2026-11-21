@@ -281,7 +281,7 @@ func (s Site) NativeEdge(gateway string) string {
 		fmt.Fprintf(&b, "    %s:\n      rule: \"Host(`%s`)\"\n      entryPoints: [websecure]\n      service: %s\n      tls:\n        certResolver: le\n", r, h.Name, s.wafService(false))
 		if h.Name != canon {
 			fmt.Fprintf(&b, "      middlewares: [%s-canon]\n", rid)
-		} else if rs := s.redirectMiddlewares(); len(rs) > 0 {
+		} else if rs := s.servedMiddlewares(); len(rs) > 0 {
 			fmt.Fprintf(&b, "      middlewares: [%s]\n", strings.Join(rs, ", "))
 		}
 	}

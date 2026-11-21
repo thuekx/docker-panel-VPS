@@ -198,7 +198,7 @@ func (m *Manager) Security(id string) (SecurityView, error) {
 
 // SecurityChange is one change on the Security page.
 type SecurityChange struct {
-	Op    string   `json:"op"` // block-add | block-remove | protect-set | protect-user-remove | protect-remove | hotlink-on | hotlink-off | errpage-on | errpage-off | mime-add | mime-remove
+	Op    string   `json:"op"` // block-add | block-remove | protect-set | protect-user-remove | protect-remove | hotlink-on | hotlink-off | errpage-on | errpage-off | mime-add | mime-remove | waf-* | optimize-set
 	IP    string   `json:"ip,omitempty"`
 	Path  string   `json:"path,omitempty"`
 	User  string   `json:"user,omitempty"`
@@ -210,6 +210,9 @@ type SecurityChange struct {
 	Mode  string   `json:"mode,omitempty"`  // waf-set: detect | block
 	Level int      `json:"level,omitempty"` // waf-set: paranoia level 1 or 2
 	Rule  int      `json:"rule,omitempty"`  // waf-exclude-add | waf-exclude-remove
+	// optimize-set (PHP-01): compression at the edge and browser cache days for static files (0 = off)
+	Compress bool `json:"compress,omitempty"`
+	Days     int  `json:"days,omitempty"`
 }
 
 // nextSecurity applies a change to a copy of the website; auth holds the password file it needs (path -> users).
@@ -233,6 +236,9 @@ func (m *Manager) nextSecurity(s Site, c SecurityChange) (Site, map[string]map[s
 		return next, auth, err
 	}
 	if ok, err := m.nextWAF(s, &next, c); ok {
+		return next, auth, err
+	}
+	if ok, err := nextOptimize(s, &next, c); ok {
 		return next, auth, err
 	}
 	switch c.Op {
@@ -382,7 +388,11 @@ func (m *Manager) ChangeSecurity(id string, c SecurityChange) (string, error) {
 		m.mu.Unlock()
 		return "", err
 	}
-	j := m.jobs.New("security", id)
+	kind := "security"
+	if c.Op == "optimize-set" {
+		kind = "optimize" // shown on the Performance page
+	}
+	j := m.jobs.New(kind, id)
 	go func() {
 		defer m.mu.Unlock()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -441,6 +451,7 @@ type edgeRouter struct {
 // edgeMiddleware is one middleware of the security routers: kind deny (403 for everyone) or auth (basic auth).
 type edgeMiddleware struct {
 	name, kind, file string
+	value            string // compress: the content types; cache: the Cache-Control value
 }
 
 func hostRule(hosts []string) string {
@@ -499,7 +510,7 @@ func (s Site) securityEdge(dollar string) ([]edgeRouter, []edgeMiddleware) {
 		if p.Path != "/" {
 			rule += " && (Path(`" + p.Path + "`) || PathPrefix(`" + p.Path + "/`))"
 		}
-		chain := []string{mw}
+		chain := append(s.optimizeMiddlewares(), mw)
 		chain = append(chain, s.redirectMiddlewares()...)
 		rs = append(rs, edgeRouter{name: fmt.Sprintf("%s-protect%d", rid, i), rule: rule, priority: prioAuth + len(p.Path), middlewares: chain})
 		ms = append(ms, edgeMiddleware{name: mw, kind: "auth", file: s.edgeAuthFile(p.Path)})
@@ -507,7 +518,8 @@ func (s Site) securityEdge(dollar string) ([]edgeRouter, []edgeMiddleware) {
 	if len(s.BlockIPs) > 0 || s.Hotlink != nil {
 		ms = append([]edgeMiddleware{{name: deny, kind: "deny"}}, ms...)
 	}
-	return rs, ms
+	ors, oms := s.optimizeEdge(canon, dollar)
+	return append(rs, ors...), append(ms, oms...)
 }
 
 // securityLabels renders the security routers as Traefik labels.
@@ -523,6 +535,10 @@ func (s Site) securityLabels() []string {
 				fmt.Sprintf(`traefik.http.middlewares.%s.basicauth.usersfile: "%s"`, m.name, m.file),
 				fmt.Sprintf(`traefik.http.middlewares.%s.basicauth.realm: "Protected"`, m.name),
 				fmt.Sprintf(`traefik.http.middlewares.%s.basicauth.removeheader: "true"`, m.name))
+		case "compress":
+			l = append(l, fmt.Sprintf(`traefik.http.middlewares.%s.compress.includedcontenttypes: "%s"`, m.name, m.value))
+		case "cache":
+			l = append(l, fmt.Sprintf(`traefik.http.middlewares.%s.headers.customresponseheaders.Cache-Control: "%s"`, m.name, m.value))
 		}
 	}
 	for _, r := range rs {
@@ -552,6 +568,10 @@ func (s Site) securityEdgeYAML() (routers, middlewares string) {
 			fmt.Fprintf(&m, "    %s:\n      ipAllowList:\n        sourceRange: [\"127.0.0.2/32\"]\n", x.name)
 		case "auth":
 			fmt.Fprintf(&m, "    %s:\n      basicAuth:\n        usersFile: %q\n        realm: \"Protected\"\n        removeHeader: true\n", x.name, x.file)
+		case "compress":
+			fmt.Fprintf(&m, "    %s:\n      compress:\n        includedContentTypes: [%s]\n", x.name, strings.ReplaceAll(x.value, ",", ", "))
+		case "cache":
+			fmt.Fprintf(&m, "    %s:\n      headers:\n        customResponseHeaders:\n          Cache-Control: %q\n", x.name, x.value)
 		}
 	}
 	return r.String(), m.String()
