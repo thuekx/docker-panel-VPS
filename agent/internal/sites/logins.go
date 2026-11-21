@@ -132,6 +132,10 @@ type accessEntry struct {
 	RequestPath      string `json:"RequestPath"`
 	DownstreamStatus int    `json:"DownstreamStatus"`
 	StartUTC         string `json:"StartUTC"`
+	// OPS-01: for the visitor statistics
+	DownstreamContentSize int64  `json:"DownstreamContentSize"`
+	Referer               string `json:"request_Referer"`
+	UserAgent             string `json:"request_User-Agent"`
 }
 
 // loginFailed tells a failed login from the answer where the app makes that clear: WordPress shows the form
@@ -242,6 +246,8 @@ func (m *Manager) ReadLogins() error {
 	if _, err := f.Seek(ls.st.Offset, io.SeekStart); err != nil {
 		return err
 	}
+	stats := m.statDB()
+	stats.mu.Lock()
 	rd := bufio.NewReaderSize(io.LimitReader(f, accessReadMax), 64<<10)
 	for {
 		line, err := rd.ReadBytes('\n')
@@ -251,11 +257,7 @@ func (m *Manager) ReadLogins() error {
 		ls.st.Offset += int64(len(line))
 		ls.dirty = true
 		var e accessEntry
-		if !strings.Contains(string(line), `"POST"`) || json.Unmarshal(line, &e) != nil || e.RequestMethod != "POST" {
-			continue
-		}
-		p, _, _ := strings.Cut(e.RequestPath, "?")
-		if !loginRe.MatchString(p) {
+		if json.Unmarshal(line, &e) != nil {
 			continue
 		}
 		host := strings.ToLower(e.RequestHost)
@@ -274,7 +276,19 @@ func (m *Manager) ReadLogins() error {
 		if t, err := time.Parse(time.RFC3339Nano, e.StartUTC); err == nil {
 			at = t
 		}
-		ls.add(id, a.Unmap().String(), p, at, loginFailed(p, e.DownstreamStatus))
+		ip := a.Unmap().String()
+		// OPS-01: every visit counts in the statistics
+		m.statSite(stats, id).add(statEntry{at: at, ip: ip, method: e.RequestMethod, path: e.RequestPath, status: e.DownstreamStatus,
+			bytes: e.DownstreamContentSize, ref: e.Referer, ua: e.UserAgent}, func(h string) bool { return hosts[h] == id })
+		p, _, _ := strings.Cut(e.RequestPath, "?")
+		if e.RequestMethod != "POST" || !loginRe.MatchString(p) {
+			continue
+		}
+		ls.add(id, ip, p, at, loginFailed(p, e.DownstreamStatus))
+	}
+	stats.mu.Unlock()
+	if err := m.saveStats(); err != nil {
+		return err
 	}
 	ls.prune(now)
 	if fi.Size() > accessLogMax && ls.st.Offset >= fi.Size() {

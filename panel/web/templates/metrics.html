@@ -1,0 +1,50 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$v := $d.V}}
+{{template "sitetabs" (tabs $l $s "metrics")}}
+<section class="card wide tone c-teal" data-anim="card">
+  <div class="deploy-head"><h2><span class="h-ico" aria-hidden="true">{{template "ico-list"}}</span>{{t $l "met.title"}}</h2>
+  <nav class="row" aria-label="{{t $l "met.range"}}">{{range $d.Ranges}}<a class="ghost btn"{{if eq . $v.Range}} aria-current="page"{{end}} href="/metrics/{{$s.ID}}?days={{.}}">{{t $l (printf "met.range.%d" .)}}</a>{{end}}</nav></div>
+  <p class="muted">{{t $l "met.help"}}</p>
+  {{if $d.Err}}<p class="err" role="alert">{{$d.Err}}</p>{{else if not $v.Active}}<p class="banner warn">{{t $l "met.inactive"}}</p>{{end}}
+</section>
+<section class="grid stats">
+  <article class="card stat tone c-teal" data-anim="card"><div class="stat-head"><span class="lbl">{{t $l "met.visitors"}}</span></div><div class="stat-big">{{$v.Total.Visitors}}</div><div class="muted small">{{t $l "met.visitors.help"}}</div></article>
+  <article class="card stat tone c-blue" data-anim="card"><div class="stat-head"><span class="lbl">{{t $l "met.requests"}}</span></div><div class="stat-big">{{$v.Total.Requests}}</div><div class="muted small">{{t $l "met.bots" $v.Total.Bots}}</div></article>
+  <article class="card stat tone c-violet" data-anim="card"><div class="stat-head"><span class="lbl">{{t $l "met.bandwidth"}}</span></div><div class="stat-big">{{$d.Bytes}}</div></article>
+  <article class="card stat tone c-rose" data-anim="card"><div class="stat-head"><span class="lbl">{{t $l "met.errors"}}</span></div><div class="stat-big">{{$d.Errors}}</div><div class="muted small">4xx {{$v.Total.S4}} · 5xx {{$v.Total.S5}}</div></article>
+</section>
+<section class="grid pair">
+<article class="card tone c-blue" data-anim="card" id="days">
+  <h2>{{t $l "met.days"}}</h2>
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "met.day"}}</th><th>{{t $l "met.visitors"}}</th><th>{{t $l "met.requests"}}</th><th>{{t $l "met.bandwidth"}}</th><th>{{t $l "met.errors"}}</th></tr></thead><tbody>{{range $d.Days}}
+    <tr><td class="nowrap">{{.Label}}</td><td>{{.Visitors}}</td><td><div class="bar" aria-hidden="true"><i data-bar="{{.Pct}}"></i></div>{{.Requests}}</td><td class="nowrap">{{.Bytes}}</td><td>{{.Errors}}</td></tr>{{end}}
+  </tbody></table></div>
+</article>
+<article class="card tone c-violet" data-anim="card" id="hours">
+  <h2>{{t $l "met.hours"}}</h2>
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "met.hour"}}</th><th>{{t $l "met.requests"}}</th></tr></thead><tbody>{{range $d.Hours}}
+    <tr><td class="nowrap">{{.Label}}</td><td><div class="bar" aria-hidden="true"><i data-bar="{{.Pct}}"></i></div>{{.Requests}}</td></tr>{{end}}
+  </tbody></table></div>
+</article>
+</section>
+<section class="grid pair">
+<article class="card" data-anim="card" id="pages">
+  <h2>{{t $l "met.pages"}}</h2>
+  {{if $v.Pages}}<div class="table-wrap"><table><tbody>{{range $v.Pages}}<tr><td><code>{{.Key}}</code></td><td class="nowrap">{{.N}}</td></tr>{{end}}</tbody></table></div>{{else}}<p class="muted">{{t $l "met.none"}}</p>{{end}}
+</article>
+<article class="card" data-anim="card" id="refs">
+  <h2>{{t $l "met.refs"}}</h2>
+  {{if $v.Refs}}<div class="table-wrap"><table><tbody>{{range $v.Refs}}<tr><td>{{.Key}}</td><td class="nowrap">{{.N}}</td></tr>{{end}}</tbody></table></div>{{else}}<p class="muted">{{t $l "met.none"}}</p>{{end}}
+</article>
+</section>
+<section class="card wide" data-anim="card" id="errors">
+  <h2>{{t $l "met.errlist"}}</h2>
+  {{if $v.Errors}}<div class="table-wrap"><table><tbody>{{range $v.Errors}}<tr><td><code>{{.Key}}</code></td><td class="nowrap">{{.N}}</td></tr>{{end}}</tbody></table></div>{{else}}<p class="muted">{{t $l "met.none"}}</p>{{end}}
+</section>
+<section class="card wide" data-anim="card" id="raw">
+  <div class="deploy-head"><h2>{{t $l "met.raw"}}</h2>{{if $v.Raw}}<a class="ghost btn" href="/metrics/{{$s.ID}}/raw" download>{{t $l "met.raw.download"}}</a>{{end}}</div>
+  <p class="muted">{{t $l "met.raw.help"}}</p>
+  {{if $v.Raw}}<pre class="logs">{{range $v.Raw}}{{.}}
+{{end}}</pre>{{else}}<p class="muted">{{t $l "met.none"}}</p>{{end}}
+</section>
+{{end}}

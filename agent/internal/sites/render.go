@@ -69,6 +69,8 @@ type Site struct {
 	PrevPHP string `json:"prev_php,omitempty"`
 	// PHP-01: compression and browser cache at the edge (nil = off)
 	Optimize *Optimize `json:"optimize,omitempty"`
+	// OPS-01: scheduled commands
+	Crons []CronJob `json:"crons,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }

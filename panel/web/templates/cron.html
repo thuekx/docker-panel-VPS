@@ -1,0 +1,45 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
+{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "cron.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (tabs $l $s "cron")}}
+<section class="card wide tone c-teal" data-anim="card">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-term"}}</span>{{t $l "cron.title"}}</h2>
+  <p class="muted">{{t $l "cron.help"}}</p>
+  {{if $d.Err}}<p class="err" role="alert">{{$d.Err}}</p>{{end}}
+  {{if and (not $d.Err) (not $v.Supported)}}<p class="banner warn">{{t $l "cron.static"}}</p>{{end}}
+</section>
+{{if $v.Supported}}
+{{range $d.Rows}}{{$j := .}}<section class="card wide tone {{if .Off}}c-violet{{else}}c-blue{{end}}" data-anim="card" id="job-{{.ID}}">
+  <div class="deploy-head"><h2><code>{{.Schedule}}</code></h2>{{if .Running}}<span class="pill s-run">{{t $l "cron.running"}}</span>{{else if .Off}}<span class="pill s-unknown">{{t $l "cron.off"}}</span>{{else if and .Last (ne .Last.Code 0)}}<span class="pill s-bad">{{t $l "cron.failed" .Last.Code}}</span>{{else if .Last}}<span class="pill s-ok">{{t $l "cron.ok"}}</span>{{else}}<span class="pill s-unknown">{{t $l "cron.never"}}</span>{{end}}</div>
+  <p><code>{{.Command}}</code></p>
+  <p class="muted small">{{if .NextText}}{{t $l "cron.next" .NextText}}{{end}}{{if .LastText}} · {{t $l "cron.last" .LastText}}{{end}}</p>
+  {{if .Runs}}<details class="tech"><summary>{{t $l "cron.runs" (len .Runs)}}</summary>{{range .Runs}}
+    <p class="small"><b>{{clock .Start}}</b> · {{t $l "cron.code" .Code}} · {{.Millis}} ms{{if .Manual}} · {{t $l "cron.manual"}}{{end}}</p>{{if .Output}}<pre class="logs">{{.Output}}</pre>{{end}}{{end}}
+  </details>{{end}}
+  <div class="row">
+    <form method="post" action="/cron/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="run"><input type="hidden" name="id" value="{{.ID}}"><button class="ghost" type="submit"{{if .Running}} disabled{{end}}>{{t $l "cron.run"}}</button></form>
+    <form method="post" action="/cron/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{if .Off}}on{{else}}off{{end}}"><input type="hidden" name="id" value="{{.ID}}"><button class="ghost" type="submit">{{if .Off}}{{t $l "cron.turnon"}}{{else}}{{t $l "cron.turnoff"}}{{end}}</button></form>
+    <form method="post" action="/cron/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="remove"><input type="hidden" name="id" value="{{.ID}}"><input type="hidden" name="confirm" value="1"><button class="ghost danger-text" type="submit" data-confirm="{{t $l "cron.remove.ask"}}">{{t $l "cron.remove"}}</button></form>
+  </div>
+  <details><summary>{{t $l "cron.edit"}}</summary>
+  <form method="post" action="/cron/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="edit"><input type="hidden" name="id" value="{{.ID}}">
+    <label>{{t $l "cron.schedule"}}<input name="schedule" value="{{.Schedule}}" autocomplete="off" spellcheck="false" maxlength="100" required></label>
+    <label>{{t $l "cron.command"}}<input name="command" value="{{.Command}}" autocomplete="off" spellcheck="false" maxlength="1000" required></label>
+    <button class="primary" type="submit">{{t $l "cron.save"}}</button>
+  </form></details>
+</section>{{end}}
+<section class="card wide" data-anim="card" id="add">
+  <h2>{{t $l "cron.add.title"}}</h2>
+  <p class="muted">{{t $l "cron.where" $v.Where}}</p>
+  <form method="post" action="/cron/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="add">
+    <label>{{t $l "cron.schedule"}}<input name="schedule" list="cron-presets" placeholder="*/5 * * * *" autocomplete="off" spellcheck="false" maxlength="100" required></label>
+    <datalist id="cron-presets"><option value="* * * * *">{{t $l "cron.p.minute"}}</option><option value="*/5 * * * *">{{t $l "cron.p.5min"}}</option><option value="@hourly">{{t $l "cron.p.hourly"}}</option><option value="0 3 * * *">{{t $l "cron.p.daily"}}</option><option value="0 3 * * 1">{{t $l "cron.p.weekly"}}</option><option value="0 3 1 * *">{{t $l "cron.p.monthly"}}</option></datalist>
+    <p class="muted small">{{t $l "cron.schedule.help"}}</p>
+    <label>{{t $l "cron.command"}}<input name="command" placeholder="php artisan schedule:run" autocomplete="off" spellcheck="false" maxlength="1000" required></label>
+    <p class="muted small">{{t $l "cron.command.help"}}</p>
+    <button class="primary" type="submit"{{if ge (len $v.Jobs) $v.Max}} disabled{{end}}>{{t $l "cron.add"}}</button>
+  </form>
+</section>
+{{end}}
+{{end}}

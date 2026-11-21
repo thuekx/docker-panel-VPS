@@ -172,6 +172,19 @@ ok "Performance view: 8.3 now, 8.4 before" 'python3 -c "import json,sys; v=json.
 api POST "/v1/sites/$PID/php" '{"php":"8.4"}'; J="$(jobid)"; C1="$CODE"
 ok "back to PHP 8.4 in one change" '[ "$C1" = 202 ] && [ "$(wait_job "$J")" = done ] && grep -q "^v=8.4$" <<<"$(pget "https://$P/v.php")" && grep -q "\"action\":\"php-change\".*PHP 8.4" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
 
+# --- OPS-01: cron jobs run inside the website's container as its file user
+api POST "/v1/sites/$SID/cron" '{"op":"add","schedule":"* * * * *","command":"true"}'; C1="$CODE"
+api POST "/v1/sites/$PID/cron" '{"op":"add","schedule":"60 * * * *","command":"true"}'; C2="$CODE"
+ok "cron: a static website and a bad schedule are refused" '[ "$C1" = 400 ] && [ "$C2" = 400 ]'
+api POST "/v1/sites/$PID/cron" '{"op":"add","schedule":"* * * * *","command":"id -u > cron-uid.txt; date +%s >> cron-runs.txt; echo cron-ok"}'; CJ="$(grep -o '"id":"[0-9a-f]*"' <<<"$BODY" | cut -d'"' -f4)"; C1="$CODE"
+api POST "/v1/sites/$PID/cron" "{\"op\":\"run\",\"id\":\"$CJ\"}"; C2="$CODE"
+cron_ran() { api GET "/v1/sites/$PID/cron"; python3 -c 'import json,sys; r=json.load(sys.stdin)["jobs"][0]["runs"]; sys.exit(0 if len(r)>=int(sys.argv[1]) and r[0]["code"]==0 and "cron-ok" in r[0]["output"] else 1)' "$1" <<<"$BODY"; }
+PWP="$SITE01_TEST_ROOT/srv/nostek/sites/$PID/wp"
+ok "cron: run now works, as the file user (33), in the website folder" '[ "$C1" = 200 ] && [ "$C2" = 200 ] && for _ in $(seq 1 20); do cron_ran 1 && break; sleep 1; done; cron_ran 1 && [ "$(cat "$PWP/cron-uid.txt")" = 33 ]'
+ok "cron: the schedule runs it again within two minutes" 'for _ in $(seq 1 45); do [ "$(wc -l < "$PWP/cron-runs.txt")" -ge 2 ] && break; sleep 3; done; [ "$(wc -l < "$PWP/cron-runs.txt")" -ge 2 ] && cron_ran 2'
+api POST "/v1/sites/$PID/cron" "{\"op\":\"remove\",\"id\":\"$CJ\"}"; C1="$CODE"
+ok "cron: job removed, the audit log has no command" '[ "$C1" = 200 ] && api GET "/v1/sites/$PID/cron" && grep -q "\"jobs\":\[\]" <<<"$BODY" && grep -q "\"action\":\"cron\"" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log" && ! grep -q "cron-uid" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
+
 # --- PHP-01: Optimize Website at the edge (compression, browser cache for static files)
 python3 -c 'print("body { color: teal; }\n" * 200, end="")' > "$T/big.css"; raw PUT "/v1/sites/$SID/files/content?path=/big.css" "$T/big.css"
 heads() { curl -sk --noproxy '*' --max-time 20 --resolve "$S:443:127.0.0.1" -o /dev/null -D - -H 'Accept-Encoding: br' "https://$S$1" | tr -d '\r' | tr 'A-Z' 'a-z'; }
@@ -193,9 +206,21 @@ agent_restart() {
 }
 for _ in 1 2 3 4 5 6; do curl -sk --noproxy '*' --max-time 10 --resolve "$S:443:127.0.0.1" -o /dev/null -X POST --data 'log=admin&pwd=x' "https://$S/wp-login.php"; done
 curl -sk --noproxy '*' --max-time 10 --resolve "$S:443:127.0.0.1" -o /dev/null "https://$S/wp-login.php"   # a GET is no login try
-ok "the edge writes its access log, a few fields and no headers" '[ -s "$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log" ] && grep -q "\"RequestPath\":\"/wp-login.php\"" "$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log" && ! grep -qi "user-agent\|request_" "$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log"'
+ok "the edge writes its access log: a few fields, only the Referer and User-Agent headers" 'AL="$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log"; [ -s "$AL" ] && grep -q "\"RequestPath\":\"/wp-login.php\"" "$AL" && grep -q "\"request_User-Agent\":\"curl/" "$AL" && grep -q "\"DownstreamContentSize\":" "$AL" && [ -z "$(grep -o "\"request_[A-Za-z-]*\"" "$AL" | grep -v -e request_User-Agent -e request_Referer)" ]'
 logins6() { api GET "/v1/sites/$SID/security"; python3 -c 'import json,sys; l=json.load(sys.stdin)["logins"]; sys.exit(0 if l["active"] and l["day"]==6 and l["ips"][0]["ip"]==sys.argv[1] and l["ips"][0]["last_path"]=="/wp-login.php" else 1)' "$GW" <<<"$BODY"; }
 ok "login attempts counted per address within a minute (POSTs only)" 'for _ in $(seq 1 30); do logins6 && break; sleep 3; done; logins6'
+# --- OPS-01: visitor statistics from the same log
+curl -sk --noproxy '*' --max-time 10 --resolve "$S:443:127.0.0.1" -o /dev/null -A 'Mozilla/5.0 Harness' -e 'https://ref.example.test/x' "https://$S/logo.png"
+curl -sk --noproxy '*' --max-time 10 --resolve "$S:443:127.0.0.1" -o /dev/null -A 'Mozilla/5.0 Harness' "https://$S/no-such-page"
+metrics_ok() { api GET "/v1/sites/$SID/metrics?days=1"; python3 -c '
+import json,sys
+v=json.load(sys.stdin); d=v["days"][-1]
+ok = v["active"] and d["requests"]>=9 and d["visitors"]>=1 and d["bots"]>=7 and d["bytes"]>0 and d["s4"]>=1
+ok = ok and any(r["key"]=="ref.example.test" for r in v["refs"]) and any(e["key"].endswith(" /no-such-page") for e in v["errors"])
+ok = ok and any("\"GET /logo.png\"" in l and "Mozilla/5.0 Harness" in l for l in v["raw"])
+sys.exit(0 if ok else 1)' <<<"$BODY"; }
+ok "statistics: visits, bots, bandwidth, referrer, errors and raw lines counted within a minute" 'for _ in $(seq 1 30); do metrics_ok && break; sleep 3; done; metrics_ok'
+ok "statistics file is private to the agent" '[ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/stats/$SID.json")" = 600 ]'
 ok "the address blocked from the list: marked blocked, then unblocked" 'applied "{\"op\":\"block-add\",\"ip\":\"$GW\"}" && api GET "/v1/sites/$SID/security" && grep -q "\"blocked\":true" <<<"$BODY" && applied "{\"op\":\"block-remove\",\"ip\":\"$GW\"}" && edge "$S" / "200 "'
 ok "kept in logins.json (0600)" '[ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/security/logins.json")" = 600 ]'
 
