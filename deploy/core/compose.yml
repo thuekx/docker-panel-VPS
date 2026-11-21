@@ -48,8 +48,8 @@ services:
       # native websites (NATIVE-01): the agent writes one file per site; read-only here
       - --providers.file.directory=/dynamic
       - --providers.file.watch=true
-      # SEC-01 wave 3: access log for the login-attempts view; a few fields, no headers. The agent reads it every
-      # minute and empties it when it grows past 32 MB.
+      # SEC-01 wave 3 + OPS-01: access log for the login-attempts view and the visitor statistics; a few fields
+      # and two headers (Referer, User-Agent). The agent reads it every minute and empties it past 32 MB.
       - --accessLog=true
       - --accessLog.filePath=/logs/access.log
       - --accessLog.format=json
@@ -61,7 +61,10 @@ services:
       - --accessLog.fields.names.RequestPath=keep
       - --accessLog.fields.names.DownstreamStatus=keep
       - --accessLog.fields.names.StartUTC=keep
+      - --accessLog.fields.names.DownstreamContentSize=keep
       - --accessLog.fields.headers.defaultMode=drop
+      - --accessLog.fields.headers.names.Referer=keep
+      - --accessLog.fields.headers.names.User-Agent=keep
       - --certificatesResolvers.le.acme.storage=/acme/acme.json
       - --certificatesResolvers.le.acme.caServer=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
       - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web

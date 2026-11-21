@@ -63,6 +63,9 @@ type fakeAgent struct {
 	perf      agent.Perf // PHP-01
 	perfCalls []string
 	perfJob   *agent.Job
+	metrics   agent.Metrics // OPS-01
+	cron      agent.Cron
+	cronCalls []string
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +124,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		write(200, f.sftp)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/metrics") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/cron") {
+		f.opsAPI(r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/perf") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/php") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jfeed") {

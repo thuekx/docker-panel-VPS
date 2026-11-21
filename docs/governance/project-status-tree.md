@@ -28,9 +28,9 @@ Nostek Panel
 │   ├── DOM-01 domains, redirects, DNS check ● LIVE v1.22.0 2026-11-20
 │   ├── SEC-01 IP blocker, folder password, hotlink ● LIVE v1.23.0 2026-11-20 (wave 1); error pages, MIME ● LIVE v1.24.0 2026-11-21 (wave 2); malware scan, login attempts ● LIVE v1.25.0 2026-11-21 (wave 3a); WAF ● LIVE v1.26.0 2026-11-21 (wave 3b)
 │   ├── EDITOR-1 code editor in the File Manager (CodeMirror 6) ● LIVE v1.24.0 2026-11-21
-│   ├── SFTP-01 SFTP per website ......................... ● BUILT v1.27.0 (port 2222)
-│   ├── PHP-01 change PHP version, optimize website ...... ● BUILT v1.28.0
-│   └── OPS-01 logs, usage, cron, alerts, visitor stats .. ○
+│   ├── SFTP-01 SFTP per website ● LIVE v1.27.0 2026-11-22 (port 2222)
+│   ├── PHP-01 change PHP version, optimize website ● LIVE v1.28.0 2026-11-22
+│   └── OPS-01 logs, usage, cron, alerts, visitor stats .. ◐ wave 1 BUILT v1.29.0 (statistics + cron)
 └── Distribution
     ├── INST-01 public installer (+ preflight, RAYX-1) .... ○
     └── after INST-01 (RAYX-1 = A, 2026-11-18)

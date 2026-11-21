@@ -101,6 +101,10 @@ type Manager struct {
 	scanMu    sync.Mutex // one malware scan at a time
 	logins    *loginStore
 	loginOnce sync.Once
+	stats     *statStore // OPS-01
+	statOnce  sync.Once
+	crons     *cronState // OPS-01
+	cronOnce  sync.Once
 	// NATIVE-01: the native engine (nil native = not installed on this server)
 	native     *NativeConfig
 	host       HostRunner
@@ -798,6 +802,7 @@ func (m *Manager) RemoveTrash(entry string) error {
 		for _, f := range ts.Protected {
 			_ = os.Remove(m.authFile(ts.ID, f.Path))
 		}
+		m.dropStats(ts.ID) // OPS-01
 	}
 	return os.RemoveAll(p)
 }
@@ -833,6 +838,9 @@ func (m *Manager) Purge() ([]string, error) {
 		}
 		if err := os.RemoveAll(p); err != nil {
 			return gone, err
+		}
+		if _, err := os.Stat(m.dir(t.ID)); err != nil {
+			m.dropStats(t.ID) // OPS-01, unless the name is in use again
 		}
 		gone = append(gone, t.Entry)
 	}

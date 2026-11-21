@@ -111,6 +111,13 @@ func TestOnlyFixedRoutes(t *testing.T) {
 	if code, _ := do(t, c, "GET", "/v1/sites?x=1", ""); code != 400 {
 		t.Errorf("query on list answered %d", code)
 	}
+	// OPS-01: the statistics take days, nothing else
+	if code, _ := do(t, c, "GET", "/v1/sites/voltix-id/metrics?days=7", ""); code != 404 {
+		t.Errorf("metrics of an unknown website answered %d", code)
+	}
+	if code, _ := do(t, c, "GET", "/v1/sites/voltix-id/metrics?x=1", ""); code != 400 {
+		t.Errorf("metrics with another parameter answered %d", code)
+	}
 }
 
 func TestCreateStrictBodyAndSecretOnce(t *testing.T) {

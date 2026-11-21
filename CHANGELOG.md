@@ -3,7 +3,25 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.29.0] — 2026-11-22
+
+### Added
+- **Visitor statistics** on a new Statistics tab (OPS-01 wave 1), like cPanel's Metrics: visitors (distinct
+  addresses per day, bots apart), requests, bandwidth, errors, per day for 31 days and per hour today, the most
+  visited pages, referring sites, errors by code and page, and the last 500 raw access lines (downloadable).
+  Counted from the edge's access log for every app and both engines.
+- **Cron jobs** on a new Cron tab, like cPanel's Cron Jobs: up to 20 commands per website on a five-field schedule
+  (WIB), run inside the website's own container as its file user (native websites: as the website's Linux user in
+  its sandbox), never on the server as root. Run now, turn off, edit; the last 5 runs with exit code and output.
+  The audit log names the schedule, never the command.
+
+### Changed
+- The edge's access log also keeps the answer size and the Referer and User-Agent headers. Applied by the panel
+  update; until then the statistics count nothing.
+
 ## [1.28.0] — 2026-11-21
+
+Running on the production server since 2026-11-22 00:41 WIB.
 
 ### Added
 - **Change the PHP version** of a website on a new Performance tab (PHP-01), like cPanel's MultiPHP Manager, for
@@ -17,6 +35,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   Off by default.
 
 ## [1.27.0] — 2026-11-21
+
+Running on the production server since 2026-11-22 00:41 WIB.
 
 ### Added
 - **SFTP accounts** on a new SFTP tab (SFTP-01), like cPanel's FTP Accounts: logins for FileZilla, WinSCP or
