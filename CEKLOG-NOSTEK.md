@@ -58,3 +58,58 @@ Questions to plan (answer when convenient, in your own order):
 - b. Private Git deploy keys (APP-02b): planned date? Until then Nostek would use a public MIT repo or a .zip upload.
 - c. Can the IP blocker allow-list mode (only listed addresses may open a name) be set per site from the form?
 - d. Any limit on request body size or rate per site at the edge that a 64 KB POST every 60 s would hit?
+
+---
+
+## CL-NDEV-20261123-01 · 2026-11-23 16:55 WIB · Nostek-Dev → Nostek Panel
+**Re:** CL-NOSTEK-20261123-02 (read first) · **Subject:** nostek.dev + kb.nostek.dev on the Panel host: what the sites need (planning, not before December)
+
+The Nostek-Dev project builds nostek.dev (product site, docs, API reference) and kb.nostek.dev (public Knowledge Base).
+Today both are static on the Nostek edge; this entry is the plan for moving their origin to the Panel host.
+
+### 1. Names
+| Name | Use |
+|---|---|
+| `nostek.dev` | main site (ID at `/`, EN at `/en/`) |
+| `www.nostek.dev` | 301 to `https://nostek.dev` (path and query kept) |
+| `kb.nostek.dev` | Knowledge Base (ID at `/`, EN at `/en/`) |
+
+The CMS / editor does **not** come to this host: it stays on Nostek's internal network (tailnet), never on the internet.
+
+### 2. Site type
+- **Both names:** static site (APP-01 static, Nginx); no server-side code, no database.
+- **Deploy:** upload of the built output (a .zip of `dist/`), not a build from Git on the host. Three reasons:
+  - the shipped build must be the exact one checked by `make check`, which writes `dist.sha256` for each site;
+  - the repository is private;
+  - a build needs Node 22 + about 500 MB of `node_modules`.
+- **Build commands, for reference:** nostek.dev `npm ci && npx astro build` → `dist/`; kb.nostek.dev `npm ci && npm run build:kb` → `kb/dist/`.
+- A rollback to the previous upload (keep 3) is enough.
+
+### 3. Routes, sizes, closed paths
+- Only 80 / 443 through the edge. No upload endpoint and no POST routes; both sites are GET-only.
+- **Redirects (301):** `nostek.dev` `/kb/*`, `/faq/*`, `/en/kb/*`, `/en/faq/*` → the same paths on `kb.nostek.dev` (`/kb/x` → `/x`, `/en/kb/x` → `/en/x`, `/faq/` → `/faq/`). Alias pages stay in the build as a fallback.
+- **Error page:** a 404 serves `/404.html` on both names.
+- **URLs:** directory style with a trailing slash (`/products/nmsolt/` → `products/nmsolt/index.html`).
+- No closed paths: nothing is private on either site.
+- No upload-size or rate needs beyond the defaults.
+
+### 4. Resources
+- **Disk:** nostek.dev about 11 MB per release and kb.nostek.dev about 2 MB. With 3 releases kept, under 50 MB in total. Media grows slowly through the CMS (images, a few MB a month at most).
+- **Memory / CPU:** static only, nothing beyond Nginx.
+- **Traffic:** [UNKNOWN]; low at launch (a product site and a Knowledge Base). GA4 will tell.
+
+### 5. TLS, headers, CSP, backup
+- **TLS and framing:** HTTPS only, HSTS, `frame-ancestors 'none'`.
+- **CSP** as the Nostek edge uses it today:
+  - `script-src`: `'self'` plus the sha256 hashes listed in the repo, `csp-inline.txt` (nostek.dev) and `kb/csp-inline.txt` (kb); today 11 and 5, all in one list of 18. Each release entry says whether they changed.
+  - `'wasm-unsafe-eval'` is needed for the site search (Pagefind runs WebAssembly), on both sites.
+  - `connect-src`: `'self'` plus `https://portal.nostek.id` (the "Beli" button checks that the portal answers before handing over).
+  - Later GA4 (one property, two streams) adds `https://www.googletagmanager.com` to script-src and the GA4 collect endpoints to connect-src; the release entry that ships analytics will list them.
+  - `style-src 'self' 'unsafe-inline'` for now (inline style attributes are being moved to classes).
+- **Cache:** `/_astro/*` and `/pagefind/*` are content-hashed: `Cache-Control: public, max-age=31536000, immutable`. HTML: `no-cache`.
+- **Backup:** not needed for the content, which can be rebuilt from Git plus the uploaded zips. A per-site backup (BAK-01) is fine but optional.
+
+### Questions
+- a. Can a static site take a .zip upload of a built folder from the form, and keep the previous uploads for rollback?
+- b. Can a site set its own response headers (CSP, Cache-Control per path) from the form, or does the edge own them?
+- c. Is a 301 from one name to another name (with the path kept) a form setting?
