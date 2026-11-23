@@ -311,6 +311,20 @@ ok "the agent shows the account with its key fingerprint, never the key" 'python
 sftpc '{"op":"user-remove","name":"harness.s"}'; C1="$CODE"
 ok "account removed: no login, file gone, audit lines" '[ "$C1" = 200 ] && sleep 4 && ! sf harness.s "$T/sftpkey" "pwd\n" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/sftp/$SID.json" ] && grep -q "\"action\":\"sftp\".*user-add harness.s" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
 
+# --- SITE-03: a static website published from a .zip, three kept, one put back
+mkzip() { python3 -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1],"w"); [z.writestr(a.split("=",1)[0], a.split("=",1)[1]) for a in sys.argv[2:]]; z.close()' "$@"; }
+mkzip "$T/r1.zip" "dist/index.html=<p>rilis-satu</p>" "dist/assets/app.js=console.log(1)"
+mkzip "$T/r2.zip" "index.html=<p>rilis-dua</p>"
+mkzip "$T/bad.zip" "readme.txt=no index here"
+raw PUT "/v1/sites/$SID/releases?name=bad.zip" "$T/bad.zip"; C1="$CODE"
+ok "release: a zip without index.html is refused, the live site unchanged" '[ "$C1" = 400 ] && edge "$S" / "200 " && ! grep -q rilis- <<<"$(body /)"'
+raw PUT "/v1/sites/$SID/releases?name=dist.zip" "$T/r1.zip"; C1="$CODE"
+ok "release 1 live through the edge, its one top folder stripped" '[ "$C1" = 200 ] && for _ in $(seq 1 10); do grep -q rilis-satu <<<"$(body /)" && break; sleep 1; done; grep -q rilis-satu <<<"$(body /)" && grep -q "console.log(1)" <<<"$(body /assets/app.js)"'
+raw PUT "/v1/sites/$SID/releases?name=two.zip" "$T/r2.zip"; C2="$CODE"
+ok "release 2 live, the files of release 1 gone from the live folder" '[ "$C2" = 200 ] && grep -q rilis-dua <<<"$(body /)" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/assets/app.js" ]'
+api POST "/v1/sites/$SID/releases/1/rollback"; C1="$CODE"
+ok "rollback: release 1 live again, release 2 kept, history 0600" '[ "$C1" = 200 ] && grep -q rilis-satu <<<"$(body /)" && [ -f "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/static/releases/2/index.html" ] && [ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/static/history.json")" = 600 ] && [ "$(stat -c %u "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/index.html")" = "$OWN" ]'
+
 ok "no security router left in the website's labels" '! grep -E "site-$SID-(block|protect|hotlink|deny)" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml"'
 
 cleanup; TMP_ALL="$(mktemp -d)"

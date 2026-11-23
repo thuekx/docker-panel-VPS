@@ -99,7 +99,7 @@ func TestSecurityLabelsAndFiles(t *testing.T) {
 	rid := "site-" + id
 	for _, want := range []string{
 		`traefik.http.middlewares.` + rid + `-deny.ipallowlist.sourcerange: "127.0.0.2/32"`,
-		"traefik.http.routers." + rid + "-block.rule: \"Host(`voltix.id`) && (ClientIP(`198.51.100.9`) || ClientIP(`2001:db8::/32`))\"",
+		"traefik.http.routers." + rid + "-block.rule: \"Host(`voltix.id`) && (ClientIP(`198.51.100.9`) || HeaderRegexp(`X-Forwarded-For`, `(^|,)[ ]*198[.]51[.]100[.]9[ ]*$$`) || ClientIP(`2001:db8::/32`))\"",
 		`traefik.http.routers.` + rid + `-block.priority: "30000"`,
 		`traefik.http.routers.` + rid + `-block.middlewares: ` + rid + `-deny`,
 		"traefik.http.routers." + rid + "-hotlink.rule: \"Host(`voltix.id`) && PathRegexp(`(?i)[.](jpg|jpeg|png|gif|webp|avif|svg|bmp|ico|mp4|webm|mp3)$$`) && HeaderRegexp(`Referer`, `.+`) && !HeaderRegexp(`Referer`, `^https?://(voltix[.]id|google[.]com)(:[0-9]+)?(/|$$)`)\"",
@@ -115,7 +115,7 @@ func TestSecurityLabelsAndFiles(t *testing.T) {
 	}
 	edge := s.NativeEdge("172.18.0.1")
 	for _, want := range []string{
-		"    " + rid + "-block:\n      rule: \"Host(`voltix.id`) && (ClientIP(`198.51.100.9`) || ClientIP(`2001:db8::/32`))\"\n      priority: 30000\n",
+		"    " + rid + "-block:\n      rule: \"Host(`voltix.id`) && (ClientIP(`198.51.100.9`) || HeaderRegexp(`X-Forwarded-For`, `(^|,)[ ]*198[.]51[.]100[.]9[ ]*$`) || ClientIP(`2001:db8::/32`))\"\n      priority: 30000\n",
 		"(/|$)`)\"",
 		"    " + rid + "-deny:\n      ipAllowList:\n        sourceRange: [\"127.0.0.2/32\"]\n",
 		"    " + rid + "-auth0-r2:\n      basicAuth:\n        usersFile: \"/dynamic/auth/" + filepath.Base(af) + "\"\n",

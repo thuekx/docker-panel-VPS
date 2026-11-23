@@ -12,8 +12,10 @@ package sites
 
 import (
 	"fmt"
+	"net/netip"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -224,4 +226,43 @@ func (s Site) allowRouter(rid string, routed []string, deny string) []edgeRouter
 	}
 	return []edgeRouter{{name: rid + "-allow", priority: prioBlock + 1, middlewares: []string{deny},
 		rule: hostRule(routed) + " && !PathPrefix(`/.well-known/`) && !(" + strings.Join(ips, " || ") + ")"}}
+}
+
+// xffRule matches a blocked address as the right-most X-Forwarded-For entry, the one a trusted proxy in front
+// (SITE-03) appends; the edge drops the header of anyone it does not trust, so a visitor cannot use it. IPv4
+// networks become octet patterns; an IPv6 network has no pattern (ClientIP still matches it directly).
+func xffRule(v, dollar string) string {
+	pat := ""
+	if a, err := netip.ParseAddr(v); err == nil {
+		if a.Is4() {
+			pat = strings.ReplaceAll(a.String(), ".", "[.]")
+		} else {
+			pat = "(?i)" + a.String()
+		}
+	} else if p, err := netip.ParsePrefix(v); err == nil && p.Addr().Is4() {
+		o := p.Masked().Addr().As4()
+		full, rem := p.Bits()/8, p.Bits()%8
+		var parts []string
+		for i := 0; i < full; i++ {
+			parts = append(parts, strconv.Itoa(int(o[i])))
+		}
+		if full < 4 {
+			if rem > 0 {
+				var alt []string
+				for k := 0; k < 1<<(8-rem); k++ {
+					alt = append(alt, strconv.Itoa(int(o[full])+k))
+				}
+				parts = append(parts, "("+strings.Join(alt, "|")+")")
+				full++
+			}
+			for i := full; i < 4; i++ {
+				parts = append(parts, "[0-9]{1,3}")
+			}
+		}
+		pat = strings.Join(parts, "[.]")
+	}
+	if pat == "" {
+		return ""
+	}
+	return "HeaderRegexp(`X-Forwarded-For`, `(^|,)[ ]*" + pat + "[ ]*" + dollar + "`)"
 }

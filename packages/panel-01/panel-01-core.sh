@@ -4,6 +4,9 @@
 # Usage: sudo bash panel-01-core.sh MODE --ack PANEL-01 --expect-ip ADDR --expect-host NAME --domain PANEL_DOMAIN
 #        APPLY and UPDATE also: --src-commit SHA (40 hex; the repository commit to build from)
 #        ADMIN-ROTATE also: --email ADMIN_EMAIL
+#        APPLY and UPDATE may add --trusted-proxies LIST|none: proxies or CDNs in front of this server whose
+#        X-Forwarded-For the edge believes (comma-separated addresses/networks; kept for later updates). UPDATE with
+#        the running commit and this option changes only that setting.
 # Source is fetched by commit id and checked with git (the id is a hash of the content), images are pinned by digest.
 # Licence: MIT
 set -u   # no pipefail: "cmd | grep -q" must not fail on SIGPIPE
@@ -28,7 +31,7 @@ PANEL_UID=65532
 CERT_WAIT="${PANEL01_CERT_WAIT:-150}"
 
 MODE="${1:-}"; shift || true
-ACK=""; EXPECT_IP=""; EXPECT_HOST=""; DOMAIN=""; COMMIT=""; EMAIL=""; AUTO=0
+ACK=""; EXPECT_IP=""; EXPECT_HOST=""; DOMAIN=""; COMMIT=""; EMAIL=""; AUTO=0; TRUSTED=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --ack) ACK="${2:-}"; shift 2 ;;
@@ -38,6 +41,7 @@ while [ $# -gt 0 ]; do
     --src-commit) COMMIT="${2:-}"; shift 2 ;;
     --email) EMAIL="${2:-}"; shift 2 ;;
     --auto) AUTO=1; shift ;;
+    --trusted-proxies) TRUSTED="${2:-}"; shift 2 ;;
     *) echo "REFUSE unknown argument: $1"; exit 2 ;;
   esac
 done
@@ -78,6 +82,19 @@ check_invocation() {
   [ -n "$EXPECT_IP" ] && [ -n "$EXPECT_HOST" ] || refuse "--expect-ip and --expect-host are required"
   [[ "$DOMAIN" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$ ]] || refuse "--domain must be a lower-case host name such as panel.example.com"
   if [ "$MODE" = APPLY ] || [ "$MODE" = UPDATE ]; then [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || refuse "--src-commit must be a full 40-character commit id"; fi
+  if [ -n "$TRUSTED" ]; then
+    [ "$MODE" = APPLY ] || [ "$MODE" = UPDATE ] || refuse "--trusted-proxies goes with APPLY or UPDATE"
+    if [ "$TRUSTED" != none ]; then
+      local x n=0
+      for x in ${TRUSTED//,/ }; do
+        n=$((n+1))
+        [[ "$x" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/([0-9]|[12][0-9]|3[0-2]))?$ || "$x" =~ ^[0-9a-fA-F:]*:[0-9a-fA-F:]*(/([0-9]{1,2}|1[01][0-9]|12[0-8]))?$ ]] || refuse "--trusted-proxies: $x is not an address or network"
+        case "$x" in 0.0.0.0/0|::/0) refuse "--trusted-proxies: $x would trust everyone" ;; esac
+      done
+      [ "$n" -le 50 ] || refuse "--trusted-proxies: at most 50 entries"
+      TRUSTED="$(echo "${TRUSTED// /}" | tr -s ',' | sed 's/^,//;s/,$//')"
+    fi
+  fi
   if [ "$MODE" = ADMIN-ROTATE ]; then [[ "$EMAIL" =~ ^[^@[:space:]]+@[^@[:space:]]+$ ]] || refuse "--email must be the admin e-mail"; fi
 }
 check_host() {
@@ -192,6 +209,13 @@ HOOK
   pass "nightly backup result shown on the dashboard from the next run"
 }
 
+# proxies is the trusted-proxy list in force: the one given now, else the one kept from before ("none" clears it).
+proxies() {
+  local v="${TRUSTED:-$(state_get trusted_proxies)}"
+  [ "$v" = none ] && v=""
+  echo "$v"
+}
+
 write_core() {
   mkdir -p "$CORE"
   cp "$SRC_ROOT/$COMMIT/deploy/core/compose.yml" "$CORE/compose.yml"
@@ -203,6 +227,7 @@ write_core() {
       echo "NOSTEK_DATA=$NOSTEK"
       echo "NOSTEK_STATE=$VARLIB"
       [ -n "$ACME_CA" ] && echo "ACME_CA_SERVER=$ACME_CA"
+      [ -n "$(proxies)" ] && echo "EDGE_TRUSTED_PROXIES=$(proxies)"
     } > "$CORE/.env" )
   chmod 600 "$CORE/.env"
   mkdir -p "$NOSTEK/panel" "$NOSTEK/edge/acme" "$NOSTEK/edge/logs" "$NOSTEK/edge/waf" "$NOSTEK/sftp" "$NOSTEK/sftp-state" "$NOSTEK/sites" "$VARLIB/backup"
@@ -255,7 +280,10 @@ update() {
   check_host
   PREV_PHASE="$(state_get phase)"
   [ "$PREV_PHASE" = APPLIED ] || refuse "panel not applied (phase=$PREV_PHASE); use APPLY"
-  [ "$(state_get commit)" = "$COMMIT" ] && refuse "already running commit $COMMIT"
+  if [ "$(state_get commit)" = "$COMMIT" ]; then
+    [ -n "$TRUSTED" ] || refuse "already running commit $COMMIT"
+    proxies_only
+  fi
   BK="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)-update"; mkdir -p "$BK"
   progress U1/3 "fetch source $COMMIT"; fetch_source || die "cannot fetch source $COMMIT (current version still running)"
   progress U2/3 "build panel image"; build_image || die "image build failed (current version still running)"
@@ -264,6 +292,25 @@ update() {
   preflight
   if [ "$FAILS" != 0 ]; then dc up -d >/dev/null 2>&1; die "preflight failed ($FAILS); current version started again"; fi
   start_core
+}
+
+# proxies_only changes the trusted proxies of the running version: the edge and the firewall are recreated.
+proxies_only() {
+  progress P1/2 "trusted proxies: ${TRUSTED}"
+  cp -a "$CORE/.env" "$STATE_DIR/env.before-proxies" 2>/dev/null
+  ( umask 077; grep -v '^EDGE_TRUSTED_PROXIES=' "$CORE/.env" > "$CORE/.env.tmp"
+    [ "$TRUSTED" != none ] && echo "EDGE_TRUSTED_PROXIES=$TRUSTED" >> "$CORE/.env.tmp"
+    mv "$CORE/.env.tmp" "$CORE/.env" )
+  chmod 600 "$CORE/.env"
+  progress P2/2 "recreate edge and firewall"
+  if ! dc up -d --remove-orphans >/dev/null 2>&1 || ! wait_healthy; then
+    cp -a "$STATE_DIR/env.before-proxies" "$CORE/.env"; dc up -d >/dev/null 2>&1
+    die "edge did not come back with the new setting; previous setting restored"
+  fi
+  [ "$(https_check /healthz)" = 200 ] || { cp -a "$STATE_DIR/env.before-proxies" "$CORE/.env"; dc up -d >/dev/null 2>&1; die "panel not reachable through the edge; previous setting restored"; }
+  state_set trusted_proxies "$TRUSTED"
+  summary PASS "trusted proxies: $TRUSTED" "the version is unchanged ($(state_get release))"
+  echo "RESULT $STEP UPDATE PASS trusted_proxies=$TRUSTED"; exit 0
 }
 
 start_core() {
@@ -288,6 +335,7 @@ start_core() {
   [ "$TLS_TEST" = 1 ] && cert="test"
   if [ "$cert" = pending ]; then warn "certificate not issued yet; VERIFY will check again"; else pass "certificate $cert"; fi
   state_set phase APPLIED; state_set release "$REL"
+  [ -n "$TRUSTED" ] && state_set trusted_proxies "$TRUSTED"
   summary "PASS" "Nostek Panel $REL running at https://$DOMAIN" "certificate: $cert" "NEXT first install: run SETUP-LINK; admin already exists: just log in"
   echo "RESULT $STEP $MODE PASS version=$REL cert=$cert"; exit 0
 }
@@ -319,6 +367,7 @@ admin_rotate() {
 }
 
 verify() {
+  TRUSTED_NOW="$(proxies)"
   progress 1/6 "host identity"; check_host
   progress 2/6 "phase"; [ "$(state_get phase)" = APPLIED ] && pass "phase APPLIED (version $(state_get release), commit $(state_get commit))" || fail "phase is $(state_get phase), not APPLIED"
   progress 3/6 "containers"
@@ -332,6 +381,7 @@ verify() {
   local h; h="$(curl -sS --noproxy '*' --max-time 8 -o /dev/null -w '%{http_code}' -H "Host: $DOMAIN" http://127.0.0.1/ 2>/dev/null)"
   [ "$h" = 301 ] || [ "$h" = 308 ] && pass "http redirects to https" || fail "http answered $h, expected redirect"
   [ "$(https_check /healthz)" = 200 ] && pass "panel healthy through the edge" || fail "panel not reachable through the edge"
+  info "trusted proxies in front: ${TRUSTED_NOW:-none}"
   progress 6/6 "certificate"
   if [ "$TLS_TEST" = 1 ]; then info "certificate check skipped (test)"; CERT="test"
   elif cert_ok; then pass "certificate valid for $DOMAIN"; CERT=valid

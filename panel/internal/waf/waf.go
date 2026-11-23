@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -165,11 +166,13 @@ type site struct {
 
 // Server proxies visits to the websites through their WAF.
 type Server struct {
-	dir   string
-	log   *logger
-	mu    sync.RWMutex
-	hosts map[string]*site
-	sites map[string]*site
+	dir string
+	log *logger
+	// Proxies are the trusted proxies in front of the edge (SITE-03)
+	Proxies []netip.Prefix
+	mu      sync.RWMutex
+	hosts   map[string]*site
+	sites   map[string]*site
 }
 
 // New returns a server that reads its websites from dir and writes matched rules to w.
@@ -296,13 +299,24 @@ func (sv *Server) Watch(ctx context.Context, every time.Duration) {
 	}
 }
 
-// clientIP is the visitor's address as the edge saw it (the edge sets X-Forwarded-For and drops a visitor's own).
-func clientIP(r *http.Request) string {
-	if v := r.Header.Get("X-Forwarded-For"); v != "" {
-		first, _, _ := strings.Cut(v, ",")
-		if ip := net.ParseIP(strings.TrimSpace(first)); ip != nil {
-			return ip.String()
+// clientIP is the visitor's address as the edge saw it. The edge drops a visitor's own X-Forwarded-For and appends
+// the address it was reached from, so the right-most entry is the visitor; when a proxy in front is trusted
+// (SITE-03, EDGE_TRUSTED_PROXIES) its entries are skipped from the right, and the first one left is the visitor.
+func (sv *Server) clientIP(r *http.Request) string {
+	var all []string
+	for _, v := range r.Header.Values("X-Forwarded-For") {
+		all = append(all, strings.Split(v, ",")...)
+	}
+	for i := len(all) - 1; i >= 0; i-- {
+		a, err := netip.ParseAddr(strings.TrimSpace(all[i]))
+		if err != nil {
+			break
 		}
+		a = a.Unmap()
+		if i > 0 && sv.trusted(a) {
+			continue
+		}
+		return a.String()
 	}
 	h, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -311,7 +325,29 @@ func clientIP(r *http.Request) string {
 	return h
 }
 
-// ServeHTTP sends a visit through the WAF of the website its host names.
+func (sv *Server) trusted(a netip.Addr) bool {
+	for _, p := range sv.Proxies {
+		if p.Contains(a) {
+			return true
+		}
+	}
+	return false
+}
+
+// ParseProxies reads a comma-separated list of addresses and networks; bad entries are left out.
+func ParseProxies(v string) []netip.Prefix {
+	var out []netip.Prefix
+	for _, x := range strings.Split(v, ",") {
+		x = strings.TrimSpace(x)
+		if p, err := netip.ParsePrefix(x); err == nil {
+			out = append(out, p.Masked())
+		} else if a, err := netip.ParseAddr(x); err == nil {
+			out = append(out, netip.PrefixFrom(a, a.BitLen()))
+		}
+	}
+	return out
+}
+
 func (sv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	host := strings.ToLower(r.Host)
 	if h, _, err := net.SplitHostPort(host); err == nil {
@@ -324,7 +360,7 @@ func (sv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unknown website", http.StatusMisdirectedRequest)
 		return
 	}
-	r.RemoteAddr = net.JoinHostPort(clientIP(r), "0")
+	r.RemoteAddr = net.JoinHostPort(sv.clientIP(r), "0")
 	s.h.ServeHTTP(w, r)
 }
 

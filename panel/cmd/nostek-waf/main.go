@@ -51,6 +51,7 @@ func run() error {
 	}
 	defer f.Close()
 	sv := waf.New(env("WAF_CONFIG", "/config"), f)
+	sv.Proxies = waf.ParseProxies(os.Getenv("EDGE_TRUSTED_PROXIES"))
 	if err := sv.Load(); err != nil {
 		log.Printf("waf: %v", err)
 	}

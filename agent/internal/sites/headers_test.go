@@ -3,6 +3,7 @@ package sites
 import (
 	"errors"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -88,6 +89,45 @@ func TestHeadersAndAllowList(t *testing.T) {
 	for _, bad := range []string{"-hdr", "-allow", "-deny"} {
 		if strings.Contains(cf, rid+bad) {
 			t.Errorf("compose still holds %s", bad)
+		}
+	}
+}
+
+func TestVisitorAddr(t *testing.T) {
+	for in, want := range map[string]string{"203.0.113.9": "203.0.113.9", "6.6.6.6, 203.0.113.9": "203.0.113.9", "2001:db8::1": "2001:db8::1"} {
+		if a, err := visitorAddr(in); err != nil || a.String() != want {
+			t.Errorf("%q: %v %v", in, a, err)
+		}
+	}
+	if _, err := visitorAddr("junk"); err == nil {
+		t.Error("junk read as an address")
+	}
+}
+
+func TestXFFRule(t *testing.T) {
+	for in, want := range map[string]string{
+		"203.0.113.7":     "(^|,)[ ]*203[.]0[.]113[.]7[ ]*$",
+		"203.0.113.0/24":  "(^|,)[ ]*203[.]0[.]113[.][0-9]{1,3}[ ]*$",
+		"10.0.0.0/8":      "(^|,)[ ]*10[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[ ]*$",
+		"198.51.100.0/30": "(^|,)[ ]*198[.]51[.]100[.](0|1|2|3)[ ]*$",
+		"172.16.0.0/14":   "(^|,)[ ]*172[.](16|17|18|19)[.][0-9]{1,3}[.][0-9]{1,3}[ ]*$",
+		"2001:db8::1":     "(^|,)[ ]*(?i)2001:db8::1[ ]*$",
+		"2001:db8::/32":   "",
+	} {
+		got := xffRule(in, "$")
+		if want != "" {
+			want = "HeaderRegexp(`X-Forwarded-For`, `" + want + "`)"
+		}
+		if got != want {
+			t.Errorf("%s: %s", in, got)
+		}
+		if want == "" {
+			continue
+		}
+		re := regexp.MustCompile(strings.TrimSuffix(strings.SplitN(got, "`, `", 2)[1], "`)"))
+		addr := strings.Split(in, "/")[0]
+		if !re.MatchString("6.6.6.6, "+addr) || re.MatchString(addr+", 6.6.6.6") {
+			t.Errorf("%s: the pattern does not hold to the right-most entry", in)
 		}
 	}
 }

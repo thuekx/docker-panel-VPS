@@ -505,6 +505,9 @@ func (s Site) securityEdge(dollar string) ([]edgeRouter, []edgeMiddleware) {
 		ips := make([]string, len(s.BlockIPs))
 		for i, ip := range s.BlockIPs {
 			ips[i] = "ClientIP(`" + ip + "`)"
+			if x := xffRule(ip, dollar); x != "" {
+				ips[i] += " || " + x
+			}
 		}
 		rs = append(rs, edgeRouter{name: rid + "-block", rule: hostRule(routed) + " && (" + strings.Join(ips, " || ") + ")", priority: prioBlock, middlewares: []string{deny}})
 	}
