@@ -3,6 +3,28 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.31.0] — 2026-11-23
+
+### Added
+- **Releases of a static website** (SITE-03): publish from a .zip of the built output (up to 512 MB, an index.html at
+  its top or inside its one top folder) on the Overview. The new files go live in one step, the live release and the
+  two before it are kept, and any kept one can be made live again with one press. The website's own error pages
+  stay in place.
+- **Folder redirects** on the Domains page: "Whole folder" sends `/kb/a/b?x=1` to the same place under the target,
+  also on another name.
+- **Response headers** per website and per folder on the Performance page (Content-Security-Policy,
+  Strict-Transport-Security, Cache-Control `immutable` for a folder of hashed files …); an empty value removes a
+  header. A folder's own header wins over the browser cache days and over the same header for the whole website.
+- **Allow only these addresses** on the Security page: when the list holds an address, everyone else gets 403 (for
+  a website that only a proxy or CDN in front may reach, or one for a few offices).
+- **The visitor's address behind a proxy in front**: `panel-01-core.sh UPDATE --trusted-proxies LIST` makes the
+  edge believe X-Forwarded-For from those addresses only, so the statistics, login attempts, the firewall and the IP
+  blocker see the visitor. With the running commit it changes only this setting.
+
+### Changed
+- The core stack passes the trusted proxies to the edge and the firewall (new update script; the panel update
+  applies it). Without the option nothing changes: no header is believed.
+
 ## [1.30.0] — 2026-11-23
 
 ### Added

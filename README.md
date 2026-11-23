@@ -43,6 +43,7 @@ choose its own stack.
 | ⚡ **Performance** | Change the PHP version of a website with a backup first and a one-click way back; compression and browser cache at the edge. |
 | 📊 **Statistics and cron** | Visitors, bandwidth, errors and the raw access log per website; cron jobs that run inside the website, never as root. |
 | 🔔 **Watchdog and alerts** | Unhealthy services restarted on their own; Telegram and e-mail alerts; login history; CPU and memory over time. |
+| 📦 **Static releases and headers** | Publish a static site from a .zip with three releases kept and one-press rollback; response headers per folder; folder redirects; allow-list; the visitor's address behind a proxy. |
 | 🕒 **Time zone aware** | Every time on screen shows its zone. |
 
 ## How it works
