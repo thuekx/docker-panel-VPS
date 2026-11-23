@@ -5,6 +5,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ## [1.29.0] — 2026-11-22
 
+Live on the production server since 2026-11-23 16:19 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+
 ### Added
 - **Visitor statistics** on a new Statistics tab (OPS-01 wave 1), like cPanel's Metrics: visitors (distinct
   addresses per day, bots apart), requests, bandwidth, errors, per day for 31 days and per hour today, the most

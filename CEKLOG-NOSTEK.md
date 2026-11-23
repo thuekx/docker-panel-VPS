@@ -8,7 +8,7 @@ How it works:
 - Entries are information and requests to plan; the receiving project decides how and when to build.
 
 ## Read pointers
-- Nostek Panel last read: (none yet)
+- Nostek Panel last read: CL-NDEV-20261123-01 (2026-11-23)
 - Nostek last read: (none yet; no CL-PANEL entry so far)
 
 ---
@@ -113,3 +113,39 @@ The CMS / editor does **not** come to this host: it stays on Nostek's internal n
 - a. Can a static site take a .zip upload of a built folder from the form, and keep the previous uploads for rollback?
 - b. Can a site set its own response headers (CSP, Cache-Control per path) from the form, or does the edge own them?
 - c. Is a 301 from one name to another name (with the path kept) a form setting?
+
+## CL-PANEL-20261123-01 · 2026-11-23 · Nostek Panel → Nostek, Nostek-Dev
+**Re:** CL-NOSTEK-20261123-01, CL-NOSTEK-20261123-02, CL-NDEV-20261123-01 · **Subject:** answers, and two new roadmap items
+
+State today: Nostek Panel v1.29.0 is live on the Panel host (statistics and cron per website). Both plans (status page,
+nostek.dev + kb.nostek.dev) are kept as one plan on the same host and the same edge.
+
+### New roadmap items ([master-roadmap.md](docs/governance/master-roadmap.md))
+- **SITE-03** (13a, after OPS-01 wave 2 and before INST-01, so it is ready before December): static websites deployed from
+  a .zip of the built output with the last 3 releases kept and a one-press rollback; response headers per website from a
+  form (CSP, HSTS, frame-ancestors, Cache-Control per path, e.g. `immutable` for `/_astro/*` and `/pagefind/*`); prefix
+  redirects that keep the rest of the path, also to another name; IP blocker allow-list mode.
+- **EDGE-01** (14f, backlog, after AUTH-02): the "edge only" origin from CL-NOSTEK-20261123-01, as described there
+  (80/443 only from the edge's IP list, SSH / panel / SFTP untouched, check, auto-revert and confirm, trusted visitor
+  address from those IPs only, later the list from an HTTPS URL).
+
+### Answers to CL-NOSTEK-20261123-02
+- a. No separate "status page" ready app is planned: the Uptime Kuma ready app (live since v1.17.0) has its own public
+  status pages on its own name. Nostek can use those directly, or its own site for the custom page.
+- b. Private Git repositories with deploy keys are live since v1.12.0 (2026-11-13); auto-deploy by webhook since v1.14.0.
+- c. Not yet: the IP blocker is a block list today. The allow-list mode per website comes with SITE-03. Until then a
+  password-protected folder (SEC-01) can close the admin path.
+- d. The edge has no request-rate or body-size limit per website. With the WAF on, it inspects the first 128 KB of a
+  body. A 64 KB POST every 60 s is well inside both.
+
+### Answers to CL-NDEV-20261123-01
+- a. Today: the File Manager takes a .zip upload (up to 256 MB per file) and extracts it in the website folder; a per-site
+  backup (BAK-01) before each upload is the way back. Releases with "keep 3" and a one-press rollback come with SITE-03.
+- b. Today the edge owns the headers. Optimize Website (v1.28.0) sets browser cache for styles, scripts, images, fonts and
+  media (1, 7, 30 or 365 days), and leaves HTML without a long cache. Own headers (CSP with hashes and
+  `'wasm-unsafe-eval'`, `connect-src`, `immutable` per path) come with SITE-03.
+- c. Yes for whole names: `www` and every extra name answer 301 to the main address, path and query kept. Per-path
+  redirects (301/302) exist, but each matches one exact path; a prefix rule like `/kb/*` → `kb.nostek.dev/*` with the
+  rest of the path kept comes with SITE-03. Until then the alias pages in the build cover it.
+- Also: a custom 404 page (SEC-01 wave 2) is a file of the website and is served with code 404; directory-style URLs
+  (`/x/` → `x/index.html`) work on static websites as they are.
