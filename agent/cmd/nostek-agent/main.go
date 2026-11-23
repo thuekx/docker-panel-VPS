@@ -195,6 +195,7 @@ func serve(cfg Config, m *sites.Manager) error {
 	go m.CronLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
 	go m.LoginLoop(ctx, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) })
 	go m.UserCronLoop(ctx)              // OPS-01: the websites' own cron jobs
+	go m.WatchLoop(ctx)                 // OPS-01 wave 2: watchdog and usage samples
 	if err := m.SyncWAF(); err != nil { // SEC-01 wave 3b: the WAF files follow site.json
 		fmt.Fprintln(os.Stderr, "waf files:", err)
 	}
