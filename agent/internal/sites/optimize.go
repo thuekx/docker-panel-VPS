@@ -41,9 +41,21 @@ func (s Site) optimizeMiddlewares() []string {
 	return nil
 }
 
+// chainWith is the middleware chain of a router that serves the website: compression, the router's own
+// middlewares, the website's headers for all answers (SITE-03), then the redirects. Of two header middlewares
+// setting the same header, the one listed first wins, so a folder's headers and the browser cache come before the
+// website-wide headers.
+func (s Site) chainWith(own ...string) []string {
+	out := append(s.optimizeMiddlewares(), own...)
+	if h := s.siteHeadersMW(); h != "" {
+		out = append(out, h)
+	}
+	return append(out, s.redirectMiddlewares()...)
+}
+
 // servedMiddlewares is the chain of the canonical router: compression, then the redirects.
 func (s Site) servedMiddlewares() []string {
-	return append(s.optimizeMiddlewares(), s.redirectMiddlewares()...)
+	return s.chainWith()
 }
 
 // nextOptimize applies an optimize-set change.
@@ -77,10 +89,9 @@ func (s Site) optimizeEdge(canon, dollar string) ([]edgeRouter, []edgeMiddleware
 	}
 	if s.Optimize.CacheDays > 0 {
 		ms = append(ms, edgeMiddleware{name: s.cacheMW(), kind: "cache", value: fmt.Sprintf("public, max-age=%d", s.Optimize.CacheDays*86400)})
-		chain := append(s.optimizeMiddlewares(), s.cacheMW())
 		rs = append(rs, edgeRouter{name: "site-" + s.ID + "-static", priority: prioCache,
 			rule:        hostRule([]string{canon}) + " && PathRegexp(`(?i)[.](" + strings.Join(CacheExts, "|") + ")" + dollar + "`)",
-			middlewares: append(chain, s.redirectMiddlewares()...)})
+			middlewares: s.chainWith(s.cacheMW())})
 	}
 	return rs, ms
 }

@@ -69,6 +69,9 @@ type Site struct {
 	PrevPHP string `json:"prev_php,omitempty"`
 	// PHP-01: compression and browser cache at the edge (nil = off)
 	Optimize *Optimize `json:"optimize,omitempty"`
+	// SITE-03: response headers at the edge, and the addresses that alone may reach the website (empty = everyone)
+	Headers  []HeaderRule `json:"headers,omitempty"`
+	AllowIPs []string     `json:"allow_ips,omitempty"`
 	// OPS-01: scheduled commands
 	Crons []CronJob `json:"crons,omitempty"`
 

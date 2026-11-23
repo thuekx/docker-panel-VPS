@@ -66,6 +66,10 @@ func securityDetail(c sites.SecurityChange) string {
 		return c.Op + " " + c.Path
 	case "optimize-set":
 		return fmt.Sprintf("%s compress %t cache %d days", c.Op, c.Compress, c.Days)
+	case "header-set", "header-remove": // the value stays out of the log
+		return c.Op + " " + c.Path + " " + c.Name
+	case "allow-add", "allow-remove":
+		return c.Op + " " + c.IP
 	}
 	return c.Op
 }
