@@ -136,7 +136,7 @@ func (s *Server) perfAction(w http.ResponseWriter, r *http.Request) {
 		if c.Path == "" {
 			c.Path = "/"
 		}
-		if c.Name == "" || len(c.Name) > 64 || len(c.Path) > 200 || len(c.Value) > 1024 {
+		if c.Name == "" || len(c.Name) > 64 || len(c.Path) > 200 || len(c.Value) > 4096 {
 			back(s.tr.T(s.lang(r), "hdr.need"), "#headers")
 			return
 		}

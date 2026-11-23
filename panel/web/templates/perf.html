@@ -69,7 +69,7 @@
     <label>{{t $l "hdr.path"}}<input name="path" value="/" placeholder="/ or /assets" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="200"></label>
     <label>{{t $l "hdr.name"}}<input name="name" list="hdr-presets" placeholder="Content-Security-Policy" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required></label>
     <datalist id="hdr-presets">{{range $v.HeaderPresets}}<option value="{{.}}">{{end}}</datalist>
-    <label>{{t $l "hdr.value"}}<textarea name="value" rows="2" placeholder="default-src 'self'" autocapitalize="none" spellcheck="false" maxlength="1024"></textarea></label>
+    <label>{{t $l "hdr.value"}}<textarea name="value" rows="3" placeholder="default-src 'self'" autocapitalize="none" spellcheck="false" maxlength="4096"></textarea></label>
     <p class="muted small">{{t $l "hdr.value.help"}}</p>
     <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "hdr.go"}}</button>
   </form>

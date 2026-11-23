@@ -1296,7 +1296,7 @@
   "hdr.path": "Folder",
   "hdr.name": "Header",
   "hdr.value": "Nilai",
-  "hdr.value.help": "Karakter yang bisa dicetak tanpa \" \\ ` atau $, paling banyak 1024. Mengisi header yang sudah ada mengganti nilainya.",
+  "hdr.value.help": "Karakter yang bisa dicetak tanpa \" \\ ` atau $, paling banyak 4096. Mengisi header yang sudah ada mengganti nilainya.",
   "hdr.go": "Pasang header",
   "hdr.need": "Isi nama header (dan foldernya, / untuk semua jawaban).",
   "sec.allow.title": "Hanya izinkan alamat ini",

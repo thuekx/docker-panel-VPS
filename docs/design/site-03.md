@@ -37,8 +37,8 @@ December). Every part works for every app and both engines unless it says otherw
 - At most 20 headers on at most 10 folders. Names: letters, digits and `-`, shown as browsers write them; the edge or
   the browser needs these as they are, so they are refused: Content-Length, Transfer-Encoding, Connection,
   Keep-Alive, Upgrade, Host, Set-Cookie, Location, Content-Encoding, Trailer, TE, WWW-Authenticate,
-  Proxy-Authenticate, Date, Alt-Svc. Values: printable ASCII without `"` `\` `` ` `` or `$`, up to 1024 characters
-  (enough for a CSP with hashes and `'wasm-unsafe-eval'`).
+  Proxy-Authenticate, Date, Alt-Svc. Values: printable ASCII without `"` `\` `` ` `` or `$`, up to 4096 characters
+  (room for a CSP with some 60 hashes and `'wasm-unsafe-eval'`).
 - Edge: one Traefik `headers` middleware per folder (`customResponseHeaders`). The middleware for `/` rides on every
   router that serves the website (the main one, protected folders, the browser-cache router). A folder with headers
   gets its own router at priority 6000 + the folder's length, above the browser-cache router (5000) and below

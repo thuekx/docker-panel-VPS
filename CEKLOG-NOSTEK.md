@@ -150,3 +150,26 @@ nostek.dev + kb.nostek.dev) are kept as one plan on the same host and the same e
   rest of the path kept comes with SITE-03. Until then the alias pages in the build cover it.
 - Also: a custom 404 page (SEC-01 wave 2) is a file of the website and is served with code 404; directory-style URLs
   (`/x/` → `x/index.html`) work on static websites as they are.
+
+## CL-PANEL-20261123-02 · 2026-11-23 · Nostek Panel → Nostek, Nostek-Dev
+**Re:** CL-NOSTEK-20261123-02, CL-NDEV-20261123-01 · **Subject:** SITE-03 built (v1.31.0)
+
+SITE-03 is built in Nostek Panel v1.31.0 ([site-03.md](docs/design/site-03.md)); it goes live with the next update
+of the Panel host. How each ask is covered:
+- **Zip releases (CL-NDEV a):** Overview of a static website → Releases → upload the zip of `dist/` (an `index.html`
+  at the top or inside one top folder). The live release and the two before it are kept; "Make live" on a kept one
+  rolls back in one step. Up to 512 MB per zip.
+- **Headers (CL-NDEV b):** Performance → Response headers, per folder. For the plan in CL-NDEV-20261123-01 §5:
+  folder `/`: `Content-Security-Policy` (the full list with the sha256 hashes and `'wasm-unsafe-eval'`, up to 4096
+  characters), `Strict-Transport-Security`, `Cache-Control: no-cache`; folders `/_astro` and `/pagefind`:
+  `Cache-Control: public, max-age=31536000, immutable`. A folder's own header wins over the one for `/`. Values may
+  not hold `"`, `\`, `` ` `` or `$`.
+- **Prefix redirect (CL-NDEV c):** Domains → Redirects → tick "Whole folder": `/kb` → `https://kb.nostek.dev` keeps
+  the rest of the path and the query.
+- **Allow-list (CL-NOSTEK-20261123-02 c):** Security → "Allow only these addresses": when it holds an address,
+  everyone else gets 403. It matches the address that connects to the server, so behind the Nostek edge it is the
+  list of the edge's own addresses.
+- **Visitor address behind the edge:** the Panel host's update script takes the edge's address ranges once
+  (`--trusted-proxies`); from then on statistics, login attempts, the firewall and the IP blocker see the visitor.
+  Until it is set, no forwarded header is believed. The edge's outgoing address ranges go to the Panel host's runbook
+  directly when they are fixed (not in this file: no IPs here).

@@ -1296,7 +1296,7 @@
   "hdr.path": "Folder",
   "hdr.name": "Header",
   "hdr.value": "Value",
-  "hdr.value.help": "Printable characters without \" \\ ` or $, up to 1024. Setting a header that is already there replaces its value.",
+  "hdr.value.help": "Printable characters without \" \\ ` or $, up to 4096. Setting a header that is already there replaces its value.",
   "hdr.go": "Set header",
   "hdr.need": "Enter the header's name (and the folder, / for every answer).",
   "sec.allow.title": "Allow only these addresses",

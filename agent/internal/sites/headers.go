@@ -23,7 +23,7 @@ const (
 	MaxHeaders     = 20
 	MaxHeaderPaths = 10
 	MaxAllowed     = 200
-	maxHeaderValue = 1024
+	maxHeaderValue = 4096
 	prioHeaders    = 6000 // + the folder's length; between the cache router (5000) and protected folders (10000)
 )
 
