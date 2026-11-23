@@ -1271,5 +1271,18 @@
   "use.none": "No samples yet: the agent takes the first ones within 5 minutes after its update.",
   "use.site": "CPU and memory",
   "use.site.help": "All containers of the website added up, sampled every 5 minutes: CPU as the average (100%% = one of the server's %d CPUs), memory at its highest.",
-  "use.site.mem": "Memory limit: %s."
+  "use.site.mem": "Memory limit: %s.",
+  "rel.title": "Releases",
+  "rel.help": "Publish the website from a .zip of its files (for example the dist or build folder of React, Vue, Svelte or Astro). The zip needs an index.html at its top or inside its one top folder. The new files go live in one step; the last %d releases are kept and any of them can be made live again. Up to %d MB.",
+  "rel.go": "Publish zip",
+  "rel.busy": "Uploading…",
+  "rel.col.when": "When",
+  "rel.col.file": "File",
+  "rel.files": "%d files",
+  "rel.before": "The files before the first upload",
+  "rel.none": "No release yet: the files you edit in the file manager are live.",
+  "rel.type": "Choose a .zip file.",
+  "rel.need": "Choose the .zip to publish.",
+  "sites.done.static-publish": "The new release is live.",
+  "sites.done.static-rollback": "That release is live again."
 }

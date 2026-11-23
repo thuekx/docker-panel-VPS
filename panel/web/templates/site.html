@@ -40,6 +40,22 @@
   </form>
 </article>
 </section>
+{{with .Data.Rels}}<section class="card wide tone c-green" data-anim="card" id="releases">
+  <h2>{{t $l "rel.title"}}</h2>
+  <p class="muted">{{t $l "rel.help" .Keep .MaxMB}}</p>
+  <form method="post" action="/sites/{{$s.ID}}/releases" enctype="multipart/form-data" class="form row"><input type="hidden" name="csrf" value="{{$.CSRF}}">
+    <input type="file" name="zip" accept=".zip,application/zip" required>
+    <button class="primary" type="submit" data-busy="{{t $l "rel.busy"}}"{{if ne $s.Phase "ready"}} disabled{{end}}>{{t $l "rel.go"}}</button></form>
+  {{if .Err}}<p class="banner warn">{{.Err}}</p>{{else if .Rows}}
+  <div class="table-wrap"><table class="deploy-table">
+    <thead><tr><th>{{t $l "deploy.col.release"}}</th><th>{{t $l "rel.col.when"}}</th><th>{{t $l "rel.col.file"}}</th><th>{{t $l "deploy.col.result"}}</th><th></th></tr></thead>
+    <tbody>{{range .Rows}}
+    <tr><td class="nowrap">#{{.Release}}</td><td class="nowrap">{{.When}}</td>
+      <td>{{if .Name}}<code>{{.Name}}</code> <span class="muted">{{t $l "rel.files" .Files}}{{if .Size}} · {{.Size}}{{end}}</span>{{else}}<span class="muted">{{t $l "rel.before"}}</span>{{end}}</td>
+      <td class="nowrap"><span class="pill {{if eq .Result "live"}}s-ok{{else}}s-unknown{{end}}">{{t $l (printf "deploy.res.%s" .Result)}}</span>{{if .Rollback}} <span class="muted">{{t $l "deploy.rolledback"}}</span>{{end}}</td>
+      <td>{{if eq .Result "ok"}}<form method="post" action="/sites/{{$s.ID}}#releases" class="form row"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="release" value="{{.Release}}"><button class="secondary" name="action" value="static-rollback" type="submit">{{t $l "deploy.rollback"}}</button></form>{{end}}</td></tr>{{end}}
+    </tbody></table></div>{{else}}<p class="muted">{{t $l "rel.none"}}</p>{{end}}
+</section>{{end}}
 {{if $s.IsNode}}
 <section class="card wide tone c-green" data-anim="card" id="deploy">
   <div class="deploy-head"><h2>{{t $l "deploy.title"}}</h2>

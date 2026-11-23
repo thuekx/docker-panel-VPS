@@ -1271,5 +1271,18 @@
   "use.none": "Belum ada data: agent mengambil sampel pertama dalam 5 menit setelah diperbarui.",
   "use.site": "CPU dan memori",
   "use.site.help": "Semua container website dijumlahkan, diambil setiap 5 menit: CPU rata-rata (100%% = satu dari %d CPU server), memori tertinggi.",
-  "use.site.mem": "Batas memori: %s."
+  "use.site.mem": "Batas memori: %s.",
+  "rel.title": "Rilis",
+  "rel.help": "Terbitkan website dari .zip berisi file-filenya (misalnya folder dist atau build dari React, Vue, Svelte atau Astro). Zip harus punya index.html di bagian atas atau di dalam satu folder teratasnya. File baru langsung aktif dalam satu langkah; %d rilis terakhir disimpan dan bisa diaktifkan lagi kapan saja. Maksimal %d MB.",
+  "rel.go": "Terbitkan zip",
+  "rel.busy": "Mengunggah…",
+  "rel.col.when": "Waktu",
+  "rel.col.file": "File",
+  "rel.files": "%d file",
+  "rel.before": "File sebelum unggahan pertama",
+  "rel.none": "Belum ada rilis: file yang diubah di pengelola file yang sedang aktif.",
+  "rel.type": "Pilih file .zip.",
+  "rel.need": "Pilih .zip yang akan diterbitkan.",
+  "sites.done.static-publish": "Rilis baru sudah aktif.",
+  "sites.done.static-rollback": "Rilis itu aktif lagi."
 }
