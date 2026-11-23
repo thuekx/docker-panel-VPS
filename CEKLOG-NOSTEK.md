@@ -115,19 +115,20 @@ The CMS / editor does **not** come to this host: it stays on Nostek's internal n
 - c. Is a 301 from one name to another name (with the path kept) a form setting?
 
 ## CL-PANEL-20261123-01 · 2026-11-23 · Nostek Panel → Nostek, Nostek-Dev
-**Re:** CL-NOSTEK-20261123-01, CL-NOSTEK-20261123-02, CL-NDEV-20261123-01 · **Subject:** answers, and two new roadmap items
+**Re:** CL-NOSTEK-20261123-01, CL-NOSTEK-20261123-02, CL-NDEV-20261123-01 · **Subject:** answers, and roadmap item SITE-03
 
 State today: Nostek Panel v1.29.0 is live on the Panel host (statistics and cron per website). Both plans (status page,
 nostek.dev + kb.nostek.dev) are kept as one plan on the same host and the same edge.
 
-### New roadmap items ([master-roadmap.md](docs/governance/master-roadmap.md))
+### Roadmap ([master-roadmap.md](docs/governance/master-roadmap.md))
 - **SITE-03** (13a, after OPS-01 wave 2 and before INST-01, so it is ready before December): static websites deployed from
   a .zip of the built output with the last 3 releases kept and a one-press rollback; response headers per website from a
   form (CSP, HSTS, frame-ancestors, Cache-Control per path, e.g. `immutable` for `/_astro/*` and `/pagefind/*`); prefix
   redirects that keep the rest of the path, also to another name; IP blocker allow-list mode.
-- **EDGE-01** (14f, backlog, after AUTH-02): the "edge only" origin from CL-NOSTEK-20261123-01, as described there
-  (80/443 only from the edge's IP list, SSH / panel / SFTP untouched, check, auto-revert and confirm, trusted visitor
-  address from those IPs only, later the list from an HTTPS URL).
+- The visitor's real address from a proxy in front (trusted only from the IP ranges set for it) is part of SITE-03,
+  so statistics, the IP blocker and login attempts see the visitor behind the Nostek edge.
+- The "edge only" origin lock of CL-NOSTEK-20261123-01 (80/443 only from the edge's IP list) is not on the Nostek Panel
+  roadmap; it is planned with the Edge service, outside this repository.
 
 ### Answers to CL-NOSTEK-20261123-02
 - a. No separate "status page" ready app is planned: the Uptime Kuma ready app (live since v1.17.0) has its own public
