@@ -134,6 +134,22 @@ func TestOnlyFixedRoutes(t *testing.T) {
 	if code, body := do(t, c, "GET", "/v1/usage", ""); code != 200 || body["recent"] == nil {
 		t.Errorf("server usage answered %d %s", code, body)
 	}
+	// SITE-03: static releases
+	if code, _ := do(t, c, "GET", "/v1/sites/voltix-id/releases", ""); code != 404 {
+		t.Errorf("releases of an unknown website answered %d", code)
+	}
+	if code, _, _ := raw(t, c, "PUT", "/v1/sites/voltix-id/releases?name=a.zip&x=1", "application/octet-stream", "x"); code != 400 {
+		t.Errorf("publish with another parameter answered %d", code)
+	}
+	if code, _, _ := raw(t, c, "PUT", "/v1/sites/voltix-id/releases?name=a.zip", "application/json", "x"); code != 400 {
+		t.Errorf("publish as JSON answered %d", code)
+	}
+	if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/releases/x/rollback", ""); code != 400 {
+		t.Errorf("rollback to a bad number answered %d", code)
+	}
+	if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/releases/2/rollback", ""); code != 404 {
+		t.Errorf("rollback on an unknown website answered %d", code)
+	}
 }
 
 func TestCreateStrictBodyAndSecretOnce(t *testing.T) {
