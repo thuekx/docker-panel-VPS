@@ -32,6 +32,9 @@ type metricsData struct {
 	Bytes  string
 	Errors int
 	Ranges []int
+	Usage  []usageRow // OPS-01 wave 2
+	MemMax string
+	CPUs   int
 }
 
 func (s *Server) metricsPage(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +67,12 @@ func (s *Server) metricsPage(w http.ResponseWriter, r *http.Request) {
 		d.Hours = append(d.Hours, statRow{Label: strconv.Itoa(h/10) + strconv.Itoa(h%10) + ":00", Requests: n, Pct: n * 100 / most})
 	}
 	d.Bytes, d.Errors = size(v.Total.Bytes), v.Total.S4+v.Total.S5
+	if u, err := s.ag.SiteUsage(ctx, site.ID); err == nil {
+		d.Usage, d.CPUs = s.usageRows(u, v.Range), u.CPUs
+		if u.MemMax > 0 {
+			d.MemMax = size(u.MemMax)
+		}
+	}
 	s.render(w, r, "metrics", page{Title: s.tr.T(s.lang(r), "met.title") + " · " + site.Domain, Active: "sites", Data: d})
 }
 
@@ -163,4 +172,62 @@ func (s *Server) cronAction(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit1(u, r, "cron", detail)
 	http.Redirect(w, r, base+"?done="+url.QueryEscape(c.Op)+"#job-"+id, http.StatusSeeOther)
+}
+
+// usageRow is one hour or one day of CPU and memory (OPS-01 wave 2).
+type usageRow struct {
+	Label          string
+	CPU, Mem, Disk string
+	CPUPct, MemPct int
+	Load           string
+}
+
+// usageRows turns hourly points into the last 24 hours (days 1) or into days (7 or 31), newest first. CPU is the
+// average, memory the highest; bars are relative to all CPUs and to the memory limit.
+func (s *Server) usageRows(u agent.Usage, days int) []usageRow {
+	loc := s.loc()
+	type acc struct {
+		label     string
+		cpu, load float64
+		mem       int64
+		disk      float64
+		n         int
+	}
+	var groups []acc
+	cut := s.now().Add(-time.Duration(days) * 24 * time.Hour).Unix()
+	for _, p := range u.Hours {
+		if p.At < cut {
+			continue
+		}
+		t := time.Unix(p.At, 0).In(loc)
+		label := t.Format("02 Jan 15:00")
+		if days > 1 {
+			label = t.Format("02 Jan 2006")
+		}
+		if n := len(groups); n == 0 || groups[n-1].label != label {
+			groups = append(groups, acc{label: label})
+		}
+		g := &groups[len(groups)-1]
+		g.cpu += p.CPU
+		g.load += p.Load
+		g.mem = max(g.mem, p.Mem)
+		g.disk = max(g.disk, p.Disk)
+		g.n++
+	}
+	cpus := float64(max(u.CPUs, 1))
+	out := make([]usageRow, 0, len(groups))
+	for i := len(groups) - 1; i >= 0; i-- {
+		g := groups[i]
+		cpu := g.cpu / float64(g.n)
+		r := usageRow{Label: g.label, CPU: strconv.FormatFloat(cpu, 'f', 1, 64) + "%", Mem: size(g.mem),
+			CPUPct: min(100, int(cpu/cpus)), Load: strconv.FormatFloat(g.load/float64(g.n), 'f', 2, 64)}
+		if u.MemMax > 0 {
+			r.MemPct = min(100, int(g.mem*100/u.MemMax))
+		}
+		if g.disk > 0 {
+			r.Disk = strconv.FormatFloat(g.disk, 'f', 0, 64) + "%"
+		}
+		out = append(out, r)
+	}
+	return out
 }

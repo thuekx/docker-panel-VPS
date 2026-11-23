@@ -44,4 +44,11 @@
   </form>
 </article>
 </section>
+<section class="card wide" data-anim="card" id="logins">
+  <h2><span class="h-ico c-violet" aria-hidden="true">{{template "ico-list"}}</span>{{t $l "login.hist"}}</h2>
+  <p class="muted">{{t $l "login.hist.help"}}</p>
+  {{if $d.Logins}}<div class="table-wrap"><table><thead><tr><th>{{t $l "login.hist.at"}}</th><th>{{t $l "login.hist.ip"}}</th><th>{{t $l "login.hist.browser"}}</th><th>{{t $l "login.hist.result"}}</th></tr></thead><tbody>{{range $d.Logins}}
+    <tr><td class="nowrap">{{.At}}</td><td><code>{{.IP}}</code>{{if .NewIP}} <span class="pill s-warn">{{t $l "login.hist.new"}}</span>{{end}}</td><td>{{.Browser}}</td><td>{{if .OK}}<span class="pill s-ok">{{t $l (printf "login.res.%s" .Result)}}</span>{{else}}<span class="pill s-bad">{{t $l (printf "login.res.%s" .Result)}}</span>{{end}}</td></tr>{{end}}
+  </tbody></table></div>{{else}}<p class="muted">{{t $l "met.none"}}</p>{{end}}
+</section>
 {{end}}

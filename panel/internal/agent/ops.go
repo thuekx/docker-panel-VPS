@@ -94,3 +94,54 @@ func (c *Client) ChangeCron(ctx context.Context, id string, ch CronChange) (stri
 	err := c.call(ctx, "POST", site(id)+"/cron", ch, &v)
 	return v.ID, v.Changed, err
 }
+
+// WatchEvent is one thing the agent's watchdog did (OPS-01 wave 2). Site is "" for core and host services.
+type WatchEvent struct {
+	Seq     int64  `json:"seq"`
+	At      int64  `json:"at"`
+	Site    string `json:"site"`
+	Service string `json:"service"`
+	Kind    string `json:"kind"`   // restarted | restart_failed | gave_up | recovered
+	Reason  string `json:"reason"` // unhealthy | not running
+}
+
+// WatchView is the watchdog's events after a sequence number.
+type WatchView struct {
+	Seq    int64        `json:"seq"`
+	Events []WatchEvent `json:"events"`
+}
+
+// Watchdog returns the watchdog events after since.
+func (c *Client) Watchdog(ctx context.Context, since int64) (WatchView, error) {
+	var v WatchView
+	return v, c.call(ctx, "GET", "/v1/watchdog?since="+strconv.FormatInt(since, 10), nil, &v)
+}
+
+// UsagePoint is one sample: CPU in percent of one CPU, memory in bytes; disk (percent) and load for the server.
+type UsagePoint struct {
+	At   int64   `json:"at"`
+	CPU  float64 `json:"cpu"`
+	Mem  int64   `json:"mem"`
+	Disk float64 `json:"disk"`
+	Load float64 `json:"load"`
+}
+
+// Usage is the CPU and memory over time of a website or of the server.
+type Usage struct {
+	Recent []UsagePoint `json:"recent"`
+	Hours  []UsagePoint `json:"hours"`
+	CPUs   int          `json:"cpus"`
+	MemMax int64        `json:"mem_max"`
+}
+
+// SiteUsage returns a website's usage.
+func (c *Client) SiteUsage(ctx context.Context, id string) (Usage, error) {
+	var v Usage
+	return v, c.call(ctx, "GET", site(id)+"/usage", nil, &v)
+}
+
+// ServerUsage returns the server's usage.
+func (c *Client) ServerUsage(ctx context.Context) (Usage, error) {
+	var v Usage
+	return v, c.call(ctx, "GET", "/v1/usage", nil, &v)
+}

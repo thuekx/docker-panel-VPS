@@ -21,6 +21,7 @@ import (
 	qrcode "github.com/skip2/go-qrcode"
 
 	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
+	"github.com/thuekx/docker-panel-VPS/panel/internal/alert"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/auth"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/i18n"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/store"
@@ -58,7 +59,10 @@ type Server struct {
 	now       func() time.Time
 	ag        *agent.Client
 	owners    jobOwners
-	plugin    []byte // the Nostek Migrate plugin zip (MIG-01)
+	plugin    []byte     // the Nostek Migrate plugin zip (MIG-01)
+	akey      *alert.Key // seals the alert secrets (OPS-01 wave 2)
+	alerts    alertState
+	alertSync bool // tests: send alerts before returning
 }
 
 func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server, error) {
@@ -225,6 +229,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /settings", s.need(true, s.settings))
 	mux.HandleFunc("POST /settings", s.need(true, s.settingsSubmit))
 	mux.HandleFunc("POST /settings/recovery", s.need(true, s.newRecoveryCodes))
+	mux.HandleFunc("POST /settings/alerts", s.need(true, s.alertsSubmit))
 	return s.headers(mux)
 }
 
@@ -578,12 +583,14 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	if u.LockedUntil.After(s.now()) {
 		auth.DummyCheck(pw)
 		s.audit1(u, r, "login.locked", "")
+		s.recordLogin(u, r, "locked")
 		fail(http.StatusUnauthorized, "err.login")
 		return
 	}
 	if !auth.CheckPassword(u.PwHash, pw) {
 		_ = s.st.RecordLoginFailure(u.ID, maxFails, s.now().Add(lockFor))
 		s.audit1(u, r, "login.failed", "wrong password")
+		s.recordLogin(u, r, "password")
 		fail(http.StatusUnauthorized, "err.login")
 		return
 	}
@@ -627,18 +634,20 @@ func (s *Server) login2faSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := r.PostForm.Get("code")
-	ok := false
+	ok, how := false, "ok"
 	if step, valid := auth.VerifyTOTP(u.TOTPSecret, code, s.now()); valid {
 		ok, _ = s.st.UseTOTPStep(u.ID, step) // refuses replay of the same code
 	} else if rc := auth.NormalizeRecovery(code); len(rc) == 14 {
 		ok, _ = s.st.UseRecoveryCode(u.ID, auth.TokenHash(rc))
 		if ok {
 			s.audit1(u, r, "login.recovery_code", "")
+			how = "recovery"
 		}
 	}
 	if !ok {
 		_ = s.st.RecordLoginFailure(u.ID, maxFails, s.now().Add(lockFor))
 		s.audit1(u, r, "login.2fa_failed", "")
+		s.recordLogin(u, r, "code")
 		fail(http.StatusUnauthorized, "err.code")
 		return
 	}
@@ -647,6 +656,7 @@ func (s *Server) login2faSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit1(u, r, "login.ok", "")
+	s.recordLogin(u, r, how)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -775,6 +785,7 @@ type dashData struct {
 	Backup   string
 	TZ       string
 	CodesLow bool
+	Usage    []usageRow // OPS-01 wave 2: the server's last 24 hours
 }
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
@@ -785,6 +796,13 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	if n, _ := s.st.RecoveryCodesLeft(userOf(r).ID); n < 3 {
 		d.CodesLow = true
+	}
+	if s.ag != nil {
+		ctx, cancel := s.agentCtx(r, 5*time.Second)
+		if u, err := s.ag.ServerUsage(ctx); err == nil {
+			d.Usage = s.usageRows(u, 1)
+		}
+		cancel()
 	}
 	s.render(w, r, "dashboard", page{Title: s.tr.T(s.lang(r), "nav.dashboard"), Active: "dashboard", Data: d})
 }
@@ -832,14 +850,25 @@ type settingsData struct {
 	TZ        string
 	Zones     []string
 	CodesLeft int
+	Alerts    alertsView
 }
 
 var zones = []string{"Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura", "Asia/Singapore", "UTC"}
 
 func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
-	n, _ := s.st.RecoveryCodesLeft(userOf(r).ID)
-	s.render(w, r, "settings", page{Title: s.tr.T(s.lang(r), "nav.settings"), Active: "settings",
-		Data: settingsData{TZ: s.loc().String(), Zones: zones, CodesLeft: n}, Flash: r.URL.Query().Get("saved")})
+	s.renderSettings(w, r, http.StatusOK, "")
+}
+
+func (s *Server) renderSettings(w http.ResponseWriter, r *http.Request, code int, errMsg string) {
+	u := userOf(r)
+	n, _ := s.st.RecoveryCodesLeft(u.ID)
+	p := page{Title: s.tr.T(s.lang(r), "nav.settings"), Active: "settings",
+		Data: settingsData{TZ: s.loc().String(), Zones: zones, CodesLeft: n, Alerts: s.alertsView(u.OrgID)}, Flash: r.URL.Query().Get("saved"), Error: errMsg}
+	if code != http.StatusOK {
+		p.Flash = ""
+		w.WriteHeader(code)
+	}
+	s.render(w, r, "settings", p)
 }
 
 func (s *Server) settingsSubmit(w http.ResponseWriter, r *http.Request) {

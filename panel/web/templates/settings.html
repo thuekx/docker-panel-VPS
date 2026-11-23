@@ -1,5 +1,6 @@
 {{define "content"}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t .Lang "settings.saved"}}</p>{{end}}
+{{if eq .Flash "test"}}<p class="banner ok" data-anim="card">{{t .Lang "alert.tested"}}</p>{{else if .Flash}}<p class="banner ok" data-anim="card">{{t .Lang "settings.saved"}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 <section class="grid two">
 <article class="card" data-anim="card">
   <h2>{{t .Lang "settings.tz"}}</h2>
@@ -16,5 +17,58 @@
   <p class="muted">{{t .Lang "settings.moved.help"}}</p>
   <a class="secondary btn" href="/profile">{{t .Lang "nav.profile"}}</a>
 </article>
+</section>
+{{$l := .Lang}}{{$a := .Data.Alerts}}
+<section class="card wide tone c-amber" data-anim="card" id="alerts">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-pulse"}}</span>{{t $l "alert.title"}}</h2>
+  <p class="muted">{{t $l "alert.help"}}</p>
+  {{if not $a.KeyOK}}<p class="banner warn">{{t $l "alert.nokey"}}</p>{{end}}
+</section>
+<section class="grid two">
+<article class="card" data-anim="card" id="alert-tg">
+  <h2>Telegram {{if $a.TgSet}}<span class="pill s-ok">{{t $l "alert.on"}}</span>{{end}}</h2>
+  <p class="muted">{{t $l "alert.tg.help"}}</p>
+  <form method="post" action="/settings/alerts" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="op" value="telegram">
+    <label>{{t $l "alert.tg.token"}}<input type="password" name="token" autocomplete="off" placeholder="{{if $a.TgSet}}{{t $l "alert.kept"}}{{else}}123456789:AA…{{end}}"{{if not $a.TgSet}} required{{end}}></label>
+    <label>{{t $l "alert.tg.chat"}}<input name="chat" value="{{$a.TgChat}}" placeholder="123456789" required></label>
+    <button class="primary" type="submit">{{t $l "settings.save"}}</button>
+  </form>
+  {{if $a.TgSet}}<form method="post" action="/settings/alerts"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="op" value="telegram-off"><button class="ghost" type="submit">{{t $l "alert.off"}}</button></form>{{end}}
+</article>
+<article class="card" data-anim="card" id="alert-mail">
+  <h2>{{t $l "alert.mail"}} {{if $a.MailHost}}<span class="pill s-ok">{{t $l "alert.on"}}</span>{{end}}</h2>
+  <p class="muted">{{t $l "alert.mail.help"}}</p>
+  <form method="post" action="/settings/alerts" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="op" value="mail">
+    <label>{{t $l "alert.mail.host"}}<input name="host" value="{{$a.MailHost}}" placeholder="smtp.example.com" required></label>
+    <label>{{t $l "alert.mail.port"}}<select name="port">{{range $a.Ports}}<option value="{{.}}"{{if eq . $a.MailPort}} selected{{end}}>{{.}}{{if eq . 465}} (TLS){{else}} (STARTTLS){{end}}</option>{{end}}</select></label>
+    <label>{{t $l "alert.mail.user"}}<input name="user" value="{{$a.MailUser}}" autocomplete="off"></label>
+    <label>{{t $l "alert.mail.pass"}}<input type="password" name="pass" autocomplete="off"{{if $a.MailPass}} placeholder="{{t $l "alert.kept"}}"{{end}}></label>
+    <label>{{t $l "alert.mail.from"}}<input type="email" name="from" value="{{$a.MailFrom}}" placeholder="panel@example.com" required></label>
+    <label>{{t $l "alert.mail.to"}}<input name="to" value="{{$a.MailTo}}" placeholder="admin@example.com" required></label>
+    <button class="primary" type="submit">{{t $l "settings.save"}}</button>
+  </form>
+  {{if $a.MailHost}}<form method="post" action="/settings/alerts"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="op" value="mail-off"><button class="ghost" type="submit">{{t $l "alert.off"}}</button></form>{{end}}
+</article>
+<article class="card" data-anim="card" id="alert-kinds">
+  <h2>{{t $l "alert.kinds"}}</h2>
+  <form method="post" action="/settings/alerts" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="op" value="kinds">
+    {{range $a.Kinds}}<label class="check"><input type="checkbox" name="k_{{.Kind}}" value="1"{{if .On}} checked{{end}}> {{t $l (printf "alert.kind.%s" .Kind)}}<span class="muted small"> · {{t $l (printf "alert.kind.%s.help" .Kind)}}</span></label>{{end}}
+    <button class="primary" type="submit">{{t $l "settings.save"}}</button>
+  </form>
+</article>
+<article class="card" data-anim="card" id="alert-test">
+  <h2>{{t $l "alert.test.title"}}</h2>
+  <p class="muted">{{t $l "alert.test.help"}}</p>
+  <form method="post" action="/settings/alerts"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="op" value="test"><button class="secondary" type="submit">{{t $l "alert.test.go"}}</button></form>
+</article>
+</section>
+<section class="card wide" data-anim="card" id="alert-sent">
+  <h2>{{t $l "alert.sent"}}</h2>
+  {{if $a.Sent}}<div class="table-wrap"><table><thead><tr><th>{{t $l "login.hist.at"}}</th><th>{{t $l "alert.sent.kind"}}</th><th>{{t $l "alert.sent.text"}}</th><th>{{t $l "alert.sent.result"}}</th></tr></thead><tbody>{{range $a.Sent}}
+    <tr><td class="nowrap">{{.At}}</td><td>{{t $l (printf "alert.kind.%s" .Kind)}}</td><td>{{.Text}}</td><td class="small">{{.Sent}}</td></tr>{{end}}
+  </tbody></table></div>{{else}}<p class="muted">{{t $l "met.none"}}</p>{{end}}
 </section>
 {{end}}

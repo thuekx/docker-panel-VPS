@@ -27,6 +27,13 @@
   </tbody></table></div>
 </article>
 </section>
+<section class="card wide tone c-teal" data-anim="card" id="usage">
+  <h2>{{t $l "use.site"}}</h2>
+  <p class="muted">{{t $l "use.site.help" $d.CPUs}}{{if $d.MemMax}} {{t $l "use.site.mem" $d.MemMax}}{{end}}</p>
+  {{if $d.Usage}}<div class="table-wrap"><table><thead><tr><th>{{if eq $v.Range 1}}{{t $l "met.hour"}}{{else}}{{t $l "met.day"}}{{end}}</th><th>CPU</th><th>{{t $l "use.mem"}}</th></tr></thead><tbody>{{range $d.Usage}}
+    <tr><td class="nowrap">{{.Label}}</td><td><div class="bar" aria-hidden="true"><i data-bar="{{.CPUPct}}"></i></div>{{.CPU}}</td><td><div class="bar" aria-hidden="true"><i data-bar="{{.MemPct}}"></i></div>{{.Mem}}</td></tr>{{end}}
+  </tbody></table></div>{{else}}<p class="muted">{{t $l "use.none"}}</p>{{end}}
+</section>
 <section class="grid pair">
 <article class="card" data-anim="card" id="pages">
   <h2>{{t $l "met.pages"}}</h2>
