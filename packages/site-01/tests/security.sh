@@ -77,11 +77,13 @@ chown 65532:65532 "$SITE01_TEST_ROOT/srv/nostek/edge/logs"; chmod 700 "$SITE01_T
 mapfile -t LOGFLAGS < <(grep -oE -- '--accessLog[^ ]*' "$REPO/deploy/core/compose.yml")
 docker network create nostek-edge >/dev/null
 GW="$(docker network inspect nostek-edge -f '{{(index .IPAM.Config 0).Gateway}}')"
+# SITE-03: the harness itself plays the trusted proxy in front (its visits come from the edge network)
+EDGENET="$(docker network inspect nostek-edge -f '{{(index .IPAM.Config 0).Subnet}}')"
 docker run -d --name np-sec-edge --user 65532:65532 --group-add "$(stat -c %g /var/run/docker.sock)" --network nostek-edge -p 127.0.0.1:443:8443 \
   -v /var/run/docker.sock:/var/run/docker.sock:ro -v "$SITE01_TEST_ROOT/srv/nostek/edge/dynamic:/dynamic:ro" -v "$SITE01_TEST_ROOT/srv/nostek/edge/logs:/logs" "$EDGEIMG" \
   "${LOGFLAGS[@]}" \
   --global.checkNewVersion=false --global.sendAnonymousUsage=false --log.level=INFO \
-  --entryPoints.websecure.address=:8443 --entryPoints.websecure.http.tls=true \
+  --entryPoints.websecure.address=:8443 --entryPoints.websecure.http.tls=true --entryPoints.websecure.forwardedHeaders.trustedIPs="$EDGENET" \
   --providers.docker=true --providers.docker.exposedByDefault=false --providers.docker.network=nostek-edge \
   --providers.file.directory=/dynamic --providers.file.watch=true \
   --certificatesResolvers.le.acme.storage=/tmp/acme.json --certificatesResolvers.le.acme.caServer=https://127.0.0.1:9/directory \
@@ -324,6 +326,35 @@ raw PUT "/v1/sites/$SID/releases?name=two.zip" "$T/r2.zip"; C2="$CODE"
 ok "release 2 live, the files of release 1 gone from the live folder" '[ "$C2" = 200 ] && grep -q rilis-dua <<<"$(body /)" && [ ! -e "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/assets/app.js" ]'
 api POST "/v1/sites/$SID/releases/1/rollback"; C1="$CODE"
 ok "rollback: release 1 live again, release 2 kept, history 0600" '[ "$C1" = 200 ] && grep -q rilis-satu <<<"$(body /)" && [ -f "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/static/releases/2/index.html" ] && [ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/static/history.json")" = 600 ] && [ "$(stat -c %u "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/wp/index.html")" = "$OWN" ]'
+
+# --- SITE-03: response headers and their order, the allow-list, the blocker behind a trusted proxy
+hdrs() { curl -sk --noproxy '*' --max-time 20 --resolve "$S:443:127.0.0.1" -D - -o /dev/null "$@" "https://$S${P_:-/}" | tr -d '\r'; }
+hval() { local p="$1" n="$2"; shift 2; P_="$p" hdrs "$@" | grep -i "^$n:" | head -n1 | cut -d' ' -f2-; }
+applied '{"op":"optimize-set","days":7}'; C0=$?
+applied "{\"op\":\"header-set\",\"path\":\"/\",\"name\":\"Content-Security-Policy\",\"value\":\"default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='\"}"; C1=$?
+applied '{"op":"header-set","path":"/","name":"Cache-Control","value":"no-cache"}'; C2=$?
+applied '{"op":"header-set","path":"/assets","name":"Cache-Control","value":"public, max-age=31536000, immutable"}'; C3=$?
+ok "headers set (website-wide and on /assets)" '[ "$C0$C1$C2$C3" = 0000 ]'
+ok "every answer has the CSP; HTML gets the website-wide Cache-Control" 'for _ in $(seq 1 20); do [ "$(hval / Cache-Control)" = no-cache ] && break; sleep 1; done; grep -q "wasm-unsafe-eval" <<<"$(hval / Content-Security-Policy)" && [ "$(hval / Cache-Control)" = no-cache ]'
+ok "a folder header wins over the browser cache and the website-wide one" '[ "$(hval /assets/app.js Cache-Control)" = "public, max-age=31536000, immutable" ] && grep -q "wasm-unsafe-eval" <<<"$(hval /assets/app.js Content-Security-Policy)"'
+ok "the browser cache days still win over the website-wide header elsewhere" '[ "$(hval /x.css Cache-Control)" = "max-age=604800" ] || [ "$(hval /x.css Cache-Control)" = "public, max-age=604800" ]'
+applied '{"op":"header-set","path":"/","name":"Server","value":""}'; C1=$?
+ok "an empty value removes a header" '[ "$C1" = 0 ] && for _ in $(seq 1 20); do [ -z "$(hval / Server)" ] && break; sleep 1; done; [ -z "$(hval / Server)" ]'
+# the allow-list: a list without us closes the website (not /.well-known), adding us opens it again
+applied '{"op":"allow-add","ip":"192.0.2.1"}'; C1=$?
+ok "allow-list without our address: 403 everywhere but /.well-known" '[ "$C1" = 0 ] && edge "$S" / "403 " && [ "$(visit "$S" /.well-known/x | cut -d" " -f1)" != 403 ]'
+applied "{\"op\":\"allow-add\",\"ip\":\"$EDGENET\"}"; C1=$?
+ok "allow-list with our network: the website answers" '[ "$C1" = 0 ] && edge "$S" / "200 "'
+applied '{"op":"allow-remove","ip":"192.0.2.1"}'; applied "{\"op\":\"allow-remove\",\"ip\":\"$EDGENET\"}"; C1=$?
+# the harness trusts its own network as the proxy in front: X-Forwarded-For from it is believed
+applied '{"op":"block-add","ip":"203.0.113.50"}'; C2=$?
+ok "blocker: a visitor behind the trusted proxy is blocked by its forwarded address" '[ "$C1$C2" = 00 ] && edge "$S" / "403 " -H "X-Forwarded-For: 203.0.113.50" && [ "$(visit "$S" /)" = "200 " ]'
+ok "blocker: only the right-most forwarded entry counts" '[ "$(visit "$S" / -H "X-Forwarded-For: 203.0.113.50, 198.51.100.1" | cut -d" " -f1)" = 200 ]'
+ok "the access log (statistics, login attempts) has the forwarded visitor" 'visit "$S" /wp-login.php -H "X-Forwarded-For: 198.51.100.77" >/dev/null; for _ in $(seq 1 15); do grep -q "\"ClientHost\":\"198.51.100.77\"" "$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log" && break; sleep 1; done; grep -q "\"ClientHost\":\"198.51.100.77\"" "$SITE01_TEST_ROOT/srv/nostek/edge/logs/access.log"'
+applied '{"op":"block-remove","ip":"203.0.113.50"}'
+for h in Content-Security-Policy Cache-Control Server; do applied "{\"op\":\"header-remove\",\"path\":\"/\",\"name\":\"$h\"}"; done
+applied '{"op":"header-remove","path":"/assets","name":"Cache-Control"}'; applied '{"op":"optimize-set"}'
+ok "headers removed: no header router left, the audit log has no header value" '! grep -E "site-$SID-(hdr|allow)" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml" && ! grep -q "wasm-unsafe-eval" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log" && grep -q "header-set /assets Cache-Control" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
 
 ok "no security router left in the website's labels" '! grep -E "site-$SID-(block|protect|hotlink|deny)" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/compose.yml"'
 
