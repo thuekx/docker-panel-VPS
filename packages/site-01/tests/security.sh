@@ -185,6 +185,14 @@ ok "cron: the schedule runs it again within two minutes" 'for _ in $(seq 1 45); 
 api POST "/v1/sites/$PID/cron" "{\"op\":\"remove\",\"id\":\"$CJ\"}"; C1="$CODE"
 ok "cron: job removed, the audit log has no command" '[ "$C1" = 200 ] && api GET "/v1/sites/$PID/cron" && grep -q "\"jobs\":\[\]" <<<"$BODY" && grep -q "\"action\":\"cron\"" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log" && ! grep -q "cron-uid" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
 
+# --- OPS-01 wave 2: the watchdog restarts a stopped container; usage is sampled every 5 minutes
+docker stop -t 2 "np-site-$PID-web-1" >/dev/null 2>&1; C1=$?
+watched() { api GET "/v1/watchdog?since=0"; python3 -c 'import json,sys; e=json.load(sys.stdin)["events"]; sys.exit(0 if any(x["site"]==sys.argv[1] and x["service"]=="web" and x["kind"]=="restarted" and x["reason"]=="not running" for x in e) else 1)' "$PID" <<<"$BODY"; }
+ok "watchdog: a stopped web container (Apache + PHP) is restarted after three checks (within five minutes)" '[ "$C1" = 0 ] && for _ in $(seq 1 100); do watched && break; sleep 3; done; watched && [ "$(docker inspect -f "{{.State.Running}}" "np-site-$PID-web-1")" = true ] && for _ in $(seq 1 20); do grep -q "^v=8.4$" <<<"$(pget "https://$P/v.php")" && break; sleep 1; done; grep -q "^v=8.4$" <<<"$(pget "https://$P/v.php")"'
+ok "watchdog: running services are left alone, events kept 0600" 'api GET "/v1/watchdog?since=0" && [ "$(grep -o "\"kind\":\"restarted\"" <<<"$BODY" | wc -l)" -eq 1 ] && [ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/watchdog.json")" = 600 ]'
+used() { api GET "/v1/sites/$PID/usage"; python3 -c 'import json,sys; v=json.load(sys.stdin); r=v["recent"]; sys.exit(0 if r and r[-1]["mem"]>0 and v["cpus"]>=1 and v["mem_max"]>0 and v["hours"] else 1)' <<<"$BODY"; }
+ok "usage: the website and the server sampled within five minutes, files 0600" 'for _ in $(seq 1 110); do used && break; sleep 3; done; used && api GET /v1/usage && python3 -c "import json,sys; r=json.load(sys.stdin)[\"recent\"]; sys.exit(0 if r and r[-1][\"mem\"]>0 and r[-1][\"disk\"]>0 else 1)" <<<"$BODY" && [ "$(stat -c %a "$SITE01_TEST_ROOT/srv/nostek/usage/$PID.json")" = 600 ]'
+
 # --- PHP-01: Optimize Website at the edge (compression, browser cache for static files)
 python3 -c 'print("body { color: teal; }\n" * 200, end="")' > "$T/big.css"; raw PUT "/v1/sites/$SID/files/content?path=/big.css" "$T/big.css"
 heads() { curl -sk --noproxy '*' --max-time 20 --resolve "$S:443:127.0.0.1" -o /dev/null -D - -H 'Accept-Encoding: br' "https://$S$1" | tr -d '\r' | tr 'A-Z' 'a-z'; }

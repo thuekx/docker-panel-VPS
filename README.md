@@ -42,6 +42,7 @@ choose its own stack.
 | 🔑 **SFTP** | SFTP accounts per website on port 2222, locked to the website's folder, with a password or keys; no shell. |
 | ⚡ **Performance** | Change the PHP version of a website with a backup first and a one-click way back; compression and browser cache at the edge. |
 | 📊 **Statistics and cron** | Visitors, bandwidth, errors and the raw access log per website; cron jobs that run inside the website, never as root. |
+| 🔔 **Watchdog and alerts** | Unhealthy services restarted on their own; Telegram and e-mail alerts; login history; CPU and memory over time. |
 | 🕒 **Time zone aware** | Every time on screen shows its zone. |
 
 ## How it works

@@ -76,7 +76,8 @@ No secret, password, token or private e-mail belongs in this file or in any file
 - **Keep going** (KEEP-GOING-1, auto-next-step, run-to-the-end): when a step closes, start the next roadmap step at
   once (design, package, harness, PR) unless it collides with another thread (same host/VM or same files). Never
   end a turn asking permission for the next planned step. Stop only for a real decision by Thuekx, a host run by Thuekx,
-  merge, tap, or an irreversible action. Continue until the whole roadmap is finished.
+  merge, tap, or an irreversible action. Continue until the whole roadmap is finished (repeated by Thuekx
+  2026-11-23 22:39 WIB: never stop while the roadmap is unfinished unless waiting on an action from Thuekx).
 - **Stay working** (stay-working): while a harness, build, mutation run or CI wait is running, stay in the turn and
   wait in the foreground (at most ~10 min per wait call, checklist updated between waits). Never end the turn with a
   job left running in the background — an idle thread looks stopped.
