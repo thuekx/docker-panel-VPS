@@ -37,6 +37,7 @@ type Security struct {
 	Scan        Scan        `json:"scan"`
 	WAF         WAF         `json:"waf"`
 	WAFReady    bool        `json:"waf_ready"`
+	Allowed     []string    `json:"allowed"` // SITE-03: only these reach the website (empty = everyone)
 }
 
 // WAFEvent is one rule the firewall matched on a visit (SEC-01 wave 3b).
@@ -135,6 +136,9 @@ type SecurityChange struct {
 	// optimize-set (PHP-01)
 	Compress bool `json:"compress,omitempty"`
 	Days     int  `json:"days,omitempty"`
+	// header-set | header-remove (SITE-03)
+	Name  string `json:"name,omitempty"`
+	Value string `json:"value,omitempty"`
 }
 
 // Security returns a website's edge rules.

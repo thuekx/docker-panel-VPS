@@ -460,3 +460,4 @@ button.copied{white-space:nowrap;background:rgba(var(--ok-rgb),.18);border-color
 .copy-note{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(var(--ok-rgb),.16);color:var(--ok-ink,var(--ok));opacity:0;transition:opacity .3s}
 .copy-note.on{opacity:1}
 .copy-note.bad{background:rgba(255,107,122,.16);color:var(--err-ink,var(--bad))}
+code.wrap{white-space:pre-wrap;word-break:break-all}
