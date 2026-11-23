@@ -29,6 +29,9 @@ type Redirect struct {
 	From string `json:"from"` // a path on the website, e.g. /old-page
 	To   string `json:"to"`   // an http(s) address, or a path on the website
 	Code int    `json:"code"` // 301 (permanent) | 302 (temporary)
+	// Prefix (SITE-03): the path and everything below it go to the target with the rest of the path kept,
+	// e.g. /kb/x -> https://kb.example/x for From /kb and To https://kb.example.
+	Prefix bool `json:"prefix,omitempty"`
 }
 
 var (
@@ -69,15 +72,28 @@ func checkRedirect(r Redirect) error {
 	if r.Code != 301 && r.Code != 302 {
 		return fmt.Errorf("%w: a redirect is 301 (permanent) or 302 (temporary)", ErrBadInput)
 	}
+	if r.Prefix {
+		if strings.ContainsAny(to, "?#") {
+			return fmt.Errorf("%w: a redirect of a whole folder keeps the rest of the path and the query; its target has no ? or #", ErrBadInput)
+		}
+		if strings.TrimRight(r.From, "/") == "" {
+			return fmt.Errorf("%w: the whole website cannot be redirected as a folder; give it another name instead", ErrBadInput)
+		}
+		if p := strings.TrimRight(r.From, "/"); strings.HasPrefix(to, "/") && (to == p || strings.HasPrefix(to, p+"/")) {
+			return fmt.Errorf("%w: a folder cannot redirect into itself", ErrBadInput)
+		}
+	}
 	return nil
 }
 
-// redirectRegex matches one path (with or without a closing slash, any query) on any host; no backslash, so it
+// redirRegex matches one path (with or without a closing slash, any query) on any host; no backslash, so it
 // sits as is in a compose label and in a YAML string. end is the end-of-line anchor ("$$" in compose).
-func redirectRegex(from, end string) string {
+// A folder redirect also matches every path below it and keeps
+// that rest of the path as ${1} and the query as ${2}.
+func redirRegex(r Redirect, end string) string {
 	var b strings.Builder
 	b.WriteString("^https?://[^/]+")
-	p := strings.TrimRight(from, "/")
+	p := strings.TrimRight(r.From, "/")
 	for _, c := range p {
 		if c == '.' {
 			b.WriteString("[.]")
@@ -85,7 +101,11 @@ func redirectRegex(from, end string) string {
 			b.WriteRune(c)
 		}
 	}
-	b.WriteString("/?([?].*)?" + end)
+	if r.Prefix {
+		b.WriteString("(/[^?]*)?([?].*)?" + end)
+	} else {
+		b.WriteString("/?([?].*)?" + end)
+	}
 	return b.String()
 }
 
@@ -95,6 +115,9 @@ func (s Site) redirectTarget(r Redirect, dollar string) string {
 	t := r.To
 	if strings.HasPrefix(t, "/") {
 		t = "https://" + s.Canonical() + t
+	}
+	if r.Prefix {
+		return strings.TrimRight(t, "/") + dollar + "{1}" + dollar + "{2}"
 	}
 	if !strings.ContainsAny(t, "?#") {
 		t += dollar + "{1}"
@@ -244,6 +267,8 @@ type DomainChange struct {
 	From string `json:"from,omitempty"`
 	To   string `json:"to,omitempty"`
 	Code int    `json:"code,omitempty"`
+	// Prefix: redirect-add of a whole folder (SITE-03)
+	Prefix bool `json:"prefix,omitempty"`
 }
 
 // ErrNoChange is returned when a change leaves the website as it is (for example no new name points here yet).
@@ -309,7 +334,7 @@ func (m *Manager) nextDomains(ctx context.Context, s Site, c DomainChange) (Site
 			}
 		}
 	case "redirect-add":
-		r := Redirect{From: strings.TrimSpace(c.From), To: strings.TrimSpace(c.To), Code: c.Code}
+		r := Redirect{From: strings.TrimSpace(c.From), To: strings.TrimSpace(c.To), Code: c.Code, Prefix: c.Prefix}
 		if err := checkRedirect(r); err != nil {
 			return s, err
 		}

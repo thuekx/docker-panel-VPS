@@ -176,7 +176,7 @@ func (s Site) labels() []string {
 	redirs := s.redirectMiddlewares()
 	for i, r := range s.Redirects {
 		l = append(l,
-			fmt.Sprintf(`traefik.http.middlewares.%s.redirectregex.regex: "%s"`, redirs[i], redirectRegex(r.From, "$$")),
+			fmt.Sprintf(`traefik.http.middlewares.%s.redirectregex.regex: "%s"`, redirs[i], redirRegex(r, "$$")),
 			fmt.Sprintf(`traefik.http.middlewares.%s.redirectregex.replacement: "%s"`, redirs[i], s.redirectTarget(r, "$$")),
 			fmt.Sprintf(`traefik.http.middlewares.%s.redirectregex.permanent: "%t"`, redirs[i], r.Code == 301),
 		)
