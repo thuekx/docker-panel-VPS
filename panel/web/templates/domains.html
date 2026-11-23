@@ -59,7 +59,7 @@
   <p class="muted">{{t $l "dom.redir.help"}}</p>
   {{if $dm.Redirects}}<ul class="plain">{{range $dm.Redirects}}
     <li><form method="post" action="/domains/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redirect-remove"><input type="hidden" name="from" value="{{.From}}">
-      <span><code>{{.From}}</code> → <code>{{.To}}</code> <span class="pill s-unknown">{{.Code}}</span></span>
+      <span><code>{{.From}}</code> → <code>{{.To}}</code> <span class="pill s-unknown">{{.Code}}</span>{{if .Prefix}} <span class="pill s-info">{{t $l "dom.redir.prefix.pill"}}</span>{{end}}</span>
       <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "dom.remove"}}</button></form></li>{{end}}
   </ul>{{else}}<p class="muted">{{t $l "dom.redir.none"}}</p>{{end}}
   <form method="post" action="/domains/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redirect-add">
@@ -68,6 +68,7 @@
     <fieldset class="opts"><legend>{{t $l "dom.redir.code"}}</legend>
       <label class="check"><input type="radio" name="code" value="301" checked> {{t $l "dom.redir.301"}}</label>
       <label class="check"><input type="radio" name="code" value="302"> {{t $l "dom.redir.302"}}</label></fieldset>
+    <label class="check"><input type="checkbox" name="prefix" value="1"> {{t $l "dom.redir.prefix"}}</label>
     <button class="secondary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "dom.redir.go"}}</button>
   </form>
 </article>

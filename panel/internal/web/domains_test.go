@@ -113,6 +113,7 @@ func TestDomainsPage(t *testing.T) {
 		{url.Values{"op": {"refresh"}}, "#job"},
 		{url.Values{"op": {"redirect-add"}, "from": {"/a"}, "to": {""}, "code": {"301"}}, "err="},
 		{url.Values{"op": {"redirect-add"}, "from": {"/a"}, "to": {"https://example.com/"}, "code": {"302"}}, "#job"},
+		{url.Values{"op": {"redirect-add"}, "from": {"/kb"}, "to": {"https://kb.example.com"}, "code": {"301"}, "prefix": {"1"}}, "#job"},
 		{url.Values{"op": {"redirect-remove"}, "from": {"/old-page"}}, "#job"},
 	} {
 		if code, _, h := e.post(e.c, "/domains/voltix-id", c.form, "/domains/voltix-id"); code != 303 || !strings.Contains(h.Get("Location"), c.loc) {
@@ -127,12 +128,14 @@ func TestDomainsPage(t *testing.T) {
 		t.Errorf("odd op: %d", code)
 	}
 	want := []string{`{"op":"add","name":"shop.voltix.id"}`, `{"op":"add","name":"bad"}`, `{"op":"remove","name":"shop.voltix.id"}`, `{"op":"refresh"}`,
-		`{"op":"redirect-add","from":"/a","to":"https://example.com/","code":302}`, `{"op":"redirect-remove","from":"/old-page"}`, `{"op":"refresh"}`}
+		`{"op":"redirect-add","from":"/a","to":"https://example.com/","code":302}`,
+		`{"op":"redirect-add","from":"/kb","to":"https://kb.example.com","code":301,"prefix":true}`, `{"op":"redirect-remove","from":"/old-page"}`, `{"op":"refresh"}`}
 	if strings.Join(f.domCalls, "\n") != strings.Join(want, "\n") {
 		t.Errorf("calls:\n%s", strings.Join(f.domCalls, "\n"))
 	}
 	_, audit, _ := e.get(e.c, "/audit")
-	if !strings.Contains(audit, "voltix-id add shop.voltix.id") || !strings.Contains(audit, "redirect-add /a to https://example.com/ (302)") {
+	if !strings.Contains(audit, "voltix-id add shop.voltix.id") || !strings.Contains(audit, "redirect-add /a to https://example.com/ (302)") ||
+		!strings.Contains(audit, "redirect-add /kb to https://kb.example.com (301) folder") {
 		t.Error("audit lacks the domain changes")
 	}
 }

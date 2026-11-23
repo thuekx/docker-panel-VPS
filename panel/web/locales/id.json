@@ -871,6 +871,8 @@
   "dom.redir.code": "Jenis",
   "dom.redir.301": "301 permanen (mesin pencari pindah ke alamat baru)",
   "dom.redir.302": "302 sementara",
+  "dom.redir.prefix": "Seluruh folder: /lama/a/b dikirim ke tempat yang sama di bawah tujuan (untuk memindahkan satu bagian seperti /kb/ ke nama lain)",
+  "dom.redir.prefix.pill": "folder",
   "dom.redir.go": "Tambah redirect",
   "dom.name.need": "Isi nama yang mau ditambahkan.",
   "dom.confirm.need": "Centang yakin untuk menghapus nama.",

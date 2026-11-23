@@ -871,6 +871,8 @@
   "dom.redir.code": "Kind",
   "dom.redir.301": "301 permanent (search engines move to the new address)",
   "dom.redir.302": "302 temporary",
+  "dom.redir.prefix": "Whole folder: /old/a/b goes to the same place under the target (for moving a section such as /kb/ to another name)",
+  "dom.redir.prefix.pill": "folder",
   "dom.redir.go": "Add redirect",
   "dom.name.need": "Enter the name to add.",
   "dom.confirm.need": "Tick sure to remove the name.",

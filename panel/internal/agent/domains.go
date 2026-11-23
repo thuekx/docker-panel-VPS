@@ -9,6 +9,8 @@ type Redirect struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 	Code int    `json:"code"`
+	// Prefix: the whole folder moves; /old/a/b goes to <to>/a/b.
+	Prefix bool `json:"prefix,omitempty"`
 }
 
 // DomainCheck is one name of a website with what DNS and the edge say about it now. DNS: here | elsewhere | mixed
@@ -40,11 +42,12 @@ type Domains struct {
 
 // DomainChange is one change: op add | remove | refresh | redirect-add | redirect-remove.
 type DomainChange struct {
-	Op   string `json:"op"`
-	Name string `json:"name,omitempty"`
-	From string `json:"from,omitempty"`
-	To   string `json:"to,omitempty"`
-	Code int    `json:"code,omitempty"`
+	Op     string `json:"op"`
+	Name   string `json:"name,omitempty"`
+	From   string `json:"from,omitempty"`
+	To     string `json:"to,omitempty"`
+	Code   int    `json:"code,omitempty"`
+	Prefix bool   `json:"prefix,omitempty"`
 }
 
 // Domains checks every name of a website.
