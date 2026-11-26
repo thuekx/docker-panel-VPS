@@ -91,7 +91,7 @@ GO_MUTANTS=(
   'internal/sites/render.go|`, r.Image, wwwData, wwwData, indent(env, 6)|`, r.Image, 0, 0, indent(env, 6)'   # APP-03: a ready app runs as root
   'internal/sites/limits.go|			if n := ramFor(php.Memory, mem); n > mem {|			if n := ramFor(php.Memory, mem); false && n > mem {'   # RES-01: memory_limit raised past its container's memory
   'internal/sites/limits.go|		case v > cur.Standard && allowed(v, RAMChoices):|		case v > 0:'   # RES-01: memory set below the standard
-  'internal/sites/render.go|	return applyRAM(b.String(), s.RAM), nil|	return b.String(), nil'   # RES-01: raised memory never reaches the containers
+  'internal/sites/limits.go|if v, ok := ram[svc]; ok && v > std {|if v, ok := ram[svc]; false && ok && v > std {'   # RES-01: raised memory never reaches the containers
   'internal/sites/disk.go|func named(r imageRow, keep map[string]bool) bool {|func named(r imageRow, keep map[string]bool) bool {
 	return false'   # DISK-01: clean-up removes images websites name (WP-CLI, built images)
   'internal/sites/disk.go|	return strings.HasPrefix(r.Repository, "nostek/") |	return false && strings.HasPrefix(r.Repository, "nostek/") '   # DISK-01: clean-up removes the panel's own images (agent build, previous panel)
