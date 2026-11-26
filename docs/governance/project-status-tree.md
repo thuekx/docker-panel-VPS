@@ -48,7 +48,7 @@ Parked after AUTH-02 (RAYX-2, 2026-11-26):
 after AUTH-02
 ├── UPD-01 ✓ BUILT v1.38.0 2026-11-26
 ├── SRV-01 ✓ BUILT v1.39.0 2026-11-26
-├── SEC-02 ○
+├── SEC-02 ✓ BUILT v1.40.0 2026-11-26
 ├── BAK-03 ○
 ├── OPS-02 ○
 ├── REDIS-01 ○
