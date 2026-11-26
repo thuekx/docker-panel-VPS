@@ -44,6 +44,7 @@ choose its own stack.
 | 📊 **Statistics and cron** | Visitors, bandwidth, errors and the raw access log per website; cron jobs that run inside the website, never as root. |
 | 🔔 **Watchdog and alerts** | Unhealthy services restarted on their own; Telegram and e-mail alerts; login history; CPU and memory over time. |
 | 📦 **Static releases and headers** | Publish a static site from a .zip with three releases kept and one-press rollback; response headers per folder; folder redirects; allow-list; the visitor's address behind a proxy. |
+| 🧳 **Server backup** | One file with the panel and every website, sealed with a passphrase; the installer restores it on a new VPS (`--restore`). |
 | 🔑 **API keys** | A JSON API for scripts and CI: read status, restart, deploy from Git, publish a static release; keys with limited rights, one website, allowed addresses and expiry. |
 | 🕒 **Time zone aware** | Every time on screen shows its zone. |
 
@@ -73,8 +74,8 @@ On a fresh Ubuntu 22.04 or 24.04 server, with an A record from your panel name t
 ([full guide](docs/guides/install.md)):
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.32.0/packages/inst-01/nostek-install.sh
-echo "ddac324da913564c38ee1ff919c07214dc67f830da4dd714ed397dec37957b42  nostek-install.sh" | sha256sum -c -
+curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.34.0/packages/inst-01/nostek-install.sh
+echo "494267c2c0c2373bb44f12073d4a6d8421be6ebbc47a9aba2d148f7cbf57df82  nostek-install.sh" | sha256sum -c -
 sudo bash nostek-install.sh INSTALL --domain panel.example.com --timezone Asia/Jakarta
 ```
 

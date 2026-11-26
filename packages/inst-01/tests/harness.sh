@@ -97,6 +97,53 @@ new_env; touch "$FAKE/break_PANEL-01"; run INSTALL "${A[@]}" --yes; ok "panel fa
 run INSTALL "${A[@]}" --yes; ok "a failed install can run again" '[ $RC = 1 ] || true; rm -f "$FAKE/break_PANEL-01"; run INSTALL "${A[@]}" --yes; [ $RC = 0 ] && [ "$(phase)" = DONE ]'
 new_env; mkdir -p "$INST01_TEST_ROOT/var/lib/nostek/panel-01"; echo phase=APPLIED > "$INST01_TEST_ROOT/var/lib/nostek/panel-01/state"; run INSTALL "${A[@]}" --yes; ok "a server with the panel already is refused" '[ $RC = 1 ] && has "already installed here" && ! apt_ran'
 
+# ---------- RESTORE (BAK-02): v1.34.0 can restore a server backup ----------
+G checkout -q v1.32.1; echo 1.34.0 > "$REPO/VERSION"; G commit -qam v1.34.0; G tag v1.34.0; C134="$(G rev-parse HEAD)"
+PASSPHRASE="a long test passphrase"
+restore_env() { # a server backup, its passphrase file and a fake installed agent that records its calls
+  new_env
+  local r="$INST01_TEST_ROOT"
+  mkdir -p "$r/root" "$r/usr/local/sbin"
+  printf 'NPBK1\nsealed' > "$r/root/old.npbk"; printf '%s\n' "$PASSPHRASE" > "$r/root/pass"; chmod 600 "$r/root/pass"
+  printf 'SITE voltix-id voltix.id docker\nSERVER_BACKUP ok sites=1 panel=v1.34.0 host=old-vps made=2026-11-26_17:00_WIB\n' > "$FAKE/check_out"
+  cat > "$r/usr/local/sbin/nostek-agent" <<'AG'
+#!/usr/bin/env bash
+echo "nostek-agent $*" >> "$FAKE/argv.log"
+pf=""; while [ $# -gt 0 ]; do [ "$1" = --passphrase-file ] && pf="$2"; shift; done
+cat "$pf" > "$FAKE/agent_pass"
+case "$(grep -c . "$FAKE/argv.log" >/dev/null; tail -n1 "$FAKE/argv.log" | awk '{print $3}')" in
+  sites) [ -f "$FAKE/break_sites" ] && { echo "SITES refused: boom"; exit 1; }
+    echo "STEP website voltix-id: settings"; echo "SITE voltix-id restored"; echo "SITES restored=1 skipped=0 failed=0" ;;
+  panel) echo "PANEL restored" ;;
+esac
+AG
+  chmod 755 "$r/usr/local/sbin/nostek-agent"
+}
+RA=(--domain panel.example.test --yes --release v1.34.0 --restore /root/old.npbk --passphrase-file /root/pass)
+restore_env; run PREFLIGHT --domain panel.example.test --restore /root/old.npbk --passphrase-file /root/pass
+ok "restore preflight checks the file and the passphrase" '[ $RC = 0 ] && has "PASS server backup /root/old.npbk" && has "PASS passphrase file (22 characters)"'
+restore_env; printf 'PK\003\004zip' > "$INST01_TEST_ROOT/root/old.npbk"; run PREFLIGHT --domain panel.example.test --restore /root/old.npbk
+ok "a file that is not a server backup fails" '[ $RC = 1 ] && has "is not a Nostek server backup"'
+restore_env; echo short > "$INST01_TEST_ROOT/root/pass"; run PREFLIGHT --domain panel.example.test --restore /root/old.npbk --passphrase-file /root/pass
+ok "a short passphrase fails" '[ $RC = 1 ] && has "fewer than 12 characters"'
+restore_env; mkdir -p "$INST01_TEST_ROOT/srv/nostek/sites/old"; run PREFLIGHT --domain panel.example.test --restore /root/old.npbk
+ok "a server with websites is refused for a restore" '[ $RC = 1 ] && has "has websites already"'
+restore_env; run INSTALL --domain panel.example.test --yes --restore /root/none.npbk; ok "missing server backup refused" '[ $RC = 3 ] && has "no readable file /root/none.npbk"'
+restore_env; run INSTALL "${A[@]}" --yes --passphrase-file /root/pass; ok "--passphrase-file alone refused" '[ $RC = 3 ]'
+restore_env; run INSTALL --domain panel.example.test --yes --release v1.34.0 --restore /root/old.npbk; ok "no terminal and no passphrase file: refused before any change" '[ $RC = 3 ] && has "passphrase-file" && ! apt_ran'
+restore_env; run INSTALL --domain panel.example.test --yes --release v1.32.1 --restore /root/old.npbk --passphrase-file /root/pass
+ok "a release before v1.34.0 cannot restore, nothing changed" '[ $RC = 1 ] && has "cannot restore a server backup (needs v1.34.0" && ! apt_ran'
+restore_env; echo 1 > "$FAKE/check_rc"; echo "SERVER_BACKUP refused: wrong passphrase, or the file was changed" > "$FAKE/check_out"; run INSTALL "${RA[@]}"
+ok "wrong passphrase stops before the panel is installed" '[ $RC = 1 ] && has "server backup was refused" && has "check | SERVER_BACKUP refused: wrong passphrase" && [ "$(phase)" = BASE_DONE ] && [ ! -f "$FAKE/pkg.log" ]'
+rm -f "$FAKE/check_rc"; printf 'SITE voltix-id voltix.id docker\nSERVER_BACKUP ok sites=1 panel=v1.34.0 host=old-vps made=2026-11-26_17:00_WIB\n' > "$FAKE/check_out"; run INSTALL "${RA[@]}"
+ok "restore runs again after a refused check and passes" '[ $RC = 0 ] && has "RESULT INST-01 INSTALL PASS version=v1.34.0 restore=restored=1,skipped=0,failed=0" && [ "$(phase)" = DONE ]'
+ok "check ran in a container without network, passphrase mounted from a file" 'grep -q "^docker run --rm --network none .*/root/pass:/in/pass:ro nostek/agent-build:v1.34.0 server-restore check --file /in/backup.npbk --passphrase-file /in/pass$" "$FAKE/argv.log" && [ "$(cat "$FAKE/check_pass")" = "$PASSPHRASE" ]'
+ok "websites first, then the panel stopped, its database put back, started" 'L() { grep -n "$1" "$FAKE/argv.log" | head -1 | cut -d: -f1; }; [ "$(L "nostek-agent server-restore sites")" -lt "$(L "stop panel")" ] && [ "$(L "stop panel")" -lt "$(L "nostek-agent server-restore panel")" ] && [ "$(L "nostek-agent server-restore panel")" -lt "$(L "start panel")" ] && [ "$(cat "$FAKE/agent_pass")" = "$PASSPHRASE" ]'
+ok "panel and agent installed from v1.34.0, no admin link" 'grep -q "^panel-01-core.sh APPLY .*--src-commit $C134 --auto$" "$FAKE/pkg.log" && grep -q "^site-01-agent.sh APPLY" "$FAKE/pkg.log" && ! grep -q SETUP-LINK "$FAKE/pkg.log" && has "sign in as before" && ! has "create the first admin"'
+ok "the passphrase is in no command line and no log" '! grep -qF "$PASSPHRASE" "$FAKE/argv.log" "$INST01_TEST_ROOT/var/log/nostek-install.log" "$FAKE/pkg.log"'
+restore_env; touch "$FAKE/break_sites"; run INSTALL "${RA[@]}"
+ok "a failed website restore is FAIL, the panel database is left alone" '[ $RC = 1 ] && has "restoring the websites failed" && ! grep -q "server-restore panel" "$FAKE/argv.log" && [ "$(phase)" = RESTORING ]'
+
 rm -rf "$TMP_ALL"/t.*; LEFT="$(find "$TMP_ALL" -mindepth 1 -maxdepth 1 ! -name repo | wc -l)"
 if [ "$BAD" -eq 0 ]; then echo "RESULT INST-01 HARNESS PASS tests=$TESTS sisa_uji=$LEFT"; exit 0; fi
 echo "RESULT INST-01 HARNESS FAIL failed=$BAD/$TESTS sisa_uji=$LEFT"; exit 1

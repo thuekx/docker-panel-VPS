@@ -1,7 +1,7 @@
 # Server backup and move to a new server (BAK-02)
 
-Status: DESIGN, 2026-11-26. Roadmap slot 14b (RAYX-1 = A). Decision BAK-2 = A (one archive with the panel and
-every website).
+Status: BUILT v1.34.0, 2026-11-26. Roadmap slot 14b (RAYX-1 = A). Decision BAK-2 = A (one archive with the panel
+and every website). User guide: [docs/guides/server-backup.md](../guides/server-backup.md).
 
 ## Goal
 Move a whole Nostek Panel server to a new VPS with two steps: make one **server backup** in the panel and download
@@ -26,13 +26,24 @@ schedules) come back.
 
 ## Restore on a new server
 - `sudo bash nostek-install.sh INSTALL --domain panel.example.com --restore /root/nostek-server-….npbk`
-  (passphrase asked on the terminal, or `--passphrase-file`). The installer checks the archive (passphrase,
-  format, complete) **before** it changes anything, then installs as usual, then the agent restores:
-  1. stop the panel, put `panel.db` and `alerts.key` in place (owner 65532), start the panel;
-  2. for each website: unpack `site.tar` into `/srv/nostek/sites/<id>/`, start its stack (like a restore from the
-     trash), then restore `backup.tar.gz` with the BAK-01 restore (database and files);
-  3. a website that cannot come back (for example a native one when the native engine is not installed) is
-     reported and skipped; the others continue.
+  (passphrase asked on the terminal, or `--passphrase-file`). Needs release v1.34.0 or newer and a server without
+  websites.
+- Checks, in order: before any change, the file starts as a server backup and the passphrase has 12 characters or
+  more; after the server base (updates, Docker, firewall) and **before the panel is installed**, the agent of the
+  release (built in Docker, the image SITE-01 uses next) reads the whole file in a container without network:
+  passphrase, every chunk, every entry the manifest names. A wrong passphrase stops there and the same command can
+  run again. (A full check before the base would need the agent, which needs Docker; the base is harmless to
+  repeat.)
+- Then the panel and the agent are installed as usual and `nostek-agent server-restore` puts things back:
+  1. `sites`: for each website, `site.tar` becomes its folder (with empty `wp/` and `db/`), password files and SFTP
+     accounts come back, its images are built or pulled, the database container starts, and the BAK-01 restore
+     loads the database and switches in the files; the stack then starts. A name that exists already is skipped; a
+     failed website does not stop the others and its backup stays in `/srv/nostek/server-restore/<id>/`;
+  2. `panel`: the installer stops the panel, `panel.db` and `alerts.key` are put in place (uid 65532, 0600, old
+     SQLite side files removed), and the panel starts again; the agent restarts.
+- **Native websites are skipped** in this step and their BAK-01 backup is kept in `/srv/nostek/server-restore/<id>/`:
+  they need their Linux user, PHP-FPM pool and host database made first. The guide gives the manual steps (create
+  the website again with the same domain, put the backup in its backups folder, restore).
 - No admin setup link is printed: the admins of the old server sign in as before (two-step login included).
 - DNS still points to the old server until it is changed; the websites answer on the new one as soon as it does
   (certificates are issued then).

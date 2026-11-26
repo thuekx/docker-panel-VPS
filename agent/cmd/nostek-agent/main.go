@@ -100,6 +100,10 @@ func main() {
 		fmt.Println(Version)
 		return
 	}
+	// BAK-02: checking a server backup needs no configuration, so the installer can run it before anything is set up
+	if cmd == "server-restore" && len(os.Args) > 2 && os.Args[2] == "check" {
+		os.Exit(serverRestore(nil, os.Args[2:]))
+	}
 	cfg, err := loadConfig(cfgPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

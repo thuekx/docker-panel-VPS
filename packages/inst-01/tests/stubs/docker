@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 "$(dirname "$0")/_log" "$0" "$@"
 [ -f "$FAKE/docker_installed" ] || exit 127
-case "$1" in ps) cat "$FAKE/containers" 2>/dev/null ;; esac
+case "$1" in
+  ps) cat "$FAKE/containers" 2>/dev/null ;;
+  run) # BAK-02: the agent's check of a server backup; the passphrase file must be mounted, never passed
+    for a in "$@"; do case "$a" in *:/in/pass:ro) cp "${a%:/in/pass:ro}" "$FAKE/check_pass" 2>/dev/null ;; esac; done
+    cat "$FAKE/check_out" 2>/dev/null; exit "$(cat "$FAKE/check_rc" 2>/dev/null || echo 0)" ;;
+esac
 exit 0

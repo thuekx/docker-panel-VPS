@@ -5,17 +5,22 @@
 # fail2ban, firewall) and installs the panel (PANEL-01) and its agent (SITE-01) from one release. The release is
 # fetched by its commit id (git checks the content) and each install script must match the sha256 in the
 # release's own lock file. At the end it prints a one-time link to create the first admin.
+# With --restore FILE (BAK-02) it moves a server here instead: the server backup is checked (passphrase, every
+# part) after the base is set and before the panel is installed, then the websites and the panel's database come
+# back; the admins of the old server sign in as before, so no admin link is printed.
 # Modes: PREFLIGHT (read-only) | INSTALL
 # Usage: sudo bash nostek-install.sh INSTALL --domain panel.example.com [--preview-zone preview.example.com]
 #        [--timezone Area/City] [--release vX.Y.Z | --src-commit SHA] [--ip PUBLIC_IPV4] [--yes]
+#        [--restore /root/nostek-server-....npbk [--passphrase-file FILE]]
 # Backups (restic to S3) are set up afterwards; the dashboard says "No backup result yet" until then.
 # SSH is left as it is (user, port, keys); its port stays open in the firewall.
 # Licence: MIT
 set -u   # no pipefail: "cmd | grep -q" must not fail on SIGPIPE
 umask 022
 
-STEP="INST-01"; INSTALLER_VERSION="1"
+STEP="INST-01"; INSTALLER_VERSION="2"
 MIN_RELEASE="1.32.0"   # the first release whose PANEL-01 accepts this installer's baseline
+MIN_RESTORE="1.34.0"   # the first release that can restore a server backup (BAK-02)
 R="${INST01_TEST_ROOT:-}"
 VARLIB="$R/var/lib/nostek"
 STATE_DIR="$VARLIB/inst-01"
@@ -30,7 +35,7 @@ export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l
 APT_OPTS=(-q -y -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=300 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
 
 MODE="${1:-}"; shift || true
-DOMAIN=""; ZONE=""; TZONE=""; RELEASE=""; COMMIT=""; IP=""; YES=0
+DOMAIN=""; ZONE=""; TZONE=""; RELEASE=""; COMMIT=""; IP=""; YES=0; RESTORE=""; PASSF=""; PASS_TMP=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --domain) DOMAIN="${2:-}"; shift 2 ;;
@@ -40,7 +45,9 @@ while [ $# -gt 0 ]; do
     --src-commit) COMMIT="${2:-}"; shift 2 ;;
     --ip) IP="${2:-}"; shift 2 ;;
     --yes) YES=1; shift ;;
-    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --restore) RESTORE="${2:-}"; shift 2 ;;
+    --passphrase-file) PASSF="${2:-}"; shift 2 ;;
+    -h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "REFUSE unknown argument: $1"; exit 2 ;;
   esac
 done
@@ -80,6 +87,29 @@ check_invocation() {
   if [ -n "$RELEASE" ]; then [[ "$RELEASE" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || refuse "--release must look like v1.32.0"; fi
   if [ -n "$COMMIT" ]; then [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || refuse "--src-commit must be a full 40-character commit id"; fi
   if [ -n "$IP" ]; then [[ "$IP" =~ $IPRE ]] || refuse "--ip must be an IPv4 address"; fi
+  if [ -n "$PASSF" ] && [ -z "$RESTORE" ]; then refuse "--passphrase-file goes with --restore"; fi
+  if [ -n "$RESTORE" ]; then
+    [[ "$RESTORE" = /* ]] || RESTORE="$PWD/$RESTORE"
+    [ -f "$R$RESTORE" ] && [ -r "$R$RESTORE" ] || refuse "--restore: no readable file $RESTORE"
+    if [ -n "$PASSF" ]; then
+      [[ "$PASSF" = /* ]] || PASSF="$PWD/$PASSF"
+      [ -f "$R$PASSF" ] && [ -r "$R$PASSF" ] || refuse "--passphrase-file: no readable file $PASSF"
+      PASSF="$R$PASSF"
+    fi
+  fi
+}
+
+# The passphrase is read from its file or asked on the terminal (not shown) and kept in a private file that is
+# removed when the installer ends; it never goes on a command line or into the log.
+ask_passphrase() {
+  [ -z "$RESTORE" ] && return 0
+  [ -n "$PASSF" ] && return 0
+  { : < /dev/tty; } 2>/dev/null || refuse "no terminal to ask the passphrase: give it with --passphrase-file FILE"
+  local d a b; d="$(umask 077; mktemp -d)"; PASS_TMP="$d"; trap 'rm -rf "$PASS_TMP"' EXIT
+  printf 'Passphrase of the server backup: ' > /dev/tty; IFS= read -rs a < /dev/tty || a=""; printf '\n' > /dev/tty
+  printf 'Again: ' > /dev/tty; IFS= read -rs b < /dev/tty || b=""; printf '\n' > /dev/tty
+  [ -n "$a" ] && [ "$a" = "$b" ] || refuse "the two passphrases are not the same"
+  (umask 077; printf '%s' "$a" > "$d/pass"); PASSF="$d/pass"
 }
 
 # ---------- checks ----------
@@ -146,6 +176,15 @@ preflight() {
   elif [ "$p1" = APPLIED ]; then fail "the panel is already installed here (PANEL-01); nothing to do"
   else pass "no earlier panel install"; fi
   [ -n "$h2" ] && info "HOST-02 phase=$h2 (its baseline is kept)"
+  if [ -n "$RESTORE" ]; then
+    local magic n; magic="$(head -c 6 "$R$RESTORE" 2>/dev/null | tr -d '\n')"
+    if [ "$magic" = NPBK1 ]; then pass "server backup $RESTORE ($(du -h "$R$RESTORE" 2>/dev/null | cut -f1))"; else fail "$RESTORE is not a Nostek server backup (.npbk)"; fi
+    if [ -n "$PASSF" ]; then
+      n="$(LC_ALL=C.UTF-8 tr -d '\r\n' < "$PASSF" | wc -m)"
+      if [ "$n" -ge 12 ]; then pass "passphrase file ($n characters)"; else fail "the passphrase has fewer than 12 characters"; fi
+    fi
+    if [ -d "$R/srv/nostek/sites" ] && [ -n "$(ls -A "$R/srv/nostek/sites" 2>/dev/null)" ]; then fail "this server has websites already; a server backup is restored on a fresh server only"; fi
+  fi
   if command -v docker >/dev/null 2>&1 && [ -n "$(docker ps -q 2>/dev/null)" ]; then warn "containers already run here; they keep running, but only the panel's edge may publish ports 80/443"; fi
   return 0
 }
@@ -182,6 +221,7 @@ fetch_release() {
   ver_ge "$v" "$MIN_RELEASE" || { echo "FAIL v$v is older than v$MIN_RELEASE, the first release this installer can install"; return 1; }
   [ -z "$RELEASE" ] && RELEASE="v$v"
   [ "$RELEASE" = "v$v" ] || { echo "FAIL tag $RELEASE holds version v$v"; return 1; }
+  if [ -n "$RESTORE" ]; then ver_ge "$v" "$MIN_RESTORE" || { echo "FAIL v$v cannot restore a server backup (needs v$MIN_RESTORE or newer)"; return 1; }; fi
   local pkg
   for pkg in panel-01 site-01; do
     [ -f "$dst/packages/$pkg/$pkg.lock" ] || { echo "FAIL $pkg has no lock file"; return 1; }
@@ -277,13 +317,45 @@ confirm() {
   echo "SUMMARY time zone:     ${TZONE:-keep $(timedatectl show -p Timezone --value 2>/dev/null)}"
   echo "SUMMARY release:       ${RELEASE:-newest} ${COMMIT:+($COMMIT)}"
   echo "SUMMARY firewall:      SSH ($SSHP) 80, 443 open; everything else closed"
+  [ -n "$RESTORE" ] && echo "SUMMARY restore:       $RESTORE (panel and websites of the old server)"
   echo "SUMMARY ========================================"
   local a=""
   if [ -r /dev/tty ]; then printf 'Type yes to install: ' > /dev/tty; read -r a < /dev/tty || a=""; fi
   [ "$a" = yes ] || refuse "not confirmed (type yes, or add --yes)"
 }
 
+# ---------- restore (BAK-02) ----------
+# The agent of this release is built (the same image SITE-01 uses later) and checks the whole file in a container
+# without network: passphrase, every part, the manifest. Only the base is set at this point; nothing of the panel.
+check_backup() {
+  local tag="nostek/agent-build:$RELEASE" out rc
+  if [ "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$tag" 2>/dev/null)" != "$COMMIT" ]; then
+    info "building the agent $RELEASE to check the server backup (a few minutes)"
+    docker build -q --build-arg "VERSION=$RELEASE" --build-arg "REVISION=$COMMIT" -t "$tag" "$SRC/agent" >/dev/null || { echo "FAIL cannot build the agent"; return 1; }
+  fi
+  out="$(docker run --rm --network none -v "$R$RESTORE:/in/backup.npbk:ro" -v "$PASSF:/in/pass:ro" "$tag" server-restore check --file /in/backup.npbk --passphrase-file /in/pass 2>&1)"; rc=$?
+  printf '%s\n' "$out" | sed 's/^/  check | /'
+  [ "$rc" = 0 ] && printf '%s\n' "$out" | grep -q '^SERVER_BACKUP ok ' || return 1
+  pass "server backup checked: $(printf '%s\n' "$out" | sed -n 's/^SERVER_BACKUP ok //p')"
+}
+core() { docker compose --project-directory "$R/srv/nostek/core" -f "$R/srv/nostek/core/compose.yml" --env-file "$R/srv/nostek/core/.env" "$@"; }
+restore_all() {
+  local na="$R/usr/local/sbin/nostek-agent" out rc
+  out="$("$na" server-restore sites --file "$R$RESTORE" --passphrase-file "$PASSF" 2>&1)"; rc=$?
+  printf '%s\n' "$out" | sed 's/^/  restore | /'
+  case "$rc" in 0) ;; 3) warn "some websites did not come back (lines above); their backups are kept" ;; *) die "restoring the websites failed (lines above)" ;; esac
+  SITES_LINE="$(printf '%s\n' "$out" | sed -n 's/^SITES //p' | tail -n1)"
+  core stop panel >/dev/null 2>&1 || die "cannot stop the panel to put its database back"
+  out="$("$na" server-restore panel --file "$R$RESTORE" --passphrase-file "$PASSF" 2>&1)"; rc=$?
+  printf '%s\n' "$out" | sed 's/^/  restore | /'
+  [ "$rc" = 0 ] || { core start panel >/dev/null 2>&1; die "putting the panel's database back failed (lines above); the panel runs with an empty database"; }
+  core start panel >/dev/null 2>&1 || die "the panel does not start on its restored database"
+  systemctl restart nostek-agent >/dev/null 2>&1 || warn "restart the agent: systemctl restart nostek-agent"
+  pass "panel database, admins and settings restored"
+}
+
 install_all() {
+  ask_passphrase
   preflight
   [ "$FAILS" = 0 ] || die "checks failed ($FAILS); fix them and run again"
   confirm
@@ -291,6 +363,10 @@ install_all() {
   progress I1/5 "release"; resolve_release || die "cannot find the release"; fetch_release || die "release check failed"
   state_set release "$RELEASE"; state_set commit "$COMMIT"
   progress I2/5 "server baseline"; baseline
+  if [ -n "$RESTORE" ]; then
+    progress I2b/5 "check the server backup"
+    check_backup || die "the server backup was refused (wrong passphrase, or the file is damaged or incomplete); nothing of the panel is installed yet, so run again with the right file and passphrase"
+  fi
   local out
   progress I3/5 "panel (PANEL-01, builds the panel image: 5-10 minutes)"
   out="$(run_pkg panel-01 panel-01-core.sh APPLY --ack PANEL-01 --expect-ip "$IP" --expect-host "$HOST" --domain "$DOMAIN" --src-commit "$COMMIT")"
@@ -300,6 +376,20 @@ install_all() {
   out="$(run_pkg site-01 site-01-agent.sh APPLY --ack SITE-01 --expect-ip "$IP" --expect-host "$HOST" --domain "$DOMAIN" --preview-zone "$ZONE" --src-commit "$COMMIT")"
   printf '%s\n' "$out" | sed 's/^/  site-01 | /'
   printf '%s\n' "$out" | grep -q '^RESULT SITE-01 APPLY PASS' || die "agent install failed (lines above)"
+  if [ -n "$RESTORE" ]; then
+    progress I5/5 "restore websites and panel"
+    state_set phase RESTORING
+    restore_all
+    state_set phase DONE; state_set restored "$(date +%s)"
+    echo "SUMMARY ===== Nostek Panel $RELEASE: server restored ====="
+    echo "SUMMARY panel: https://$DOMAIN (the admins of the old server sign in as before, two-step login included)"
+    echo "SUMMARY websites: ${SITES_LINE:-none}"
+    echo "SUMMARY point each website's DNS to $IP; its certificate is issued when it does"
+    echo "SUMMARY backups are not set up yet: see docs/guides/install.md"
+    echo "SUMMARY ==============================================="
+    echo "RESULT $STEP INSTALL PASS version=$RELEASE restore=${SITES_LINE// /,}"
+    exit 0
+  fi
   progress I5/5 "first admin"
   out="$(run_pkg panel-01 panel-01-core.sh SETUP-LINK --ack PANEL-01 --expect-ip "$IP" --expect-host "$HOST" --domain "$DOMAIN")"
   local link; link="$(printf '%s\n' "$out" | sed -n 's/^SETUP_LINK //p' | head -n1)"

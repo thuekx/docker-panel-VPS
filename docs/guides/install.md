@@ -18,8 +18,8 @@ fail2ban, firewall), the panel and its agent. At the end it prints a one-time li
 ## Install
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.32.0/packages/inst-01/nostek-install.sh
-echo "ddac324da913564c38ee1ff919c07214dc67f830da4dd714ed397dec37957b42  nostek-install.sh" | sha256sum -c -
+curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.34.0/packages/inst-01/nostek-install.sh
+echo "494267c2c0c2373bb44f12073d4a6d8421be6ebbc47a9aba2d148f7cbf57df82  nostek-install.sh" | sha256sum -c -
 sudo bash nostek-install.sh PREFLIGHT --domain panel.example.com
 sudo bash nostek-install.sh INSTALL --domain panel.example.com --timezone Asia/Jakarta
 ```
@@ -65,3 +65,8 @@ release. The installer itself is checked by the `sha256sum -c` line above.
 
 If a step fails, the output says which one; fix the cause and run `INSTALL` again. A finished install refuses to
 run twice.
+
+## Moving a server here
+
+`--restore FILE` installs this server from a server backup of another Nostek Panel (v1.34.0 or newer): the panel,
+its admins and every website come back. See [server-backup.md](server-backup.md).

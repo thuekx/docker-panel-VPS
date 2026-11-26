@@ -3,6 +3,19 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.34.0] — 2026-11-26
+
+### Added
+- **Server backup** (BAK-02): Settings → Server backup makes one file with the panel (admins, two-step login,
+  settings, alerts, API keys) and every website (files, database, settings, domains, security, SFTP accounts),
+  sealed with a passphrase that is never stored (AES-256-GCM in 64 KiB parts, key from PBKDF2-SHA256). The websites
+  keep running; the newest 3 files are kept, each can be downloaded or deleted. Making one also asks for the account
+  password.
+- **Move to a new server**: `nostek-install.sh INSTALL --restore FILE` on a fresh VPS checks the whole file before the
+  panel is installed, then brings back the websites and the panel's database; the old admins sign in as before.
+  Native websites come back as a backup to restore by hand. Guide:
+  [docs/guides/server-backup.md](docs/guides/server-backup.md).
+
 ## [1.33.0] — 2026-11-26
 
 ### Added
