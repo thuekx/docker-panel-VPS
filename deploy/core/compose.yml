@@ -71,9 +71,19 @@ services:
       - --certificatesResolvers.le.acme.storage=/acme/acme.json
       - --certificatesResolvers.le.acme.caServer=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
       - --certificatesResolvers.le.acme.httpChallenge.entryPoint=web
+      # CERT-01: wildcard certificates (zone + *.zone) through the DNS challenge at ClouDNS. The agent writes the
+      # API sub-user to <data>/edge/dns (files readable by this user only) and restarts the edge; without them
+      # only this resolver fails, Let's Encrypt over HTTP goes on.
+      - --certificatesResolvers.dns.acme.storage=/acme/acme-dns.json
+      - --certificatesResolvers.dns.acme.caServer=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
+      - --certificatesResolvers.dns.acme.dnsChallenge.provider=cloudns
+    environment:
+      CLOUDNS_SUB_AUTH_ID_FILE: /dns/cloudns.sub-auth-id
+      CLOUDNS_AUTH_PASSWORD_FILE: /dns/cloudns.password
     volumes:
       - ${NOSTEK_DATA:-/srv/nostek}/edge/acme:/acme
       - ${NOSTEK_DATA:-/srv/nostek}/edge/dynamic:/dynamic:ro
+      - ${NOSTEK_DATA:-/srv/nostek}/edge/dns:/dns:ro
       - ${NOSTEK_DATA:-/srv/nostek}/edge/logs:/logs
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping", "--ping.entryPoint=ping", "--entryPoints.ping.address=:8082"]
