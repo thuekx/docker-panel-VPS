@@ -3,8 +3,8 @@
   <span class="sw-txt"><b>{{t .L (printf "wp.set.%s" .K)}}</b><span class="muted">{{t .L (printf "wp.set.%s.help" .K)}}</span></span></form>{{end}}
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$w := $d.WP}}{{$csrf := .CSRF}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "wp.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "wp.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{if $d.OutputErr}}<p class="err" role="alert" data-anim="shake">{{$d.OutputErr}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "wp")}}
 <section class="card wide tone c-teal wp-head" data-anim="card">

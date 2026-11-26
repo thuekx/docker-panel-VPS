@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "bak.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "bak.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "backup")}}
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
@@ -16,7 +16,7 @@
     </li>{{end}}
   </ol>
   {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "bak.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if eq $j.State "done"}}<p class="banner ok">{{if eq $j.Kind "restore"}}{{t $l "bak.job.restored" $d.Result}}{{else}}{{t $l "bak.job.made" $d.Result}}{{end}}</p>{{end}}
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{if eq $j.Kind "restore"}}{{t $l "bak.job.restored" $d.Result}}{{else}}{{t $l "bak.job.made" $d.Result}}{{end}}</p>{{end}}
   {{if $j.Error}}<p class="banner warn">{{t $l (printf "bak.job.fail.%s" $j.Kind)}}</p>
   <details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
 </section>

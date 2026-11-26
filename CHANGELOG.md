@@ -15,6 +15,9 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 - **Response headers** per website and per folder on the Performance page (Content-Security-Policy,
   Strict-Transport-Security, Cache-Control `immutable` for a folder of hashed files …); an empty value removes a
   header. A folder's own header wins over the browser cache days and over the same header for the whole website.
+- **Result toasts**: the result of a save, delete or other action also shows as a small note at the bottom right
+  (✅ done, ⚠️ failed) for 5 seconds (an error 9 seconds; kept while the pointer is on it), with a close button, so
+  it is seen without scrolling back up. The banner at the top of the page stays.
 - **Allow only these addresses** on the Security page: when the list holds an address, everyone else gets 403 (for
   a website that only a proxy or CDN in front may reach, or one for a few offices).
 - **The visitor's address behind a proxy in front**: `panel-01-core.sh UPDATE --trusted-proxies LIST` makes the

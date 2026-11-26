@@ -82,12 +82,20 @@ So:
 - The panel itself keeps reading the right-most entry (the edge's own), so its sign-in limits never trust a header.
 - The allow-list stays on `ClientIP` on purpose (see above).
 
+## Result toasts (panel, all pages)
+- Asked for before merging v1.31.0: the result banner at the top of a page (saved, deleted, restarted, an error) is not
+  seen once the page is scrolled down. Each result banner (`data-toast`) is also shown as a toast at the bottom right:
+  ✅ with a green edge for done, ⚠️ amber or red for a warning or error, the banner's own text, a close button.
+- It leaves after 5 seconds (an error after 9), waits while the pointer or the keyboard focus is on it, stacks (at
+  most 3), and slides in only without reduced motion. The banner at the top stays and is the one screen readers
+  announce, so the toast box has no live region. Without JavaScript nothing changes.
+
 ## Tests
 - Agent: `release_test.go` (refused zips, top folder stripped, error pages kept, keep 3, rollback, removed release
   refused, 0600 history, only static websites), `headers_test.go` (validation, labels and native YAML, order,
   allow-list router, removal leaves nothing, `X-Forwarded-For` patterns hold to the right-most entry), folder
   redirect tests in `domains_test.go`, API route tests.
-- Panel: Releases card and upload (token first, only .zip, path stripped from a Windows file name), rollback, audit;
+- Panel: `toast_test.go` (toast box and close label in both languages, result banners marked, none without a result); Releases card and upload (token first, only .zip, path stripped from a Windows file name), rollback, audit;
   folder redirect checkbox; headers card (value not in the audit log); allow-list form; WAF client address behind a
   trusted proxy.
 - Harness with the real edge: `domains.sh` (folder redirect through Traefik), `security.sh` (releases through the edge,

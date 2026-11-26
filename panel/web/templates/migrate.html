@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "mig.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "mig.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "migrate")}}
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
@@ -17,7 +17,7 @@
     </li>{{end}}
   </ol>{{end}}
   {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "mig.job.wait"}} <b data-progress>{{$j.Progress}}</b> <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if eq $j.State "done"}}<p class="banner ok">{{t $l "mig.job.done"}}</p>
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l "mig.job.done"}}</p>
   <p class="mono">{{$d.Result}}</p>
   <p class="row"><a class="primary btn" href="{{$s.URL}}" target="_blank" rel="noopener">{{t $l "mig.open"}}</a><a class="secondary btn" href="/wp/{{$s.ID}}">WordPress</a><a class="ghost btn" href="/domains/{{$s.ID}}">{{t $l "mig.domains"}}</a></p>
   <p class="muted">{{t $l "mig.job.next"}}</p>{{end}}

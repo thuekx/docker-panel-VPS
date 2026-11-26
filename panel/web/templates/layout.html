@@ -11,7 +11,8 @@
 <script src="/static/vendor/anime.umd.min.js" defer></script>
 <script src="/static/js/app.js" defer></script>
 </head>
-<body class="{{if .Active}}shell{{else}}auth{{end}}" data-copied="{{t .Lang "reveal.copied"}}" data-copyfail="{{t .Lang "reveal.copyfail"}}">
+<body class="{{if .Active}}shell{{else}}auth{{end}}" data-copied="{{t .Lang "reveal.copied"}}" data-copyfail="{{t .Lang "reveal.copyfail"}}" data-toastclose="{{t .Lang "toast.close"}}">
+<div class="toasts" id="toasts"></div>
 <div class="bg-grid" aria-hidden="true"></div>
 <div class="bg-glow" aria-hidden="true"></div>
 <div class="bg-glow two" aria-hidden="true"></div>

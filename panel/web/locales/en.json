@@ -889,6 +889,7 @@
   "dom.step.now.addresses": "Moving WordPress addresses",
   "dom.step.check": "Website checked",
   "dom.step.now.check": "Checking the website",
+  "toast.close": "Close",
   "reveal.copied": "Copied",
   "reveal.copyfail": "Copy failed: the text is selected, press Ctrl+C",
   "sec.tab": "Security",

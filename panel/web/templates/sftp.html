@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "sftp.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "sftp.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "sftp")}}
 <section class="card wide tone c-teal" data-anim="card">
   <h2><span class="h-ico" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "sftp.title"}}</h2>

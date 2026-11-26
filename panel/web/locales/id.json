@@ -889,6 +889,7 @@
   "dom.step.now.addresses": "Memindahkan alamat WordPress",
   "dom.step.check": "Website diperiksa",
   "dom.step.now.check": "Memeriksa website",
+  "toast.close": "Tutup",
   "reveal.copied": "Tersalin",
   "reveal.copyfail": "Gagal menyalin: teks sudah dipilih, tekan Ctrl+C",
   "sec.tab": "Keamanan",
