@@ -35,7 +35,8 @@ type DNSConfig struct {
 	SubAuthID  string   `json:"sub_auth_id,omitempty"`
 	Configured bool     `json:"configured"`
 	Since      int64    `json:"since,omitempty"`
-	Sites      []string `json:"sites,omitempty"` // websites with a wildcard
+	Sites      []string `json:"sites,omitempty"`      // websites with a wildcard
+	EdgeError  string   `json:"edge_error,omitempty"` // the last edge restart failed with this
 }
 
 func (m *Manager) dnsDir() string      { return filepath.Join(m.cfg.Data, "edge", "dns") }
@@ -103,7 +104,7 @@ func (m *Manager) cloudnsCall(ctx context.Context, path, id, pass string, extra 
 }
 
 // SetDNS checks a ClouDNS API sub-user and gives it to the edge; the edge is restarted (a few seconds) so it reads
-// the new files.
+// the new files. The restart comes a moment after the answer: the panel's own page goes through the edge.
 func (m *Manager) SetDNS(ctx context.Context, id, pass string) error {
 	id = strings.TrimSpace(id)
 	if !subAuthRe.MatchString(id) {
@@ -130,16 +131,26 @@ func (m *Manager) SetDNS(ctx context.Context, id, pass string) error {
 			return err
 		}
 	}
-	return m.restartEdge(ctx)
+	m.restartEdgeSoon()
+	return nil
 }
 
-func (m *Manager) restartEdge(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-	if out, err := m.run.Docker(ctx, m.cfg.Data, nil, "restart", edgeContainer); err != nil {
-		return fmt.Errorf("the edge did not restart: %s", tail(out))
-	}
-	return nil
+// edgeDelay is how long the edge restart waits for the answer to reach the browser.
+var edgeDelay = 2 * time.Second
+
+func (m *Manager) restartEdgeSoon() {
+	go func() {
+		time.Sleep(edgeDelay)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		msg := ""
+		if out, err := m.run.Docker(ctx, m.cfg.Data, nil, "restart", edgeContainer); err != nil {
+			msg = "the edge did not restart: " + tail(out)
+		}
+		m.edgeMu.Lock()
+		m.edgeErr = msg
+		m.edgeMu.Unlock()
+	}()
 }
 
 // RemoveDNS takes the sub-user away again; refused while a website uses a wildcard.
@@ -163,7 +174,8 @@ func (m *Manager) RemoveDNS(ctx context.Context) error {
 			return err
 		}
 	}
-	return m.restartEdge(ctx)
+	m.restartEdgeSoon()
+	return nil
 }
 
 // WildcardZones are the zones a website may take a wildcard of: its main name and the names above it (at least

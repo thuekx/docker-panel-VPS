@@ -99,6 +99,8 @@ type Manager struct {
 	certRoots *x509.CertPool
 	// cloudnsURL points ClouDNS calls at a test server (CERT-01; "" = the real API)
 	cloudnsURL string
+	edgeMu     sync.Mutex
+	edgeErr    string // CERT-01: the last edge restart's failure ("" = fine)
 	// APP-02c: deploys asked by a webhook while another job runs wait here, one per website
 	hookMu    sync.Mutex
 	hookWait  map[string]bool

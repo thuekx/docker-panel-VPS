@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // fakeClouDNS answers login and get-zone-info like ClouDNS: one sub-user (42 / its password) and the zones it may use.
@@ -70,13 +71,29 @@ func TestDNSProviderAndWildcard(t *testing.T) {
 	if c, _ := m.DNS(); c.Configured {
 		t.Fatal("a refused sub-user was kept")
 	}
-	n := len(f.calls)
+	edgeDelay = 0
 	if err := m.SetDNS(ctx, " 42 ", "s3cret-Pass"); err != nil {
 		t.Fatal(err)
 	}
-	if j := strings.Join(f.calls[len(f.calls)-1], " "); len(f.calls) != n+1 || j != "restart "+edgeContainer {
-		t.Fatalf("edge restart: %v", f.calls[n:])
+	waitRestart := func(want int) {
+		t.Helper()
+		for i := 0; i < 200; i++ {
+			f.mu.Lock()
+			n := 0
+			for _, c := range f.calls {
+				if strings.Join(c, " ") == "restart "+edgeContainer {
+					n++
+				}
+			}
+			f.mu.Unlock()
+			if n == want {
+				return
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		t.Fatalf("the edge was not restarted %d times", want)
 	}
+	waitRestart(1)
 	for _, p := range []string{m.dnsIDFile(), m.dnsPassFile()} {
 		if fi, err := os.Stat(p); err != nil || fi.Mode().Perm() != 0o600 {
 			t.Fatalf("%s: %v %v", p, fi, err)
@@ -155,6 +172,7 @@ func TestDNSProviderAndWildcard(t *testing.T) {
 	if err := m.RemoveDNS(ctx); err != nil {
 		t.Fatal(err)
 	}
+	waitRestart(2)
 	if _, err := os.Stat(m.dnsPassFile()); err == nil {
 		t.Fatal("password file left")
 	}
