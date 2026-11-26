@@ -3,6 +3,21 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.36.0] — 2026-11-26
+
+### Added
+- **Check, repair and optimize tables** (DB-02): the Database page runs `CHECK`, `REPAIR` or `OPTIMIZE TABLE` on the
+  ticked tables or all of them, and shows the database's own answer per table. For PostgreSQL, Optimize runs
+  `VACUUM (ANALYZE)`.
+- **Database access from outside**, off by default: per website, a list of up to 20 IP addresses or networks. The
+  agent listens on the website's own port (MariaDB from 33061, PostgreSQL from 54321) and closes any other address
+  before reading a byte. Only TLS connections are let through. ufw gets one rule per address. Nothing is published
+  through Docker, so the port is closed whenever the agent is not running. Guide:
+  [docs/guides/database-access.md](docs/guides/database-access.md).
+
+### Changed
+- UI texts no longer address the reader informally.
+
 ## [1.35.0] — 2026-11-26
 
 ### Added

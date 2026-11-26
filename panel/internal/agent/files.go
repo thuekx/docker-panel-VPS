@@ -210,3 +210,56 @@ func (c *Client) Import(ctx context.Context, id string, body io.Reader) (string,
 	}
 	return v.Backup, json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&v)
 }
+
+// TableResult is the database's answer for one table (DB-02).
+type TableResult struct {
+	Table string `json:"table"`
+	Type  string `json:"type"`
+	Text  string `json:"text"`
+}
+
+// TableAnswer is one check, repair or optimize run.
+type TableAnswer struct {
+	Op      string        `json:"op"`
+	OK      bool          `json:"ok"`
+	Results []TableResult `json:"results"`
+	Millis  int64         `json:"ms"`
+}
+
+// Tables runs check, repair or optimize on tables of the website's database (none = all).
+func (c *Client) Tables(ctx context.Context, id, op string, tables []string) (TableAnswer, error) {
+	var v TableAnswer
+	return v, c.call(ctx, "POST", site(id)+"/db/tables", map[string]any{"op": op, "tables": tables}, &v)
+}
+
+// RemoteDB is a website's database access from outside (DB-02).
+type RemoteDB struct {
+	On      bool     `json:"on"`
+	Engine  string   `json:"engine"`
+	Host    string   `json:"host"`
+	Port    int      `json:"port"`
+	Allow   []string `json:"allow"`
+	User    string   `json:"user"`
+	DB      string   `json:"db"`
+	TLS     string   `json:"tls"`
+	Refused int64    `json:"refused"`
+	Plain   int64    `json:"plain"`
+	Open    bool     `json:"open"`
+}
+
+// RemoteDB returns a website's database access from outside.
+func (c *Client) RemoteDB(ctx context.Context, id string) (RemoteDB, error) {
+	var v RemoteDB
+	return v, c.call(ctx, "GET", site(id)+"/db/remote", nil, &v)
+}
+
+// SetRemoteDB sets the address list (empty = off); it returns the job id.
+func (c *Client) SetRemoteDB(ctx context.Context, id string, allow []string) (string, error) {
+	var v struct {
+		Job string `json:"job"`
+	}
+	if allow == nil {
+		allow = []string{}
+	}
+	return v.Job, c.call(ctx, "POST", site(id)+"/db/remote", map[string]any{"allow": allow}, &v)
+}

@@ -38,7 +38,7 @@ Nostek Panel
         ├── API-01 open API with API keys ................ ✓ BUILT v1.33.0 2026-11-26
         ├── BAK-02 panel backup + restore to new VPS ..... ✓ BUILT v1.34.0 2026-11-26
         ├── CERT-01 wildcard + own certificate ........... ✓ BUILT v1.35.0 2026-11-26
-        ├── DB-02 remote DB access per IP, table repair .. ○
+        ├── DB-02 remote DB access per IP, table repair .. ✓ BUILT v1.36.0 2026-11-26
         └── AUTH-02 passkey login ........................ ○
 ```
 

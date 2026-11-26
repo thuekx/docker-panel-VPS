@@ -101,6 +101,11 @@ type Manager struct {
 	cloudnsURL string
 	edgeMu     sync.Mutex
 	edgeErr    string // CERT-01: the last edge restart's failure ("" = fine)
+	// DB-02: database gates, the firewall tool (ufw), and test hooks (listen address, db container address)
+	gates       gates
+	fw          HostRunner
+	remoteAddr  string
+	dbTargetFor func(id string) (string, error)
 	// APP-02c: deploys asked by a webhook while another job runs wait here, one per website
 	hookMu    sync.Mutex
 	hookWait  map[string]bool
@@ -735,6 +740,7 @@ func (m *Manager) Delete(ctx context.Context, id string) (string, error) {
 	}
 	m.sftpToTrash(id, filepath.Join(m.trashDir(), entry)) // SFTP-01: the accounts go (and come back) with the website
 	m.dropEdgeCert(id)                                    // CERT-01: its own certificate stays in the trash entry
+	m.remoteDown(ctx, s)                                  // DB-02: the database port closes (back with a restore)
 	return entry, nil
 }
 
@@ -773,6 +779,7 @@ func (m *Manager) Restore(ctx context.Context, entry string) (string, error) {
 	if _, err := os.Stat(filepath.Join(m.certDir(id), "cert.pem")); err == nil {
 		_ = m.writeEdgeCert(id) // CERT-01
 	}
+	m.remoteUp(ctx, ts) // DB-02
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 	if ts.IsNative() {

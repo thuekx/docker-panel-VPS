@@ -67,6 +67,8 @@ type Site struct {
 	WAF *WAF `json:"waf,omitempty"`
 	// CERT-01: the DNS zone whose wildcard certificate (zone + *.zone, DNS challenge) covers the website's names in it
 	Wildcard string `json:"wildcard,omitempty"`
+	// DB-02: the database's access from outside (nil = off)
+	Remote *RemoteDB `json:"remote_db,omitempty"`
 	// PHP-01: the PHP version before the last change (the way back)
 	PrevPHP string `json:"prev_php,omitempty"`
 	// PHP-01: compression and browser cache at the edge (nil = off)
@@ -295,9 +297,9 @@ secrets:
       POSTGRES_USER: %s
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
     secrets: [db_password]
-    volumes:
+%s    volumes:
       - ./db:/var/lib/postgresql
-    healthcheck:
+%s    healthcheck:
       test: ["CMD-SHELL", "pg_isready -q -h 127.0.0.1 -U %s -d %s"]
       interval: 10s
       timeout: 5s
@@ -305,7 +307,7 @@ secrets:
       start_period: 20s
     networks: [back]
 
-`, catalog.Postgres, s.DBName(), s.DBName(), s.DBName(), s.DBName())
+`, catalog.Postgres, s.DBName(), s.DBName(), s.pgTLSCommand(), s.pgTLSVolume(), s.DBName(), s.DBName())
 	} else if s.HasDB() {
 		fmt.Fprintf(&b, `  db:
     <<: *site
@@ -875,4 +877,20 @@ func (s Site) wildcardOn() bool {
 		}
 	}
 	return false
+}
+
+// pgTLSCommand and pgTLSVolume turn TLS on in PostgreSQL while its access from outside is on (DB-02); the gate lets
+// only TLS visitors through, the website's own containers keep connecting as before.
+func (s Site) pgTLSCommand() string {
+	if s.Remote == nil {
+		return ""
+	}
+	return "    command: [\"postgres\", \"-c\", \"ssl=on\", \"-c\", \"ssl_cert_file=/tls/server.crt\", \"-c\", \"ssl_key_file=/tls/server.key\"]\n"
+}
+
+func (s Site) pgTLSVolume() string {
+	if s.Remote == nil {
+		return ""
+	}
+	return "      - ./db-tls:/tls:ro\n"
 }

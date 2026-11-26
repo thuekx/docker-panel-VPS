@@ -469,15 +469,20 @@ func (s *Server) filesEdit(w http.ResponseWriter, r *http.Request) {
 // ---------- database
 
 type dbData struct {
-	Site     agent.Site
-	DB       agent.DB
-	Err      string
-	SQL      string
-	Answer   *agent.QueryAnswer
-	QueryErr string
-	Size     string
-	Backups  []dumpRow
-	Tables   []tableRow
+	Site      agent.Site
+	DB        agent.DB
+	Err       string
+	SQL       string
+	Answer    *agent.QueryAnswer
+	QueryErr  string
+	Size      string
+	Backups   []dumpRow
+	Tables    []tableRow
+	TableRun  *agent.TableAnswer // DB-02: the last check, repair or optimize
+	TableErr  string
+	Remote    *agent.RemoteDB // DB-02: access from outside (nil = not offered)
+	RemoteJob *agent.Job
+	AllowText string
 }
 
 type tableRow struct {
@@ -508,6 +513,17 @@ func (s *Server) renderDB(w http.ResponseWriter, r *http.Request, site agent.Sit
 	}
 	d.DB = db
 	d.Size = size(db.Size)
+	if !site.IsNative() {
+		if rv, err := s.ag.RemoteDB(ctx, site.ID); err == nil {
+			d.Remote = &rv
+			d.AllowText = strings.Join(rv.Allow, "\n")
+		}
+		if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
+			if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && j.Kind == "remote-db" {
+				d.RemoteJob = &j
+			}
+		}
+	}
 	for _, t := range db.Tables {
 		d.Tables = append(d.Tables, tableRow{t, size(t.Data), size(t.Index)})
 	}
@@ -549,6 +565,66 @@ func (s *Server) dbAction(w http.ResponseWriter, r *http.Request) {
 			s.audit1(userOf(r), r, "db.query", fmt.Sprintf("%s %s (%d chars)", site.ID, kind, len(sql)))
 		}
 		s.renderDB(w, r, site, d, code)
+	case "check", "repair", "optimize":
+		// DB-02: the whole database, or the tables ticked in the list
+		op := r.PostForm.Get("op")
+		tables := r.PostForm["table"]
+		if len(tables) > 1000 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		ctx, cancel := s.agentCtx(r, 6*time.Minute)
+		defer cancel()
+		long(w, 7*time.Minute)
+		a, err := s.ag.Tables(ctx, site.ID, op, tables)
+		what := "all tables"
+		if len(tables) > 0 {
+			what = fmt.Sprintf("%d tables", len(tables))
+		}
+		d := dbData{}
+		code := http.StatusOK
+		switch {
+		case err != nil:
+			d.TableErr = err.Error()
+			code = http.StatusUnprocessableEntity
+			s.audit1(userOf(r), r, "db.tables", fmt.Sprintf("%s %s %s failed: %s", site.ID, op, what, err.Error()))
+		default:
+			d.TableRun = &a
+			res := "ok"
+			if !a.OK {
+				res = "errors reported"
+			}
+			s.audit1(userOf(r), r, "db.tables", fmt.Sprintf("%s %s %s: %s", site.ID, op, what, res))
+		}
+		s.renderDB(w, r, site, d, code)
+	case "remote":
+		// DB-02: the address list, one per line or separated by commas; empty (or op off) turns access off
+		var allow []string
+		if r.PostForm.Get("off") != "1" {
+			for _, a := range splitRe.Split(r.PostForm.Get("allow"), -1) {
+				if a != "" {
+					allow = append(allow, a)
+				}
+			}
+		}
+		if len(allow) > 50 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		ctx, cancel := s.agentCtx(r, 30*time.Second)
+		defer cancel()
+		job, err := s.ag.SetRemoteDB(ctx, site.ID, allow)
+		detail := site.ID + " off"
+		if len(allow) > 0 {
+			detail = site.ID + " allow " + strings.Join(allow, ",")
+		}
+		if err != nil {
+			s.audit1(userOf(r), r, "db.remote", detail+" refused: "+err.Error())
+			http.Redirect(w, r, "/db/"+site.ID+"?err="+url.QueryEscape(err.Error())+"#remote", http.StatusSeeOther)
+			return
+		}
+		s.audit1(userOf(r), r, "db.remote", detail)
+		http.Redirect(w, r, "/db/"+site.ID+"?job="+job+"#remote", http.StatusSeeOther)
 	case "export":
 		long(w, 2*time.Hour)
 		ctx, cancel := s.agentCtx(r, 2*time.Hour)

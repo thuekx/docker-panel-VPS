@@ -45,6 +45,7 @@ choose its own stack.
 | 🔔 **Watchdog and alerts** | Unhealthy services restarted on their own; Telegram and e-mail alerts; login history; CPU and memory over time. |
 | 📦 **Static releases and headers** | Publish a static site from a .zip with three releases kept and one-press rollback; response headers per folder; folder redirects; allow-list; the visitor's address behind a proxy. |
 | 🔐 **Certificates** | Free Let's Encrypt per name by itself, an own certificate per website (for example a Cloudflare origin certificate), and wildcard certificates through ClouDNS. |
+| 🗄️ **Database from outside** | Off by default: per website a list of IP addresses, TLS only, its own port; check, repair and optimize tables. |
 | 🧳 **Server backup** | One file with the panel and every website, sealed with a passphrase; the installer restores it on a new VPS (`--restore`). |
 | 🔑 **API keys** | A JSON API for scripts and CI: read status, restart, deploy from Git, publish a static release; keys with limited rights, one website, allowed addresses and expiry. |
 | 🕒 **Time zone aware** | Every time on screen shows its zone. |

@@ -78,6 +78,36 @@ func (f *fakeAgent) filesDB(w http.ResponseWriter, r *http.Request, write func(i
 		}
 		v, nul := "<script>alert(1)</script>", (*string)(nil)
 		write(200, agent.QueryAnswer{Millis: 7, Results: []agent.Result{{Statement: "SELECT 1", Columns: []string{"option_name", "option_value"}, Rows: [][]*string{{&v, nul}}}}})
+	case p == "/db/remote" && r.Method == "GET":
+		write(200, f.remote)
+	case p == "/db/remote":
+		var body struct{ Allow []string }
+		json.NewDecoder(r.Body).Decode(&body)
+		f.remoteSet = append(f.remoteSet, strings.Join(body.Allow, ","))
+		for _, a := range body.Allow {
+			if a == "0.0.0.0/0" {
+				write(400, map[string]string{"error": "bad input: 0.0.0.0/0 is too wide; list your own addresses"})
+				return
+			}
+		}
+		f.remote = agent.RemoteDB{Engine: "mariadb", Host: "203.0.113.10", User: "wordpress", DB: "wordpress", Allow: []string{}}
+		if len(body.Allow) > 0 {
+			f.remote.On, f.remote.Open, f.remote.Port, f.remote.Allow = true, true, 33061, body.Allow
+		}
+		write(202, map[string]string{"job": "jrdb0000000000001"})
+	case p == "/db/tables":
+		var body struct {
+			Op     string
+			Tables []string
+		}
+		json.NewDecoder(r.Body).Decode(&body)
+		f.sqls = append(f.sqls, body.Op+" "+strings.Join(body.Tables, ","))
+		if body.Op == "repair" {
+			write(409, map[string]string{"error": "another change runs on this server, try again in a moment"})
+			return
+		}
+		write(200, agent.TableAnswer{Op: body.Op, OK: false, Millis: 12, Results: []agent.TableResult{
+			{Table: "wp_options", Type: "status", Text: "OK"}, {Table: "wp_posts", Type: "error", Text: "<b>Table is marked as crashed</b>"}}})
 	case p == "/db/export":
 		w.Header().Set("Content-Type", "application/gzip")
 		w.Header().Set("Content-Disposition", `attachment; filename="voltix-id-20261112-140000.sql.gz"`)
@@ -274,6 +304,49 @@ func TestDatabasePage(t *testing.T) {
 	code, body, _ = e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"query"}, "sql": {"SELEC x"}}, page)
 	if code != 422 || !strings.Contains(body, "ERROR 1064") || !strings.Contains(body, "SELEC x") {
 		t.Fatalf("query error: %d", code)
+	}
+	// DB-02: check and repair tables
+	code, body, _ = e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"check"}, "table": {"wp_options", "wp_posts"}}, page)
+	if code != 200 || !strings.Contains(body, "Table check result") || !strings.Contains(body, "&lt;b&gt;Table is marked as crashed") || !strings.Contains(body, "A table reported an error") {
+		t.Fatalf("check: %d", code)
+	}
+	if last := f.sqls[len(f.sqls)-1]; last != "check wp_options,wp_posts" {
+		t.Fatalf("check call %q", last)
+	}
+	if code, body, _ = e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"repair"}}, page); code != 422 || !strings.Contains(body, "another change runs") {
+		t.Fatalf("repair refused: %d", code)
+	}
+	for _, lang := range []string{"id", "en"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		_, pg, _ := e.get(e.c, "/db/voltix-id")
+		if code, body, _ := e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"optimize"}}, pg); code != 200 || missingKey.MatchString(body) || strings.Contains(body, "%!") || missingKey.MatchString(pg) {
+			t.Errorf("optimize (%s): %d %v", lang, code, missingKey.FindString(body+pg))
+		}
+	}
+	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+	// DB-02: access from outside
+	f.remote = agent.RemoteDB{Engine: "mariadb", Host: "203.0.113.10", User: "wordpress", DB: "wordpress", Allow: []string{}}
+	if _, pg, _ := e.get(e.c, "/db/voltix-id"); !strings.Contains(pg, "Turn access from outside on") || strings.Contains(pg, "mariadb -h") {
+		t.Fatal("remote card while off")
+	}
+	if code, _, h := e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"remote"}, "allow": {"0.0.0.0/0"}}, page); code != 303 || !strings.Contains(h.Get("Location"), "too+wide") {
+		t.Fatalf("everyone: %d %s", code, h.Get("Location"))
+	}
+	if code, _, h := e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"remote"}, "allow": {"203.0.113.7\n198.51.100.0/24, "}}, page); code != 303 || h.Get("Location") != "/db/voltix-id?job=jrdb0000000000001#remote" {
+		t.Fatalf("on: %d %s", code, h.Get("Location"))
+	}
+	if last := f.remoteSet[len(f.remoteSet)-1]; last != "203.0.113.7,198.51.100.0/24" {
+		t.Fatalf("list %q", last)
+	}
+	for _, lang := range []string{"id", "en"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		if code, pg, _ := e.get(e.c, "/db/voltix-id"); code != 200 || missingKey.MatchString(pg) || strings.Contains(pg, "%!") || !strings.Contains(pg, "mariadb -h 203.0.113.10 -P 33061 -u wordpress -p wordpress") {
+			t.Errorf("remote on (%s): %d %v", lang, code, missingKey.FindString(pg))
+		}
+	}
+	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+	if code, _, _ := e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"remote"}, "off": {"1"}, "allow": {"203.0.113.7"}}, page); code != 303 || f.remoteSet[len(f.remoteSet)-1] != "" {
+		t.Fatalf("off: %d %q", code, f.remoteSet)
 	}
 	resp, err := e.c.PostForm(e.ts.URL+"/db/voltix-id", url.Values{"op": {"export"}, "csrf": {csrfRe.FindStringSubmatch(page)[1]}})
 	if err != nil {
