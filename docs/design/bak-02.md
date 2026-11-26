@@ -1,7 +1,7 @@
 # Server backup and move to a new server (BAK-02)
 
-Status: DESIGN, 2026-11-26. Roadmap slot 14b (RAYX-1 = A). Built on the recommended option of the scope question
-(one archive with the panel and every website; the answer is recorded as BAK-2 when it lands).
+Status: DESIGN, 2026-11-26. Roadmap slot 14b (RAYX-1 = A). Decision BAK-2 = A (one archive with the panel and
+every website).
 
 ## Goal
 Move a whole Nostek Panel server to a new VPS with two steps: make one **server backup** in the panel and download
