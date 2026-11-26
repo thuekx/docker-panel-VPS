@@ -3,6 +3,18 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.42.0] — 2026-11-27
+
+### Added
+- **System page** (OPS-02): Settings → System.
+  - **Core services**: the edge, the WAF, SFTP, the Docker socket proxy and the panel, plus Docker, the agent,
+    fail2ban and (native) Nginx and MariaDB, each with its state and a **Restart** button (Docker: from SSH only).
+  - **Processes**: the 15 busiest by CPU and by memory, each with the website container or service it belongs to
+    (names only, never the command line).
+  - **Managed files**: each website's `compose.yml`, `php.ini` and web server settings compared with what the panel
+    would write, with a short diff and **Write back**. When the website does not start with it, the old files come
+    back. Guide: [docs/guides/system.md](docs/guides/system.md).
+
 ## [1.41.0] — 2026-11-27
 
 ### Added

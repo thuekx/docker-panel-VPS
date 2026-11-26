@@ -142,6 +142,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/server-backups/{name}", s.serverBackupGet)
 	mux.HandleFunc("POST /v1/server-backups/{name}/delete", s.serverBackupDelete)
 	mux.HandleFunc("POST /v1/server-backups/{name}/send", s.serverBackupSend) // BAK-03
+	mux.HandleFunc("GET /v1/server/services", s.coreServices) // OPS-02
+	mux.HandleFunc("POST /v1/server/services/{name}/restart", s.coreRestart)
+	mux.HandleFunc("GET /v1/server/processes", s.processes)
+	mux.HandleFunc("GET /v1/server/drift", s.drift)
+	mux.HandleFunc("POST /v1/sites/{id}/drift/fix", s.driftFix)
 	mux.HandleFunc("GET /v1/backup-plan", s.backupPlan)
 	mux.HandleFunc("POST /v1/backup-plan/schedule", s.serverBackupSchedule)
 	mux.HandleFunc("POST /v1/backup-plan/run", s.backupRun)
