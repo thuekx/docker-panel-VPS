@@ -123,6 +123,8 @@ type Manager struct {
 	watchOnce sync.Once
 	usage     *usageState
 	usageOnce sync.Once
+	upd     *updater // UPD-01
+	updOnce sync.Once
 	// NATIVE-01: the native engine (nil native = not installed on this server)
 	native     *NativeConfig
 	host       HostRunner

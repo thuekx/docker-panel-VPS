@@ -178,13 +178,9 @@ func (m *Manager) StartServerBackup(pass, panelVersion, agentVersion string) (st
 	if len(pass) > 1024 {
 		return "", fmt.Errorf("%w: the passphrase is too long", ErrBadInput)
 	}
-	cp := filepath.Join(m.panelDir(), PanelCopy)
-	fi, err := os.Lstat(cp)
-	if err != nil || !fi.Mode().IsRegular() || m.now().Sub(fi.ModTime()) > panelCopyAge {
-		return "", fmt.Errorf("%w: the panel's copy of its database is missing", ErrBadInput)
-	}
-	if free, need := freeBytes(m.cfg.Data), m.serverNeed()+fi.Size(); free >= 0 && free < need {
-		return "", fmt.Errorf("%w: not enough free disk space for a server backup (%d MB free, about %d MB needed)", ErrBadInput, free>>20, need>>20)
+	cp, err := m.serverBackupReady()
+	if err != nil {
+		return "", err
 	}
 	if !m.mu.TryLock() {
 		return "", ErrBusy
@@ -204,6 +200,19 @@ func (m *Manager) StartServerBackup(pass, panelVersion, agentVersion string) (st
 		j.Done("")
 	}()
 	return j.ID, nil
+}
+
+// serverBackupReady checks the panel's database copy and the free space; it returns the copy's path.
+func (m *Manager) serverBackupReady() (string, error) {
+	cp := filepath.Join(m.panelDir(), PanelCopy)
+	fi, err := os.Lstat(cp)
+	if err != nil || !fi.Mode().IsRegular() || m.now().Sub(fi.ModTime()) > panelCopyAge {
+		return "", fmt.Errorf("%w: the panel's copy of its database is missing", ErrBadInput)
+	}
+	if free, need := freeBytes(m.cfg.Data), m.serverNeed()+fi.Size(); free >= 0 && free < need {
+		return "", fmt.Errorf("%w: not enough free disk space for a server backup (%d MB free, about %d MB needed)", ErrBadInput, free>>20, need>>20)
+	}
+	return cp, nil
 }
 
 // tarFile adds one regular file from disk.
