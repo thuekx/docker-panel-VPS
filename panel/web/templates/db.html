@@ -32,6 +32,30 @@
   <ul class="plain">{{range $d.Backups}}<li><a href="/db/{{$s.ID}}/backups/{{.Name}}">{{.When}}</a> <span class="muted">{{.Human}}</span></li>{{end}}</ul>{{end}}
 </article>
 </section>
+{{with $d.Remote}}{{$r := .}}<section class="card wide tone c-teal" data-anim="card" id="remote">
+  <h2>{{t $l "rdb.title"}} {{if $r.On}}<span class="pill s-ok">{{t $l "alert.on"}}</span>{{else}}<span class="pill s-unknown">{{t $l "rdb.off"}}</span>{{end}}</h2>
+  {{with $d.RemoteJob}}{{if eq .State "running"}}<noscript><meta http-equiv="refresh" content="3"></noscript><p class="banner" data-job="/sites/job/{{.ID}}/status" data-job-reload>{{t $l "rdb.running"}}</p>
+  {{else if eq .State "failed"}}<p class="banner warn">{{t $l "rdb.failed"}} <code>{{.Error}}</code></p>{{else}}<p data-toast class="banner ok">{{t $l "rdb.done"}}</p>{{end}}{{end}}
+  <p class="muted">{{t $l "rdb.help"}}</p>
+  {{if $r.On}}
+  <div class="table-wrap"><table><tbody>
+    <tr><th>{{t $l "rdb.host"}}</th><td><code>{{$r.Host}}</code></td></tr>
+    <tr><th>{{t $l "rdb.port"}}</th><td><code>{{$r.Port}}</code> {{if not $r.Open}}<span class="pill s-bad">{{t $l "rdb.closed"}}</span>{{end}}</td></tr>
+    <tr><th>{{t $l "db.user"}}</th><td><code>{{$r.User}}</code> <span class="muted">{{t $l "rdb.user.help"}}</span></td></tr>
+    <tr><th>{{t $l "db.name"}}</th><td><code>{{$r.DB}}</code></td></tr>
+    <tr><th>TLS</th><td>{{if eq $r.Engine "postgres"}}{{t $l "rdb.tls.pg"}}{{else}}{{t $l "rdb.tls.maria"}}{{end}}</td></tr>
+  </tbody></table></div>
+  <pre class="logs">{{if eq $r.Engine "postgres"}}psql "host={{$r.Host}} port={{$r.Port}} user={{$r.User}} dbname={{$r.DB}} sslmode=require"{{else}}mariadb -h {{$r.Host}} -P {{$r.Port}} -u {{$r.User}} -p --ssl {{$r.DB}}{{end}}</pre>
+  {{if or $r.Refused $r.Plain}}<p class="muted">{{t $l "rdb.counts" $r.Refused $r.Plain}}</p>{{end}}
+  <p class="banner warn">{{t $l "rdb.provider" $r.Port}}</p>
+  {{end}}
+  <form method="post" action="/db/{{$s.ID}}#remote" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="remote">
+    <label>{{t $l "rdb.allow"}}<textarea name="allow" rows="3" spellcheck="false" placeholder="203.0.113.7&#10;198.51.100.0/24">{{$d.AllowText}}</textarea></label>
+    <p class="muted small">{{t $l "rdb.allow.help"}}</p>
+    <div class="row"><button class="primary" type="submit" data-busy="{{t $l "tbl.busy"}}">{{if $r.On}}{{t $l "rdb.save"}}{{else}}{{t $l "rdb.on"}}{{end}}</button>
+    {{if $r.On}}<button class="ghost danger-text" type="submit" name="off" value="1" data-confirm="{{t $l "rdb.off.ask"}}">{{t $l "rdb.turnoff"}}</button>{{end}}</div>
+  </form>
+</section>{{end}}
 <section class="card wide tone c-amber" data-anim="card" id="sql">
   <h2>{{t $l "db.sql"}}</h2>
   <p class="banner warn">{{t $l "db.sql.warn"}}</p>

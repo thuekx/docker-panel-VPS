@@ -78,6 +78,23 @@ func (f *fakeAgent) filesDB(w http.ResponseWriter, r *http.Request, write func(i
 		}
 		v, nul := "<script>alert(1)</script>", (*string)(nil)
 		write(200, agent.QueryAnswer{Millis: 7, Results: []agent.Result{{Statement: "SELECT 1", Columns: []string{"option_name", "option_value"}, Rows: [][]*string{{&v, nul}}}}})
+	case p == "/db/remote" && r.Method == "GET":
+		write(200, f.remote)
+	case p == "/db/remote":
+		var body struct{ Allow []string }
+		json.NewDecoder(r.Body).Decode(&body)
+		f.remoteSet = append(f.remoteSet, strings.Join(body.Allow, ","))
+		for _, a := range body.Allow {
+			if a == "0.0.0.0/0" {
+				write(400, map[string]string{"error": "bad input: 0.0.0.0/0 is too wide; list your own addresses"})
+				return
+			}
+		}
+		f.remote = agent.RemoteDB{Engine: "mariadb", Host: "203.0.113.10", User: "wordpress", DB: "wordpress", Allow: []string{}}
+		if len(body.Allow) > 0 {
+			f.remote.On, f.remote.Open, f.remote.Port, f.remote.Allow = true, true, 33061, body.Allow
+		}
+		write(202, map[string]string{"job": "jrdb0000000000001"})
 	case p == "/db/tables":
 		var body struct {
 			Op     string
@@ -307,6 +324,30 @@ func TestDatabasePage(t *testing.T) {
 		}
 	}
 	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+	// DB-02: access from outside
+	f.remote = agent.RemoteDB{Engine: "mariadb", Host: "203.0.113.10", User: "wordpress", DB: "wordpress", Allow: []string{}}
+	if _, pg, _ := e.get(e.c, "/db/voltix-id"); !strings.Contains(pg, "Turn access from outside on") || strings.Contains(pg, "mariadb -h") {
+		t.Fatal("remote card while off")
+	}
+	if code, _, h := e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"remote"}, "allow": {"0.0.0.0/0"}}, page); code != 303 || !strings.Contains(h.Get("Location"), "too+wide") {
+		t.Fatalf("everyone: %d %s", code, h.Get("Location"))
+	}
+	if code, _, h := e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"remote"}, "allow": {"203.0.113.7\n198.51.100.0/24, "}}, page); code != 303 || h.Get("Location") != "/db/voltix-id?job=jrdb0000000000001#remote" {
+		t.Fatalf("on: %d %s", code, h.Get("Location"))
+	}
+	if last := f.remoteSet[len(f.remoteSet)-1]; last != "203.0.113.7,198.51.100.0/24" {
+		t.Fatalf("list %q", last)
+	}
+	for _, lang := range []string{"id", "en"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		if code, pg, _ := e.get(e.c, "/db/voltix-id"); code != 200 || missingKey.MatchString(pg) || strings.Contains(pg, "%!") || !strings.Contains(pg, "mariadb -h 203.0.113.10 -P 33061 -u wordpress -p --ssl wordpress") {
+			t.Errorf("remote on (%s): %d %v", lang, code, missingKey.FindString(pg))
+		}
+	}
+	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+	if code, _, _ := e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"remote"}, "off": {"1"}, "allow": {"203.0.113.7"}}, page); code != 303 || f.remoteSet[len(f.remoteSet)-1] != "" {
+		t.Fatalf("off: %d %q", code, f.remoteSet)
+	}
 	resp, err := e.c.PostForm(e.ts.URL+"/db/voltix-id", url.Values{"op": {"export"}, "csrf": {csrfRe.FindStringSubmatch(page)[1]}})
 	if err != nil {
 		t.Fatal(err)

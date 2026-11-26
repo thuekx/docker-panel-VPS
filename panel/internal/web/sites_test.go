@@ -24,6 +24,8 @@ type fakeAgent struct {
 	puts      []string // "path overwrite body" of every file write
 	ops       []string // file operations
 	sqls      []string
+	remote    agent.RemoteDB // DB-02
+	remoteSet []string
 	imported  string
 	wpCalls   []string // "path body" of every WordPress call
 	wpDown    bool

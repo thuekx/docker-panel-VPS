@@ -229,8 +229,9 @@ var jobKindSteps = map[string][]string{
 	"domains":       {"routes"}, // "addresses" and "check" run only when the main address moves
 	"security":      {"routes"},
 	"malware-scan":  {"signatures", "scan"},
-	"optimize":      {"routes"},                      // PHP-01; a PHP change takes its steps from the website (phpSteps)
-	"server-backup": {"panel", "websites", "finish"}, // BAK-02
+	"optimize":      {"routes"},                       // PHP-01; a PHP change takes its steps from the website (phpSteps)
+	"server-backup": {"panel", "websites", "finish"},  // BAK-02
+	"remote-db":     {"settings", "firewall", "gate"}, // DB-02
 }
 
 // createSteps is the order of the steps a create of this website runs, so the list is right from the first poll
