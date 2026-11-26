@@ -90,6 +90,9 @@ type fakeAgent struct {
 	redisCalls []string
 	ion        *agent.IonCubeView // PHP-02; nil = an agent without ionCube routes
 	ionCalls   []string
+	term       agent.TerminalView // TERM-01
+	termCalls  []string
+	termSeen   chan string   // what the fake session got: query, then each message
 	metrics    agent.Metrics // OPS-01
 	cron       agent.Cron
 	cronCalls  []string
@@ -99,6 +102,10 @@ type fakeAgent struct {
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/v1/sites/voltix-id/terminal/session" { // a long session must not hold the lock
+		f.termSession(w, r)
+		return
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
@@ -225,6 +232,17 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/metrics") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/cron") {
 		f.opsAPI(r, write)
+		return
+	}
+	if r.URL.Path == "/v1/sites/voltix-id/terminal" {
+		if r.Method == "POST" {
+			b, _ := io.ReadAll(r.Body)
+			f.termCalls = append(f.termCalls, strings.TrimSpace(string(b)))
+			f.term.On = strings.Contains(string(b), "true")
+			write(200, map[string]bool{"ok": true})
+			return
+		}
+		write(200, f.term)
 		return
 	}
 	if r.URL.Path == "/v1/sites/voltix-id/ioncube" {

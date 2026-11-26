@@ -75,6 +75,8 @@ type Site struct {
 	Redis *RedisConf `json:"redis,omitempty"`
 	// PHP-02: the ionCube Loader is loaded by the website's PHP
 	IonCube bool `json:"ioncube,omitempty"`
+	// TERM-01: the web terminal may open a shell in the website's container
+	Terminal bool `json:"terminal,omitempty"`
 	// PHP-01: the PHP version before the last change (the way back)
 	PrevPHP string `json:"prev_php,omitempty"`
 	// PHP-01: compression and browser cache at the edge (nil = off)

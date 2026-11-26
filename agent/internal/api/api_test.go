@@ -53,7 +53,7 @@ func serveM(t *testing.T, allowed map[int]bool) (*http.Client, string, *sites.Ma
 			return nil, errors.New("nx")
 		})
 	logPath := filepath.Join(dir, "audit.log")
-	s := &Server{M: m, Audit: audit.Open(logPath), Allowed: allowed, Version: "test"}
+	s := &Server{M: m, Audit: audit.Open(logPath), Allowed: allowed, Version: "test", TermIdle: testTermIdle}
 	sock := filepath.Join(dir, "a.sock")
 	ln, err := net.Listen("unix", sock)
 	if err != nil {

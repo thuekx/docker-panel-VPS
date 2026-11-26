@@ -3,6 +3,7 @@ module github.com/thuekx/docker-panel-VPS/panel
 go 1.26.0
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/corazawaf/coraza-coreruleset/v4 v4.25.0
 	github.com/corazawaf/coraza/v3 v3.8.1
 	github.com/pkg/sftp v1.13.12

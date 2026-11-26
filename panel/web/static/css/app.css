@@ -472,3 +472,6 @@ code.wrap{white-space:pre-wrap;word-break:break-all}
 @media print{.toasts{display:none}}
 /* UPD-01: release notes as text */
 pre.notes{white-space:pre-wrap;word-break:break-word;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;margin:8px 0 0;padding:12px;border-radius:12px;background:var(--field);max-height:360px;overflow:auto}
+/* TERM-01: web terminal */
+.term-card .term-box{height:min(70vh,560px);min-height:280px;padding:8px;border-radius:12px;background:#0b1416;border:1px solid var(--card-b);overflow:hidden}
+.term-card .term-box .xterm{height:100%}

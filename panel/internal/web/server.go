@@ -105,7 +105,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings", "update", "serversec", "quarantine", "system"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings", "update", "serversec", "quarantine", "system", "terminal"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -157,7 +157,8 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 				return m
 			},
 			"tabs": func(lang string, site agent.Site, current string) map[string]any {
-				return map[string]any{"L": lang, "S": site.ID, "P": current, "WP": site.IsWP(), "DB": site.HasDB()}
+				return map[string]any{"L": lang, "S": site.ID, "P": current, "WP": site.IsWP(), "DB": site.HasDB(),
+					"Term": !site.IsNative() && !site.IsStatic() && !site.IsReady()}
 			},
 			"dict3": func(lang, st, phase string) map[string]string {
 				return map[string]string{"L": lang, "S": st, "P": phase}
@@ -238,6 +239,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /sftp/{id}", s.need(true, s.sftpPage))
 	mux.HandleFunc("POST /sftp/{id}", s.need(true, s.sftpAction))
 	mux.HandleFunc("GET /perf/{id}", s.need(true, s.perfPage))
+	mux.HandleFunc("GET /terminal/{id}", s.need(true, s.termPage)) // TERM-01
+	mux.HandleFunc("POST /terminal/{id}", s.need(true, s.termAction))
+	mux.HandleFunc("GET /terminal/{id}/socket", s.need(true, s.termSocket))
 	mux.HandleFunc("POST /perf/{id}", s.need(true, s.perfAction))
 	mux.HandleFunc("GET /metrics/{id}", s.need(true, s.metricsPage))
 	mux.HandleFunc("GET /metrics/{id}/raw", s.need(true, s.metricsRaw))
@@ -512,6 +516,13 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	if p.CSRF == "" {
 		if sess := sessOf(r); sess != nil {
 			p.CSRF = sess.CSRF
+		}
+	}
+	if d, ok := p.Data.(termData); ok && name == "terminal" && d.V.On && d.V.Possible { // TERM-01: xterm.js adds <style>
+		var b [18]byte
+		if _, err := rand.Read(b[:]); err == nil {
+			p.Nonce = base64.RawURLEncoding.EncodeToString(b[:])
+			w.Header().Set("Content-Security-Policy", csp(p.Nonce))
 		}
 	}
 	if d, ok := p.Data.(editData); ok && name == "fileedit" && !d.TooBig && !d.Binary {

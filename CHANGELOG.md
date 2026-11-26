@@ -3,6 +3,17 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.46.0] — 2026-11-27
+
+### Added
+- **Web terminal per website** (TERM-01): Website → Terminal opens a shell inside the website's own container, in
+  the browser (xterm.js), as the user its files belong to and never root. Use it for Composer, WP-CLI, Artisan or
+  npm.
+  - **Off by default** for every website.
+  - At most 2 sessions per website. A session ends after 15 minutes idle or 2 hours.
+  - Every session is in the audit log (who, when, how long), never what is typed.
+  - Guide: [docs/guides/terminal.md](docs/guides/terminal.md).
+
 ## [1.45.0] — 2026-11-27
 
 ### Added
