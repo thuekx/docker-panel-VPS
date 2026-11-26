@@ -15,82 +15,84 @@ import (
 
 // fakeAgent answers like nostek-agent for the routes the panel uses.
 type fakeAgent struct {
-	mu        sync.Mutex
-	created   []agent.Create
-	secret    string
-	deleted   []string
-	actions   []string
-	stackDown bool
-	puts      []string // "path overwrite body" of every file write
-	ops       []string // file operations
-	sqls      []string
-	remote    agent.RemoteDB // DB-02
-	remoteSet []string
-	imported  string
-	wpCalls   []string // "path body" of every WordPress call
-	wpDown    bool
-	bakCalls  []string // "method path body" of every backup call
-	bakDown   bool
-	bakJob    agent.Job
-	sbkCalls  []string // BAK-02: "method path body" of every server backup call
-	sbkCopy   string   // BAK-02: where the panel writes its database copy
-	sbkSeen   []byte   // BAK-02: the start of that copy when the backup was asked
-	sbkJob    agent.Job
-	upd       agent.UpdateView // UPD-01
-	updCalls  []string         // POST bodies
-	updGets   []string
-	srv       agent.ServerSecurity // SRV-01
-	srvCalls  []string
-	qFiles    []agent.QFile    // SEC-02
-	plan      agent.BackupPlan // BAK-03
-	sysCalls  []string         // OPS-02
-	planCalls []string
-	qCalls    []string
-	cert      agent.CertInfo // CERT-01
-	certCalls []string
-	dns       agent.DNSConfig // CERT-01 wildcard: the ClouDNS sub-user
-	dnsCalls  []string
-	wcZones   []string // zones the fake site may take a wildcard of
-	wcOn      string
-	app       string // APP-01: app of the fake site (empty = WordPress)
-	appDB     bool
-	trash     []agent.Trashed
-	removed   []string
-	keys      int
-	repo      string // APP-02b: repository of the fake runtime site
-	dbEngine  string // APP-02b: engine of the fake site database
-	hookOn    bool   // APP-02c
-	hooks     []agent.Hook
-	hookCalls []string
-	imgOld    bool // IMG-01: the database runs an older image
-	imgCalls  int
-	limCalls  []string // RES-01: bodies of the limit changes
-	cleans    []string // DISK-01: clean-up bodies
-	diskPaths []string // DISK-01: drill-down paths asked
-	native    bool     // NATIVE-01: the server has the native engine
-	engine    string   // NATIVE-01: engine of the fake site
-	migCalls  []string // MIG-01: "method path body" of every migrate call
-	migJob    *agent.Job
-	domCalls  []string // DOM-01: bodies of the domain changes
-	domJob    *agent.Job
-	domSame   bool     // DOM-01: the next change changes nothing
-	secCalls  []string // SEC-01: bodies of the security changes
-	secJob    *agent.Job
-	secScan   agent.Scan   // SEC-01 wave 3
-	secLogins agent.Logins // SEC-01 wave 3
-	secWAF    agent.WAF    // SEC-01 wave 3b
-	secWAFOK  bool
-	sftp      agent.SFTP // SFTP-01
-	sftpCalls []string
-	perf      agent.Perf // PHP-01
-	perfCalls []string
-	perfJob   *agent.Job
-	metrics   agent.Metrics // OPS-01
-	cron      agent.Cron
-	cronCalls []string
-	watch     agent.WatchView // OPS-01 wave 2
-	watchAsk  []string
-	usage     agent.Usage
+	mu         sync.Mutex
+	created    []agent.Create
+	secret     string
+	deleted    []string
+	actions    []string
+	stackDown  bool
+	puts       []string // "path overwrite body" of every file write
+	ops        []string // file operations
+	sqls       []string
+	remote     agent.RemoteDB // DB-02
+	remoteSet  []string
+	imported   string
+	wpCalls    []string // "path body" of every WordPress call
+	wpDown     bool
+	bakCalls   []string // "method path body" of every backup call
+	bakDown    bool
+	bakJob     agent.Job
+	sbkCalls   []string // BAK-02: "method path body" of every server backup call
+	sbkCopy    string   // BAK-02: where the panel writes its database copy
+	sbkSeen    []byte   // BAK-02: the start of that copy when the backup was asked
+	sbkJob     agent.Job
+	upd        agent.UpdateView // UPD-01
+	updCalls   []string         // POST bodies
+	updGets    []string
+	srv        agent.ServerSecurity // SRV-01
+	srvCalls   []string
+	qFiles     []agent.QFile    // SEC-02
+	plan       agent.BackupPlan // BAK-03
+	sysCalls   []string         // OPS-02
+	planCalls  []string
+	qCalls     []string
+	cert       agent.CertInfo // CERT-01
+	certCalls  []string
+	dns        agent.DNSConfig // CERT-01 wildcard: the ClouDNS sub-user
+	dnsCalls   []string
+	wcZones    []string // zones the fake site may take a wildcard of
+	wcOn       string
+	app        string // APP-01: app of the fake site (empty = WordPress)
+	appDB      bool
+	trash      []agent.Trashed
+	removed    []string
+	keys       int
+	repo       string // APP-02b: repository of the fake runtime site
+	dbEngine   string // APP-02b: engine of the fake site database
+	hookOn     bool   // APP-02c
+	hooks      []agent.Hook
+	hookCalls  []string
+	imgOld     bool // IMG-01: the database runs an older image
+	imgCalls   int
+	limCalls   []string // RES-01: bodies of the limit changes
+	cleans     []string // DISK-01: clean-up bodies
+	diskPaths  []string // DISK-01: drill-down paths asked
+	native     bool     // NATIVE-01: the server has the native engine
+	engine     string   // NATIVE-01: engine of the fake site
+	migCalls   []string // MIG-01: "method path body" of every migrate call
+	migJob     *agent.Job
+	domCalls   []string // DOM-01: bodies of the domain changes
+	domJob     *agent.Job
+	domSame    bool     // DOM-01: the next change changes nothing
+	secCalls   []string // SEC-01: bodies of the security changes
+	secJob     *agent.Job
+	secScan    agent.Scan   // SEC-01 wave 3
+	secLogins  agent.Logins // SEC-01 wave 3
+	secWAF     agent.WAF    // SEC-01 wave 3b
+	secWAFOK   bool
+	sftp       agent.SFTP // SFTP-01
+	sftpCalls  []string
+	perf       agent.Perf // PHP-01
+	perfCalls  []string
+	perfJob    *agent.Job
+	redis      *agent.RedisView // REDIS-01; nil = an agent without Redis routes
+	redisCalls []string
+	metrics    agent.Metrics // OPS-01
+	cron       agent.Cron
+	cronCalls  []string
+	watch      agent.WatchView // OPS-01 wave 2
+	watchAsk   []string
+	usage      agent.Usage
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -204,6 +206,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/metrics") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/cron") {
 		f.opsAPI(r, write)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/redis") {
+		f.redisAPI(r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/perf") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/php") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jfeed") {

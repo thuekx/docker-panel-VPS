@@ -6,7 +6,7 @@ Status: BUILT v1.41.0, 2026-11-27. Roadmap slot 15c (RAYX-2). Builds on the serv
 ## Schedule
 - Off, every day or once a week, at a whole hour (WIB), with a day for weekly. Kept by the agent in
   `<data>/server-backup/schedule.json` (0600, folder 0700).
-- **No passphrase is kept** (decision BAK-3, recommended option A built):
+- **No passphrase is kept** (decision BAK-3 = A, chosen 2026-11-26 22:55 WIB):
   - When the schedule is set, the passphrase becomes an X25519 private key: PBKDF2-SHA256 with a random salt and
     600 000 rounds.
   - The agent keeps only its public key with the salt and the rounds (`npbk.Recipient`).
