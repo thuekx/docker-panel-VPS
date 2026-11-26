@@ -60,8 +60,9 @@ new_env; run RUN "${A[@]}" --tag v1.38.0 --commit abc; ok "short commit refused"
 new_env; run RUN "${A[@]}" --tag v1.37.0 --commit "$C137"; ok "same release refused" '[ $RC = 3 ] && has "not newer"'
 new_env; sed -i 's/^phase=.*/phase=APPLYING/' "$UPD01_TEST_ROOT/var/lib/nostek/panel-01/state"; run RUN "${A[@]}" --tag v1.38.0 --commit "$C138"
 ok "unfinished panel refused" '[ $RC = 3 ] && has "both be installed"'
+ok "a refusal is recorded for the panel" '[ "$(st phase)" = REFUSED ] && [ "$(st result)" = "agent and panel must both be installed (SITE-01 and PANEL-01 APPLIED)" ]'
 new_env; mkdir -p "$UPD01_TEST_ROOT/var/lib/nostek/upd-01"; exec 8> "$UPD01_TEST_ROOT/var/lib/nostek/upd-01/lock"; flock 8
-run RUN "${A[@]}" --tag v1.38.0 --commit "$C138"; ok "second update refused while one runs" '[ $RC = 3 ] && has "another update"'; exec 8>&-
+run RUN "${A[@]}" --tag v1.38.0 --commit "$C138"; ok "second update refused while one runs" '[ $RC = 3 ] && has "another update" && [ ! -f "$UPD01_TEST_ROOT/var/lib/nostek/upd-01/status" ]'; exec 8>&-
 
 # ---------- release checks: nothing changes ----------
 new_env; run RUN "${A[@]}" --tag v1.38.0 --commit "$C139"; ok "tag and VERSION must match" '[ $RC = 1 ] && has "holds version v1.39.0" && [ "$(st phase)" = FAILED ] && ! log | grep -q APPLY'

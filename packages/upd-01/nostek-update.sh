@@ -60,7 +60,12 @@ finish() { # $1 phase DONE|FAILED|ROLLED_BACK, $2 text
   say "RESULT $STEP RUN $1 $2"; rm -f "$STATE_DIR/panel.db.before"
   [ "$1" = DONE ] && exit 0; exit 1
 }
-refuse() { echo "REFUSE $*"; echo "RESULT $STEP $MODE REFUSE $*"; exit 3; }
+LOCKED=0
+refuse() { # after the lock is held, a refusal is also recorded for the panel
+  echo "REFUSE $*"
+  if [ "$LOCKED" = 1 ]; then state_set phase REFUSED; state_set ended "$(now)"; state_set result "$*"; echo "REFUSE $*" >> "$STATE_DIR/progress"; fi
+  echo "RESULT $STEP $MODE REFUSE $*"; exit 3
+}
 ver_gt() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -n1)" = "$1" ]; } # $1 > $2
 pkg_get() { grep -E "^$2=" "$VARLIB/$1/state" 2>/dev/null | tail -n1 | cut -d= -f2-; }
 
@@ -132,12 +137,12 @@ run() {
   mkdir -p "$STATE_DIR" "$(dirname "$LOG")"; chmod 700 "$STATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
   exec 9> "$STATE_DIR/lock"
   flock -n 9 || refuse "another update is running"
+  LOCKED=1; : > "$STATE_DIR/progress"; rm -f "$STATE_DIR/status"; state_set tag "$TAG"
   [ "$(pkg_get site-01 phase)" = APPLIED ] && [ "$(pkg_get panel-01 phase)" = APPLIED ] || refuse "agent and panel must both be installed (SITE-01 and PANEL-01 APPLIED)"
   OLD_SITE="$(pkg_get site-01 commit)"; OLD_PANEL="$(pkg_get panel-01 commit)"; OLD_REL="$(pkg_get panel-01 release)"
   [[ "$OLD_SITE" =~ ^[0-9a-f]{40}$ ]] && [[ "$OLD_PANEL" =~ ^[0-9a-f]{40}$ ]] || refuse "the running commits are unknown"
   ver_gt "${TAG#v}" "${OLD_REL#v}" || refuse "$TAG is not newer than the running $OLD_REL"
 
-  : > "$STATE_DIR/progress"; rm -f "$STATE_DIR/status"
   state_set phase RUNNING; state_set tag "$TAG"; state_set commit "$COMMIT"; state_set from "$OLD_REL"; state_set started "$(now)"
   echo "===== $STEP $TAG from $OLD_REL $(date -u '+%Y-%m-%d %H:%M:%S UTC') =====" >> "$LOG"
   if [ -n "$DBCOPY" ]; then
