@@ -11,8 +11,9 @@ installer on the new server.
 | Panel | Admins, two-step login and recovery codes, settings, time zone, alerts (with their sealed secrets), API keys, audit log, login history |
 | Each website | Its files, its database, its settings (PHP, server, limits, environment, cron jobs, schedules), domains, security settings, protected-folder passwords, SFTP accounts, deploy keys |
 
-Not inside: older backups of each website, old static releases, the trash, and the nightly off-server copy settings
-(HOST-02). A website that was not ready (still being created, or failed) is left out and named in the file.
+Not inside: older backups of each website, old static releases, the trash, the nightly off-server copy settings
+(HOST-02), and the ClouDNS API sub-user for wildcard certificates (set it again on the new server).
+A website that was not ready (still being created, or failed) is left out and named in the file.
 
 ## Make one
 
