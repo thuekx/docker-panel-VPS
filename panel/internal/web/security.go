@@ -180,7 +180,7 @@ func (s *Server) securityAction(w http.ResponseWriter, r *http.Request) {
 	c := agent.SecurityChange{Op: f.Get("op")}
 	detail := site.ID + " " + c.Op
 	switch c.Op {
-	case "block-add", "block-remove":
+	case "block-add", "block-remove", "allow-add", "allow-remove":
 		c.IP = strings.TrimSpace(f.Get("ip"))
 		if c.IP == "" || len(c.IP) > 64 {
 			back(s.tr.T(l, "sec.ip.need"))

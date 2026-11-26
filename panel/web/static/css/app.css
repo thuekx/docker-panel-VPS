@@ -460,3 +460,13 @@ button.copied{white-space:nowrap;background:rgba(var(--ok-rgb),.18);border-color
 .copy-note{display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(var(--ok-rgb),.16);color:var(--ok-ink,var(--ok));opacity:0;transition:opacity .3s}
 .copy-note.on{opacity:1}
 .copy-note.bad{background:rgba(255,107,122,.16);color:var(--err-ink,var(--bad))}
+code.wrap{white-space:pre-wrap;word-break:break-all}
+/* toasts: the result of an action at the bottom right for a few seconds */
+.toasts{position:fixed;right:16px;bottom:16px;z-index:60;display:flex;flex-direction:column;gap:8px;width:min(380px,calc(100vw - 32px));pointer-events:none}
+.toast{display:flex;align-items:flex-start;gap:10px;padding:11px 10px 11px 14px;border-radius:12px;background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-left:4px solid var(--tone,var(--c-green));box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:14px;line-height:1.45;pointer-events:auto;opacity:0;transform:translateY(10px);transition:opacity .22s ease,transform .22s ease}
+.toast.toast-in{opacity:1;transform:none}.toast.toast-out{opacity:0;transform:translateX(24px)}
+.toast-ok{--tone:var(--c-green)}.toast-warn{--tone:var(--c-amber)}.toast-err{--tone:#FF6B7A}
+.toast-msg{flex:1;min-width:0;overflow-wrap:anywhere}.toast-ic{flex:none}
+.toast-x{flex:none;background:none;border:0;color:var(--muted);font-size:20px;line-height:1;padding:0 4px;cursor:pointer;border-radius:6px}
+.toast-x:hover{color:var(--ink)}.toast-x:focus-visible{outline:2px solid var(--c-teal);outline-offset:2px}
+@media print{.toasts{display:none}}

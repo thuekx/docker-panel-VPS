@@ -39,6 +39,9 @@ services:
       - --entryPoints.websecure.address=:8443
       - --entryPoints.websecure.http.tls=true
       - --entryPoints.websecure.http3=false
+      # SITE-03: proxies or CDNs in front (panel-01 --trusted-proxies): the edge believes their X-Forwarded-For,
+      # so statistics, login attempts and the firewall see the visitor. Nobody else's header is believed.
+      - --entryPoints.websecure.forwardedHeaders.trustedIPs=${EDGE_TRUSTED_PROXIES:-127.0.0.1/32}
       # large uploads (panel file manager and database import, WordPress media) need more than the 60 s default
       - --entryPoints.websecure.transport.respondingTimeouts.readTimeout=30m
       - --providers.docker=true
@@ -94,6 +97,7 @@ services:
     environment:
       WAF_CONFIG: /config
       WAF_LOG: /logs/waf.log
+      EDGE_TRUSTED_PROXIES: ${EDGE_TRUSTED_PROXIES:-}
     volumes:
       - ${NOSTEK_DATA:-/srv/nostek}/edge/waf:/config:ro
       - ${NOSTEK_DATA:-/srv/nostek}/edge/logs:/logs

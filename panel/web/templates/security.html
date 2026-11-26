@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "sec.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "sec.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "security")}}
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
@@ -16,7 +16,7 @@
     </li>{{end}}
   </ol>
   {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l (printf "%s.wait" $d.JobTitle)}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if eq $j.State "done"}}<p class="banner ok">{{t $l (printf "%s.done" $d.JobTitle)}}</p>{{end}}
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l (printf "%s.done" $d.JobTitle)}}</p>{{end}}
   {{if $j.Error}}<p class="banner warn">{{t $l (printf "%s.fail" $d.JobTitle)}}</p>
   <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
 </section>
@@ -38,6 +38,20 @@
     <label>{{t $l "sec.block.ip"}}<input name="ip" placeholder="203.0.113.7 / 203.0.113.0/24" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required></label>
     {{if $d.YourIP}}<p class="muted small">{{t $l "sec.block.you"}} <code>{{$d.YourIP}}</code></p>{{end}}
     <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "sec.block.go"}}</button>
+  </form>
+</article>
+<article class="card tone c-green" data-anim="card" id="allow">
+  <div class="deploy-head"><h2>{{t $l "sec.allow.title"}}</h2>{{if $v.Allowed}}<span class="pill s-warn">{{t $l "sec.on"}}</span>{{else}}<span class="pill s-unknown">{{t $l "sec.off"}}</span>{{end}}</div>
+  <p class="muted">{{t $l "sec.allow.help"}}</p>
+  {{if $v.Allowed}}<ul class="plain">{{range $v.Allowed}}
+    <li><form method="post" action="/security/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="allow-remove"><input type="hidden" name="ip" value="{{.}}">
+      <span><code>{{.}}</code></span>
+      <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "sec.allow.remove"}}</button></form></li>{{end}}
+  </ul>{{else}}<p class="muted">{{t $l "sec.allow.none"}}</p>{{end}}
+  <form method="post" action="/security/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="allow-add">
+    <label>{{t $l "sec.block.ip"}}<input name="ip" placeholder="203.0.113.7 / 203.0.113.0/24" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required></label>
+    {{if $d.YourIP}}<p class="muted small">{{t $l "sec.block.you"}} <code>{{$d.YourIP}}</code></p>{{end}}
+    <button class="secondary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if not $v.Allowed}} data-confirm="{{t $l "sec.allow.ask"}}"{{end}}{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "sec.allow.go"}}</button>
   </form>
 </article>
 <article class="card tone c-violet" data-anim="card" id="hotlink">

@@ -420,6 +420,40 @@ type siteData struct {
 	Hook    *hookView        // APP-02c: auto-deploy of a website built from Git
 	Images  *imagesView      // IMG-01: pinned images and the update button
 	Limits  *limitsView      // RES-01: memory and PHP settings
+	Rels    *releasesView    // SITE-03: releases of a static website
+}
+
+// releasesView is the Releases card of a static website.
+type releasesView struct {
+	Rows   []releaseRow
+	Keep   int
+	MaxMB  int64
+	Err    string
+	Active bool // a release was published before (the live files came from a .zip)
+}
+
+type releaseRow struct {
+	agent.StaticRelease
+	When, Size string
+}
+
+func (s *Server) releasesOf(ctx context.Context, id string) *releasesView {
+	h, err := s.ag.Releases(ctx, id)
+	if err != nil {
+		return &releasesView{Err: err.Error()}
+	}
+	v := &releasesView{Keep: h.Keep, MaxMB: h.MaxBytes >> 20}
+	for _, x := range h.Releases {
+		r := releaseRow{StaticRelease: x, When: time.Unix(x.At, 0).In(s.loc()).Format("02 Jan 2006 15:04")}
+		if x.Bytes > 0 {
+			r.Size = human(x.Bytes)
+		}
+		if x.Release > 0 {
+			v.Active = true
+		}
+		v.Rows = append(v.Rows, r)
+	}
+	return v
 }
 
 // deployRow is one deploy as the Overview shows it.
@@ -496,6 +530,9 @@ func (s *Server) showSite(w http.ResponseWriter, r *http.Request, art *artisanRe
 				d.Hook = s.hookView(r, wh, id, secret)
 			}
 		}
+	}
+	if site.IsStatic() {
+		d.Rels = s.releasesOf(ctx, id)
 	}
 	if site.Phase == "ready" {
 		if img, err := s.ag.Images(ctx, id); err == nil {
@@ -627,6 +664,20 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		}
 		err = s.ag.Rollback(ctx, id, n)
 		act = "rollback"
+	case "static-rollback":
+		n, cerr := strconv.Atoi(r.PostForm.Get("release"))
+		if !site.IsStatic() || cerr != nil || n < 0 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		if err := s.ag.RollbackStatic(ctx, id, n); err != nil {
+			s.audit1(userOf(r), r, "site.static-rollback", id+" release "+strconv.Itoa(n)+" failed: "+err.Error())
+			http.Redirect(w, r, back+"?err="+url.QueryEscape(err.Error())+"#releases", http.StatusSeeOther)
+			return
+		}
+		s.audit1(userOf(r), r, "site.static-rollback", id+" release "+strconv.Itoa(n))
+		http.Redirect(w, r, back+"?done=static-rollback#releases", http.StatusSeeOther)
+		return
 	case "env-set", "env-delete":
 		if !site.IsNode() {
 			http.Error(w, "bad request", 400)

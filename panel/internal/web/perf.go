@@ -131,6 +131,28 @@ func (s *Server) perfAction(w http.ResponseWriter, r *http.Request) {
 		}
 		s.audit1(u, r, "site.optimize", detail)
 		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
+	case "header-set", "header-remove":
+		c := agent.SecurityChange{Op: f.Get("op"), Path: strings.TrimSpace(f.Get("path")), Name: strings.TrimSpace(f.Get("name")), Value: f.Get("value")}
+		if c.Path == "" {
+			c.Path = "/"
+		}
+		if c.Name == "" || len(c.Name) > 64 || len(c.Path) > 200 || len(c.Value) > 4096 {
+			back(s.tr.T(s.lang(r), "hdr.need"), "#headers")
+			return
+		}
+		detail := site.ID + " " + c.Op + " " + c.Path + " " + c.Name // the value stays out of the log
+		job, err := s.ag.ChangeSecurity(ctx, site.ID, c)
+		if err != nil {
+			s.audit1(u, r, "site.headers", detail+" failed: "+err.Error())
+			back(err.Error(), "#headers")
+			return
+		}
+		if job == "" {
+			http.Redirect(w, r, base+"?done=same#headers", http.StatusSeeOther)
+			return
+		}
+		s.audit1(u, r, "site.headers", detail)
+		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
 	default:
 		back("unknown action", "")
 	}

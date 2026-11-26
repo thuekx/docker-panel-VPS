@@ -159,6 +159,10 @@ type SecurityView struct {
 	WAF    WAFView    `json:"waf"`
 	// WAFReady is true when the firewall service runs (the panel update brings it)
 	WAFReady bool `json:"waf_ready"`
+	// SITE-03
+	Headers       []HeaderRule `json:"headers"`
+	HeaderPresets []string     `json:"header_presets"`
+	Allowed       []string     `json:"allowed"`
 }
 
 // Security returns a website's edge rules.
@@ -177,6 +181,13 @@ func (m *Manager) Security(id string) (SecurityView, error) {
 	}
 	if v.Blocked == nil {
 		v.Blocked = []string{}
+	}
+	v.Headers, v.Allowed, v.HeaderPresets = s.Headers, s.AllowIPs, HeaderPresets
+	if v.Headers == nil {
+		v.Headers = []HeaderRule{}
+	}
+	if v.Allowed == nil {
+		v.Allowed = []string{}
 	}
 	if v.Protected == nil {
 		v.Protected = []Protected{}
@@ -213,6 +224,9 @@ type SecurityChange struct {
 	// optimize-set (PHP-01): compression at the edge and browser cache days for static files (0 = off)
 	Compress bool `json:"compress,omitempty"`
 	Days     int  `json:"days,omitempty"`
+	// header-set | header-remove (SITE-03): Path, Name and Value; allow-add | allow-remove: IP
+	Name  string `json:"name,omitempty"`
+	Value string `json:"value,omitempty"`
 }
 
 // nextSecurity applies a change to a copy of the website; auth holds the password file it needs (path -> users).
@@ -239,6 +253,9 @@ func (m *Manager) nextSecurity(s Site, c SecurityChange) (Site, map[string]map[s
 		return next, auth, err
 	}
 	if ok, err := nextOptimize(s, &next, c); ok {
+		return next, auth, err
+	}
+	if ok, err := m.nextHeaders(s, &next, c); ok {
 		return next, auth, err
 	}
 	switch c.Op {
@@ -389,7 +406,7 @@ func (m *Manager) ChangeSecurity(id string, c SecurityChange) (string, error) {
 		return "", err
 	}
 	kind := "security"
-	if c.Op == "optimize-set" {
+	if c.Op == "optimize-set" || strings.HasPrefix(c.Op, "header-") {
 		kind = "optimize" // shown on the Performance page
 	}
 	j := m.jobs.New(kind, id)
@@ -451,7 +468,8 @@ type edgeRouter struct {
 // edgeMiddleware is one middleware of the security routers: kind deny (403 for everyone) or auth (basic auth).
 type edgeMiddleware struct {
 	name, kind, file string
-	value            string // compress: the content types; cache: the Cache-Control value
+	value            string      // compress: the content types; cache: the Cache-Control value
+	hdrs             [][2]string // headers: name and value ("" removes it)
 }
 
 func hostRule(hosts []string) string {
@@ -487,9 +505,13 @@ func (s Site) securityEdge(dollar string) ([]edgeRouter, []edgeMiddleware) {
 		ips := make([]string, len(s.BlockIPs))
 		for i, ip := range s.BlockIPs {
 			ips[i] = "ClientIP(`" + ip + "`)"
+			if x := xffRule(ip, dollar); x != "" {
+				ips[i] += " || " + x
+			}
 		}
 		rs = append(rs, edgeRouter{name: rid + "-block", rule: hostRule(routed) + " && (" + strings.Join(ips, " || ") + ")", priority: prioBlock, middlewares: []string{deny}})
 	}
+	rs = append(rs, s.allowRouter(rid, routed, deny)...)
 	if s.Hotlink != nil {
 		allowed := []string{}
 		for _, h := range routed {
@@ -510,16 +532,16 @@ func (s Site) securityEdge(dollar string) ([]edgeRouter, []edgeMiddleware) {
 		if p.Path != "/" {
 			rule += " && (Path(`" + p.Path + "`) || PathPrefix(`" + p.Path + "/`))"
 		}
-		chain := append(s.optimizeMiddlewares(), mw)
-		chain = append(chain, s.redirectMiddlewares()...)
+		chain := s.chainWith(mw)
 		rs = append(rs, edgeRouter{name: fmt.Sprintf("%s-protect%d", rid, i), rule: rule, priority: prioAuth + len(p.Path), middlewares: chain})
 		ms = append(ms, edgeMiddleware{name: mw, kind: "auth", file: s.edgeAuthFile(p.Path)})
 	}
-	if len(s.BlockIPs) > 0 || s.Hotlink != nil {
+	if len(s.BlockIPs) > 0 || len(s.AllowIPs) > 0 || s.Hotlink != nil {
 		ms = append([]edgeMiddleware{{name: deny, kind: "deny"}}, ms...)
 	}
 	ors, oms := s.optimizeEdge(canon, dollar)
-	return append(rs, ors...), append(ms, oms...)
+	hrs, hms := s.headerEdge(canon, dollar)
+	return append(append(rs, hrs...), ors...), append(append(ms, oms...), hms...)
 }
 
 // securityLabels renders the security routers as Traefik labels.
@@ -539,6 +561,10 @@ func (s Site) securityLabels() []string {
 			l = append(l, fmt.Sprintf(`traefik.http.middlewares.%s.compress.includedcontenttypes: "%s"`, m.name, m.value))
 		case "cache":
 			l = append(l, fmt.Sprintf(`traefik.http.middlewares.%s.headers.customresponseheaders.Cache-Control: "%s"`, m.name, m.value))
+		case "headers":
+			for _, h := range m.hdrs {
+				l = append(l, fmt.Sprintf(`traefik.http.middlewares.%s.headers.customresponseheaders.%s: "%s"`, m.name, h[0], h[1]))
+			}
 		}
 	}
 	for _, r := range rs {
@@ -572,6 +598,11 @@ func (s Site) securityEdgeYAML() (routers, middlewares string) {
 			fmt.Fprintf(&m, "    %s:\n      compress:\n        includedContentTypes: [%s]\n", x.name, strings.ReplaceAll(x.value, ",", ", "))
 		case "cache":
 			fmt.Fprintf(&m, "    %s:\n      headers:\n        customResponseHeaders:\n          Cache-Control: %q\n", x.name, x.value)
+		case "headers":
+			fmt.Fprintf(&m, "    %s:\n      headers:\n        customResponseHeaders:\n", x.name)
+			for _, h := range x.hdrs {
+				fmt.Fprintf(&m, "          %s: %q\n", h[0], h[1])
+			}
 		}
 	}
 	return r.String(), m.String()

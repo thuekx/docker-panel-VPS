@@ -301,6 +301,18 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/v1/sites/voltix-id/deploys" && r.Method == "POST":
 		f.actions = append(f.actions, "deploy")
 		write(202, map[string]string{"job": "j0123456789abcdef"})
+	case r.URL.Path == "/v1/sites/voltix-id/releases" && r.Method == "GET":
+		write(200, agent.StaticReleases{Keep: 3, MaxBytes: 512 << 20, Releases: []agent.StaticRelease{
+			{Release: 3, At: 1700000000, Name: "dist <b>.zip", Files: 12, Bytes: 3 << 20, Result: "live"},
+			{Release: 2, At: 1699990000, Name: "old.zip", Files: 10, Bytes: 2 << 20, Result: "ok"},
+			{Release: 0, At: 1699980000, Result: "removed"}}})
+	case r.URL.Path == "/v1/sites/voltix-id/releases" && r.Method == "PUT":
+		b, _ := io.ReadAll(r.Body)
+		f.actions = append(f.actions, "publish "+r.URL.Query().Get("name")+" "+string(b))
+		write(200, agent.StaticRelease{Release: 4, Name: r.URL.Query().Get("name"), Files: 1, Result: "live"})
+	case r.URL.Path == "/v1/sites/voltix-id/releases/2/rollback":
+		f.actions = append(f.actions, "static-rollback 2")
+		write(200, agent.StaticRelease{Release: 2, Result: "live"})
 	case r.URL.Path == "/v1/sites/voltix-id/deploys/2/log":
 		write(200, map[string]string{"log": "npm ERR! missing script: build <script>"})
 	case r.URL.Path == "/v1/sites/voltix-id/env" && r.Method == "GET":

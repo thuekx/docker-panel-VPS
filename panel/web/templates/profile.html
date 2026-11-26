@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "profile.saved.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "profile.saved.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 <section class="card wide profile-head" data-anim="card">
   <div class="avatar" aria-hidden="true">{{slice $d.Email 0 1}}</div>
   <div>

@@ -74,6 +74,14 @@ run UPDATE "${A[@]}" --src-commit "$COMMIT"; ok "update to the running commit re
 echo keep > "$PANEL01_TEST_ROOT/srv/nostek/panel/marker"
 run UPDATE "${A[@]}" --src-commit "$C2"; ok "update swaps to the new release, data kept" '[ $RC = 0 ] && has "RESULT PANEL-01 UPDATE PASS version=v9.9.9" && [ "$(phase)" = APPLIED ] && [ -f "$PANEL01_TEST_ROOT/srv/nostek/panel/marker" ] && [ "$(docker run --rm nostek/panel:v9.9.9 version)" = v9.9.9 ]'
 run VERIFY "${A[@]}"; ok "verify after update names the release" '[ $RC = 0 ] && has "version=v9.9.9"'
+# --- SITE-03: trusted proxies in front, changed without a new release, kept by later updates
+for bad in "0.0.0.0/0" "10.0.0.1;id" "not-an-ip"; do
+  run UPDATE "${A[@]}" --src-commit "$C2" --trusted-proxies "$bad"; ok "trusted proxy $bad refused" '[ $RC = 3 ]'
+done
+run VERIFY "${A[@]}" --trusted-proxies 10.9.0.0/16; ok "trusted proxies only with APPLY or UPDATE" '[ $RC = 3 ]'
+run UPDATE "${A[@]}" --src-commit "$C2" --trusted-proxies "10.9.0.0/16, 2001:db8::/32"; ok "trusted proxies set on the running release, edge and firewall take them" '[ $RC = 0 ] && has "RESULT PANEL-01 UPDATE PASS trusted_proxies=10.9.0.0/16,2001:db8::/32" && grep -qx "EDGE_TRUSTED_PROXIES=10.9.0.0/16,2001:db8::/32" "$(CORE)/.env" && docker inspect -f "{{join .Args \" \"}}" nostek-core-edge-1 | grep -q "forwardedHeaders.trustedIPs=10.9.0.0/16,2001:db8::/32" && docker inspect -f "{{range .Config.Env}}{{println .}}{{end}}" nostek-core-waf-1 | grep -qx "EDGE_TRUSTED_PROXIES=10.9.0.0/16,2001:db8::/32"'
+run VERIFY "${A[@]}"; ok "verify names the trusted proxies" '[ $RC = 0 ] && has "trusted proxies in front: 10.9.0.0/16,2001:db8::/32"'
+run UPDATE "${A[@]}" --src-commit "$C2" --trusted-proxies none; ok "trusted proxies cleared" '[ $RC = 0 ] && ! grep -q EDGE_TRUSTED_PROXIES "$(CORE)/.env" && docker inspect -f "{{join .Args \" \"}}" nostek-core-edge-1 | grep -q "trustedIPs=127.0.0.1/32"'
 rm -rf "$UPD"; export PANEL01_TEST_REPO="file://$REPO"
 
 # --- production certificate path: no certificate yet must not block APPLY, but VERIFY must not pass

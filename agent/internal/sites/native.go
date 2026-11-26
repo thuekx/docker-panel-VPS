@@ -312,7 +312,7 @@ func (s Site) redirectEdge() string {
 	for i, name := range s.redirectMiddlewares() {
 		r := s.Redirects[i]
 		fmt.Fprintf(&b, "    %s:\n      redirectRegex:\n        regex: \"%s\"\n        replacement: \"%s\"\n        permanent: %t\n",
-			name, redirectRegex(r.From, "$"), s.redirectTarget(r, "$"), r.Code == 301)
+			name, redirRegex(r, "$"), s.redirectTarget(r, "$"), r.Code == 301)
 	}
 	return b.String()
 }

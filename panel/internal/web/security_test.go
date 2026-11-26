@@ -46,7 +46,7 @@ func (f *fakeAgent) security(w http.ResponseWriter, r *http.Request, write func(
 		write(202, map[string]string{"job": "jsec0000000000001"})
 		return
 	}
-	write(200, agent.Security{Blocked: []string{"198.51.100.9", "2001:db8::/32"}, Protected: []agent.Protected{{Path: "/admin", Users: []string{"ana", "budi"}}, {Path: "/solo", Users: []string{"cici"}}},
+	write(200, agent.Security{Blocked: []string{"198.51.100.9", "2001:db8::/32"}, Allowed: []string{"192.0.2.0/24"}, Protected: []agent.Protected{{Path: "/admin", Users: []string{"ana", "budi"}}, {Path: "/solo", Users: []string{"cici"}}},
 		Hotlink: &agent.Hotlink{Allow: []string{"google.com"}}, HotlinkExts: []string{"jpg", "png"}, Job: f.secJob,
 		WebServer: true, ErrorCodes: []int{403, 404, 503}, ErrorPages: []int{404}, ErrorDir: "/.nostek-errors", MIME: []agent.MIME{{Type: "application/wasm", Exts: []string{"wasm"}}},
 		Logins: f.secLogins, Scan: f.secScan, WAF: f.secWAF, WAFReady: f.secWAFOK})
@@ -91,6 +91,7 @@ func TestSecurityPage(t *testing.T) {
 		`name="op" value="errpage-on"><input type="hidden" name="code" value="503">`,
 		`name="op" value="errpage-off"><input type="hidden" name="code" value="404">`,
 		"<code>application/wasm</code> <span class=\"muted\">.wasm</span>",
+		`name="op" value="allow-remove"><input type="hidden" name="ip" value="192.0.2.0/24">`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
@@ -126,6 +127,8 @@ func TestSecurityPage(t *testing.T) {
 		{url.Values{"op": {"mime-add"}, "type": {"text/x-tex"}, "exts": {""}}, "err="},
 		{url.Values{"op": {"mime-add"}, "type": {" text/x-tex "}, "exts": {"tex ltx"}}, "#job"},
 		{url.Values{"op": {"mime-remove"}, "type": {"application/wasm"}}, "#job"},
+		{url.Values{"op": {"allow-add"}, "ip": {" 192.0.2.7 "}}, "#job"},
+		{url.Values{"op": {"allow-add"}, "ip": {""}}, "err="},
 	} {
 		if code, _, h := e.post(e.c, "/security/voltix-id", c.form, "/security/voltix-id"); code != 303 || !strings.Contains(h.Get("Location"), c.loc) {
 			t.Errorf("%v: %d %s", c.form, code, h.Get("Location"))
@@ -146,7 +149,8 @@ func TestSecurityPage(t *testing.T) {
 	want := []string{`{"op":"block-add","ip":"203.0.113.7"}`, `{"op":"block-add","ip":"bad"}`, `{"op":"block-remove","ip":"198.51.100.9"}`,
 		`{"op":"protect-user-remove","path":"/admin","user":"budi"}`, `{"op":"protect-remove","path":"/admin"}`,
 		`{"op":"hotlink-on","allow":["google.com","bing.com","duck.com"]}`, `{"op":"hotlink-off"}`,
-		`{"op":"errpage-on","code":503}`, `{"op":"mime-add","type":"text/x-tex","exts":"tex ltx"}`, `{"op":"mime-remove","type":"application/wasm"}`}
+		`{"op":"errpage-on","code":503}`, `{"op":"mime-add","type":"text/x-tex","exts":"tex ltx"}`, `{"op":"mime-remove","type":"application/wasm"}`,
+		`{"op":"allow-add","ip":"192.0.2.7"}`}
 	if strings.Join(rest, "\n") != strings.Join(want, "\n") {
 		t.Errorf("calls:\n%s", strings.Join(rest, "\n"))
 	}

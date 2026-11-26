@@ -29,6 +29,16 @@ type Perf struct {
 	Optimize  Optimize  `json:"optimize"`
 	CacheDays []int     `json:"cache_days"`
 	Job       *Job      `json:"job"`
+	// SITE-03
+	Headers       []HeaderRule `json:"headers"`
+	HeaderPresets []string     `json:"header_presets"`
+}
+
+// HeaderRule is one response header of a website at the edge (Path "/" = every answer; Value "" removes it).
+type HeaderRule struct {
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 // Perf returns a website's Performance page.

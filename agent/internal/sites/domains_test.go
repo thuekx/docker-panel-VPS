@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -267,8 +268,38 @@ func TestCheckRedirect(t *testing.T) {
 			t.Errorf("%+v accepted", r)
 		}
 	}
-	if got := redirectRegex("/old/page.html/", "$$"); got != "^https?://[^/]+/old/page[.]html/?([?].*)?$$" {
+	if got := redirRegex(Redirect{From: "/old/page.html/"}, "$$"); got != "^https?://[^/]+/old/page[.]html/?([?].*)?$$" {
 		t.Errorf("regex %s", got)
+	}
+	// SITE-03: a whole folder, the rest of the path kept
+	for _, r := range []Redirect{{From: "/kb", To: "https://kb.nostek.dev", Code: 301, Prefix: true}, {From: "/en/kb/", To: "https://kb.nostek.dev/en/", Code: 301, Prefix: true}, {From: "/old", To: "/new", Code: 302, Prefix: true}} {
+		if err := checkRedirect(r); err != nil {
+			t.Errorf("%+v: %v", r, err)
+		}
+	}
+	for _, r := range []Redirect{{From: "/kb", To: "https://kb.nostek.dev/?a=1", Code: 301, Prefix: true}, {From: "/", To: "https://x.example", Code: 301, Prefix: true},
+		{From: "/kb", To: "/kb/new", Code: 301, Prefix: true}, {From: "/kb/", To: "/kb", Code: 301, Prefix: true}} {
+		if err := checkRedirect(r); !errors.Is(err, ErrBadInput) {
+			t.Errorf("%+v accepted", r)
+		}
+	}
+	kb := Redirect{From: "/kb/", To: "https://kb.nostek.dev/", Code: 301, Prefix: true}
+	re := regexp.MustCompile(strings.ReplaceAll(redirRegex(kb, "$$"), "$$", "$"))
+	repl := strings.ReplaceAll(Site{}.redirectTarget(kb, "$$"), "$$", "$")
+	for in, want := range map[string]string{
+		"https://nostek.dev/kb":            "https://kb.nostek.dev",
+		"https://nostek.dev/kb/":           "https://kb.nostek.dev/",
+		"https://nostek.dev/kb/x/y/?q=1#z": "https://kb.nostek.dev/x/y/?q=1#z",
+		"https://nostek.dev/kbx":           "",
+		"https://nostek.dev/a/kb/x":        "",
+	} {
+		got := ""
+		if re.MatchString(in) {
+			got = re.ReplaceAllString(in, repl)
+		}
+		if got != want {
+			t.Errorf("%s -> %q, want %q", in, got, want)
+		}
 	}
 }
 

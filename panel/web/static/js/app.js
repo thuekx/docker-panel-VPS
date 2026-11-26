@@ -342,5 +342,42 @@
     if (a) setTimeout(function () { window.location.replace(a.href); }, 300);
   }
 
-  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); busy(); go(); });
+  // the result of a save, delete or other action also shows as a small note at the bottom right for a few seconds,
+  // so it is seen without scrolling back up; the banner at the top stays (and is the one screen readers announce)
+  function toasts() {
+    var box = document.getElementById("toasts");
+    if (!box) return;
+    var close = document.body.getAttribute("data-toastclose") || "Close";
+    all("[data-toast]").slice(0, 3).forEach(function (src) {
+      var text = (src.textContent || "").replace(/\s+/g, " ").trim();
+      if (!text) return;
+      var kind = src.classList.contains("err") ? "err" : src.classList.contains("warn") ? "warn" : "ok";
+      var t = document.createElement("div");
+      t.className = "toast toast-" + kind;
+      var ic = document.createElement("span"); ic.className = "toast-ic"; ic.setAttribute("aria-hidden", "true");
+      ic.textContent = kind === "ok" ? "\u2705" : "\u26A0\uFE0F";
+      var msg = document.createElement("span"); msg.className = "toast-msg"; msg.textContent = text;
+      var x = document.createElement("button"); x.type = "button"; x.className = "toast-x";
+      x.setAttribute("aria-label", close); x.title = close; x.textContent = "\u00D7";
+      t.appendChild(ic); t.appendChild(msg); t.appendChild(x);
+      box.appendChild(t);
+      var timer = null, gone = false;
+      function hide() {
+        if (gone) return; gone = true; clearTimeout(timer);
+        if (reduce) { t.remove(); return; }
+        t.classList.add("toast-out");
+        setTimeout(function () { t.remove(); }, 260);
+      }
+      function arm() { clearTimeout(timer); timer = setTimeout(hide, kind === "ok" ? 5000 : 9000); }
+      x.addEventListener("click", hide);
+      t.addEventListener("mouseenter", function () { clearTimeout(timer); });
+      t.addEventListener("mouseleave", arm);
+      t.addEventListener("focusin", function () { clearTimeout(timer); });
+      t.addEventListener("focusout", arm);
+      if (!reduce) requestAnimationFrame(function () { t.classList.add("toast-in"); }); else t.classList.add("toast-in");
+      arm();
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); busy(); go(); toasts(); });
 })();

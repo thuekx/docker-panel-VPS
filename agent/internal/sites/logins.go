@@ -268,7 +268,7 @@ func (m *Manager) ReadLogins() error {
 		if !ok {
 			continue
 		}
-		a, err := netip.ParseAddr(e.ClientHost)
+		a, err := visitorAddr(e.ClientHost)
 		if err != nil {
 			continue
 		}
@@ -446,4 +446,14 @@ func (m *Manager) Logins(s Site) LoginsView {
 		v.IPs = v.IPs[:loginShown]
 	}
 	return v
+}
+
+// visitorAddr reads the visitor from the access log's ClientHost. Behind a trusted proxy (SITE-03) the edge logs
+// the proxy's X-Forwarded-For list instead of one address: the right-most entry is the address the proxy was
+// reached from, the one a visitor cannot make up.
+func visitorAddr(h string) (netip.Addr, error) {
+	if i := strings.LastIndexByte(h, ','); i >= 0 {
+		h = h[i+1:]
+	}
+	return netip.ParseAddr(strings.TrimSpace(h))
 }

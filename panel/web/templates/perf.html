@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "perf.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "perf.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "perf")}}
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
@@ -16,7 +16,7 @@
     </li>{{end}}
   </ol>
   {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l (printf "%s.wait" $d.JobTitle)}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if eq $j.State "done"}}<p class="banner ok">{{t $l (printf "%s.done" $d.JobTitle)}}{{if $d.Backup}} {{t $l "perf.php.backup"}} <a href="/backup/{{$s.ID}}"><code>{{$d.Backup}}</code></a>{{end}}</p>{{end}}
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l (printf "%s.done" $d.JobTitle)}}{{if $d.Backup}} {{t $l "perf.php.backup"}} <a href="/backup/{{$s.ID}}"><code>{{$d.Backup}}</code></a>{{end}}</p>{{end}}
   {{if $j.Error}}<p class="banner warn">{{t $l (printf "%s.fail" $d.JobTitle)}}</p>
   <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
 </section>
@@ -54,6 +54,24 @@
       <select name="days"><option value="0"{{if eq $v.Optimize.CacheDays 0}} selected{{end}}>{{t $l "perf.opt.cache.off"}}</option>{{range $v.CacheDays}}<option value="{{.}}"{{if eq . $v.Optimize.CacheDays}} selected{{end}}>{{t $l "perf.opt.days" .}}</option>{{end}}</select></label>
     <p class="muted small">{{t $l "perf.opt.cache.help"}}</p>
     <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "perf.opt.save"}}</button>
+  </form>
+</article>
+<article class="card wide tone c-violet" data-anim="card" id="headers">
+  <h2>{{t $l "hdr.title"}}</h2>
+  <p class="muted">{{t $l "hdr.help"}}</p>
+  {{if $v.Headers}}<div class="table-wrap"><table>
+    <thead><tr><th>{{t $l "hdr.col.path"}}</th><th>{{t $l "hdr.col.name"}}</th><th>{{t $l "hdr.col.value"}}</th><th></th></tr></thead>
+    <tbody>{{range $v.Headers}}<tr><td><code>{{.Path}}</code></td><td><code>{{.Name}}</code></td><td>{{if .Value}}<code class="wrap">{{.Value}}</code>{{else}}<span class="muted">{{t $l "hdr.removed"}}</span>{{end}}</td>
+      <td><form method="post" action="/perf/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="header-remove"><input type="hidden" name="path" value="{{.Path}}"><input type="hidden" name="name" value="{{.Name}}">
+        <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "hdr.remove"}}</button></form></td></tr>{{end}}
+    </tbody></table></div>{{else}}<p class="muted">{{t $l "hdr.none"}}</p>{{end}}
+  <form method="post" action="/perf/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="header-set">
+    <label>{{t $l "hdr.path"}}<input name="path" value="/" placeholder="/ or /assets" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="200"></label>
+    <label>{{t $l "hdr.name"}}<input name="name" list="hdr-presets" placeholder="Content-Security-Policy" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required></label>
+    <datalist id="hdr-presets">{{range $v.HeaderPresets}}<option value="{{.}}">{{end}}</datalist>
+    <label>{{t $l "hdr.value"}}<textarea name="value" rows="3" placeholder="default-src 'self'" autocapitalize="none" spellcheck="false" maxlength="4096"></textarea></label>
+    <p class="muted small">{{t $l "hdr.value.help"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "hdr.go"}}</button>
   </form>
 </article>
 </section>

@@ -658,10 +658,14 @@ func (m *Manager) Unzip(id, p string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("%w: not a valid zip file", ErrBadInput)
 	}
+	return extractZip(r, path.Dir(rel), zr, uid, gid)
+}
+
+// extractZip writes the entries of zr under dest ("." for the top) of r, within the size and count limits.
+func extractZip(r *os.Root, dest string, zr *zip.Reader, uid, gid int) (int, error) {
 	if len(zr.File) > maxUnzipFiles {
 		return 0, fmt.Errorf("%w: the zip has more than %d entries", ErrBadInput, maxUnzipFiles)
 	}
-	dest := path.Dir(rel)
 	var budget int64 = MaxUnzip
 	n := 0
 	for _, zf := range zr.File {

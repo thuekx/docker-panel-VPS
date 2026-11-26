@@ -170,6 +170,9 @@ func (s Site) AppName() string {
 	return s.App
 }
 
+// IsStatic is true for a static website (HTML or a built single-page app).
+func (s Site) IsStatic() bool { return s.AppName() == "static" }
+
 // IsWP is true for a WordPress site.
 func (s Site) IsWP() bool { return s.AppName() == "wordpress" }
 

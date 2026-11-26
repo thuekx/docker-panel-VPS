@@ -226,3 +226,36 @@ func TestEventCap(t *testing.T) {
 		t.Fatalf("next minute: %d lines", n)
 	}
 }
+
+func TestClientIPBehindProxy(t *testing.T) {
+	sv := New(t.TempDir(), io.Discard)
+	ask := func(remote string, xff ...string) string {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.RemoteAddr = remote
+		for _, x := range xff {
+			r.Header.Add("X-Forwarded-For", x)
+		}
+		return sv.clientIP(r)
+	}
+	// no proxy trusted: the edge's own entry (the right-most) is the visitor
+	if got := ask("172.20.0.2:5000", "203.0.113.9"); got != "203.0.113.9" {
+		t.Errorf("plain: %s", got)
+	}
+	if got := ask("172.20.0.2:5000", "6.6.6.6, 203.0.113.9"); got != "203.0.113.9" {
+		t.Errorf("a spoofed first entry won: %s", got)
+	}
+	if got := ask("172.20.0.2:5000"); got != "172.20.0.2" {
+		t.Errorf("no header: %s", got)
+	}
+	// a trusted proxy in front: its entry is skipped, a visitor's own claim is not believed
+	sv.Proxies = ParseProxies("198.51.100.0/24, 192.0.2.7, junk")
+	if len(sv.Proxies) != 2 {
+		t.Fatalf("proxies %v", sv.Proxies)
+	}
+	if got := ask("172.20.0.2:5000", "6.6.6.6, 203.0.113.9", "198.51.100.20"); got != "203.0.113.9" {
+		t.Errorf("behind the proxy: %s", got)
+	}
+	if got := ask("172.20.0.2:5000", "::ffff:203.0.113.9, 192.0.2.7"); got != "203.0.113.9" {
+		t.Errorf("mapped address: %s", got)
+	}
+}

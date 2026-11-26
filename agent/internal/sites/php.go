@@ -62,6 +62,9 @@ type PerfView struct {
 	Optimize  Optimize  `json:"optimize"`
 	CacheDays []int     `json:"cache_days"`
 	Job       *JobView  `json:"job,omitempty"` // the newest PHP change or edge change of the website
+	// SITE-03: the website's response headers
+	Headers       []HeaderRule `json:"headers"`
+	HeaderPresets []string     `json:"header_presets"`
 }
 
 // Perf returns the Performance page of a website.
@@ -70,7 +73,10 @@ func (m *Manager) Perf(id string) (PerfView, error) {
 	if err != nil {
 		return PerfView{}, err
 	}
-	v := PerfView{CacheDays: CacheDays}
+	v := PerfView{CacheDays: CacheDays, Headers: s.Headers, HeaderPresets: HeaderPresets}
+	if v.Headers == nil {
+		v.Headers = []HeaderRule{}
+	}
 	if s.Optimize != nil {
 		v.Optimize = *s.Optimize
 	}

@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$dm := $d.D}}
-{{if .Flash}}<p class="banner ok" data-anim="card">{{t $l (printf "dom.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "dom.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "domains")}}
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
@@ -16,7 +16,7 @@
     </li>{{end}}
   </ol>
   {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "dom.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if eq $j.State "done"}}<p class="banner ok">{{t $l "dom.job.done"}}</p><p class="muted">{{t $l "dom.job.cert"}}</p>{{end}}
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l "dom.job.done"}}</p><p class="muted">{{t $l "dom.job.cert"}}</p>{{end}}
   {{if $j.Error}}<p class="banner warn">{{t $l "dom.job.fail"}}</p>
   <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
 </section>
@@ -59,7 +59,7 @@
   <p class="muted">{{t $l "dom.redir.help"}}</p>
   {{if $dm.Redirects}}<ul class="plain">{{range $dm.Redirects}}
     <li><form method="post" action="/domains/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redirect-remove"><input type="hidden" name="from" value="{{.From}}">
-      <span><code>{{.From}}</code> → <code>{{.To}}</code> <span class="pill s-unknown">{{.Code}}</span></span>
+      <span><code>{{.From}}</code> → <code>{{.To}}</code> <span class="pill s-unknown">{{.Code}}</span>{{if .Prefix}} <span class="pill s-info">{{t $l "dom.redir.prefix.pill"}}</span>{{end}}</span>
       <button class="ghost danger-text" type="submit"{{if $d.Running}} disabled{{end}}>{{t $l "dom.remove"}}</button></form></li>{{end}}
   </ul>{{else}}<p class="muted">{{t $l "dom.redir.none"}}</p>{{end}}
   <form method="post" action="/domains/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redirect-add">
@@ -68,6 +68,7 @@
     <fieldset class="opts"><legend>{{t $l "dom.redir.code"}}</legend>
       <label class="check"><input type="radio" name="code" value="301" checked> {{t $l "dom.redir.301"}}</label>
       <label class="check"><input type="radio" name="code" value="302"> {{t $l "dom.redir.302"}}</label></fieldset>
+    <label class="check"><input type="checkbox" name="prefix" value="1"> {{t $l "dom.redir.prefix"}}</label>
     <button class="secondary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "dom.redir.go"}}</button>
   </form>
 </article>

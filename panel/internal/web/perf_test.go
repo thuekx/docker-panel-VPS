@@ -89,6 +89,28 @@ func TestPerfPage(t *testing.T) {
 	if last := f.secCalls[len(f.secCalls)-1]; last != `{"op":"optimize-set","compress":true,"days":7}` {
 		t.Errorf("sent %s", last)
 	}
+	// SITE-03: response headers go as security changes; the value never reaches the audit log
+	f.perf.Headers = []agent.HeaderRule{{Path: "/", Name: "Content-Security-Policy", Value: "default-src 'self' <b>"}, {Path: "/", Name: "X-Powered-By"}}
+	f.perf.HeaderPresets = []string{"Strict-Transport-Security"}
+	_, body, _ = e.get(e.c, "/perf/voltix-id")
+	for _, want := range []string{`id="headers"`, "default-src &#39;self&#39; &lt;b&gt;", "removed from answers", `<option value="Strict-Transport-Security">`, `name="op" value="header-remove"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("headers card lacks %q", want)
+		}
+	}
+	if code, _, h := e.post(e.c, "/perf/voltix-id", url.Values{"op": {"header-set"}, "path": {""}, "name": {"Strict-Transport-Security"}, "value": {"max-age=63072000"}}, "/perf/voltix-id"); code != 303 || !strings.Contains(h.Get("Location"), "?job=") {
+		t.Errorf("header-set: %d %v", code, h.Get("Location"))
+	}
+	if last := f.secCalls[len(f.secCalls)-1]; last != `{"op":"header-set","path":"/","name":"Strict-Transport-Security","value":"max-age=63072000"}` {
+		t.Errorf("sent %s", last)
+	}
+	if _, _, h := e.post(e.c, "/perf/voltix-id", url.Values{"op": {"header-set"}, "name": {""}}, "/perf/voltix-id"); !strings.Contains(h.Get("Location"), "err=") {
+		t.Errorf("no name: %v", h.Get("Location"))
+	}
+	_, audit, _ := e.get(e.c, "/audit")
+	if !strings.Contains(audit, "voltix-id header-set / Strict-Transport-Security") || strings.Contains(audit, "63072000") {
+		t.Error("audit of the header change")
+	}
 	// a website without PHP
 	f.perf = agent.Perf{CacheDays: []int{1, 7}, Optimize: agent.Optimize{Compress: true, CacheDays: 7}}
 	_, body, _ = e.get(e.c, "/perf/voltix-id")

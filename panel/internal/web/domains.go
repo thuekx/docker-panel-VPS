@@ -132,11 +132,15 @@ func (s *Server) domainsAction(w http.ResponseWriter, r *http.Request) {
 	case "redirect-add":
 		c.From, c.To = strings.TrimSpace(f.Get("from")), strings.TrimSpace(f.Get("to"))
 		c.Code, _ = strconv.Atoi(f.Get("code"))
+		c.Prefix = f.Get("prefix") == "1"
 		if c.From == "" || c.To == "" || len(c.From) > 512 || len(c.To) > 1024 {
 			back(s.tr.T(l, "dom.redirect.need"))
 			return
 		}
 		detail += " " + c.From + " to " + c.To + " (" + strconv.Itoa(c.Code) + ")"
+		if c.Prefix {
+			detail += " folder"
+		}
 	case "redirect-remove":
 		c.From = f.Get("from")
 		detail += " " + c.From
