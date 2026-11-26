@@ -86,6 +86,10 @@ var hostBins = map[string]string{
 	// SRV-01: the SSH ports (never closed from the panel) and fail2ban
 	"sshd":            "/usr/sbin/sshd",
 	"fail2ban-client": "/usr/bin/fail2ban-client",
+	// BAK-03: copies to an SFTP server
+	"sftp":        "/usr/bin/sftp",
+	"ssh-keygen":  "/usr/bin/ssh-keygen",
+	"ssh-keyscan": "/usr/bin/ssh-keyscan",
 }
 
 // HostStreamer is a HostRunner that can send a program's output to a writer (database dumps of any size).

@@ -132,6 +132,7 @@ func serve(st *store.Store) {
 	actx, astop := context.WithCancel(context.Background())
 	defer astop()
 	go srv.AlertLoop(actx)
+	go srv.BackupLoop(actx) // BAK-03: scheduled server backups
 	hs := &http.Server{Addr: env("NP_LISTEN", ":8080"), Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second, MaxHeaderBytes: 64 << 10}
 	go func() {

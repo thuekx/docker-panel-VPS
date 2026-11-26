@@ -41,7 +41,9 @@ type fakeAgent struct {
 	updGets   []string
 	srv       agent.ServerSecurity // SRV-01
 	srvCalls  []string
-	qFiles    []agent.QFile // SEC-02
+	qFiles    []agent.QFile    // SEC-02
+	plan      agent.BackupPlan // BAK-03
+	planCalls []string
 	qCalls    []string
 	cert      agent.CertInfo // CERT-01
 	certCalls []string
@@ -150,6 +152,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.Path == "/v1/update" {
 		f.update(w, r, write)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/backup-plan") || strings.HasSuffix(r.URL.Path, "/send") {
+		f.backupPlan(r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/server-backups") || strings.HasPrefix(r.URL.Path, "/v1/jobs/j5bc") {

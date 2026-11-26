@@ -141,6 +141,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/server-backups", s.serverBackupStart)
 	mux.HandleFunc("GET /v1/server-backups/{name}", s.serverBackupGet)
 	mux.HandleFunc("POST /v1/server-backups/{name}/delete", s.serverBackupDelete)
+	mux.HandleFunc("POST /v1/server-backups/{name}/send", s.serverBackupSend) // BAK-03
+	mux.HandleFunc("GET /v1/backup-plan", s.backupPlan)
+	mux.HandleFunc("POST /v1/backup-plan/schedule", s.serverBackupSchedule)
+	mux.HandleFunc("POST /v1/backup-plan/run", s.backupRun)
+	mux.HandleFunc("POST /v1/backup-plan/dests", s.backupDestSave)
+	mux.HandleFunc("POST /v1/backup-plan/dests/{did}/delete", s.backupDestDelete)
+	mux.HandleFunc("POST /v1/backup-plan/dests/{did}/test", s.backupDestTest)
+	mux.HandleFunc("POST /v1/backup-plan/ssh-key", s.backupSSHKey)
 	mux.HandleFunc("GET /v1/server-security", s.serverSecurity) // SRV-01
 	mux.HandleFunc("POST /v1/firewall", s.firewallChange)
 	mux.HandleFunc("POST /v1/firewall/confirm", s.firewallConfirm)

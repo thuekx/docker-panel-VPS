@@ -40,13 +40,15 @@ type serverBackupData struct {
 	Percent    int
 	Result     string
 	Min        int
-	Host       string // this panel's name, for the restore command
+	Host       string   // this panel's name, for the restore command
+	Plan       planData // BAK-03
 }
 
 func (s *Server) serverBackupPage(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := s.agentCtx(r, 20*time.Second)
 	defer cancel()
 	d := serverBackupData{Min: minPassphrase, Host: r.Host}
+	d.Plan = s.planData(ctx, r)
 	b, err := s.ag.ServerBackups(ctx)
 	if err != nil {
 		d.Err = err.Error()
@@ -59,7 +61,7 @@ func (s *Server) serverBackupPage(w http.ResponseWriter, r *http.Request) {
 		d.Rows = append(d.Rows, serverBackupRow{x, size(x.Size), time.Unix(x.Created, 0).In(s.loc()).Format("02 Jan 2006 15:04")})
 	}
 	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
-		if j, err := s.ag.Job(ctx, id); err == nil && j.Kind == "server-backup" {
+		if j, err := s.ag.Job(ctx, id); err == nil && (j.Kind == "server-backup" || j.Kind == "server-upload") {
 			d.Job = &j
 		}
 	}
@@ -95,6 +97,9 @@ func (s *Server) serverBackupAction(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := s.agentCtx(r, 30*time.Second)
 	defer cancel()
+	if s.planAction(w, r, f.Get("op")) {
+		return
+	}
 	switch f.Get("op") {
 	case "create":
 		if !s.ipLimit.Allow("pw:" + s.clientIP(r)) {

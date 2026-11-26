@@ -178,7 +178,7 @@ preflight() {
   [ -n "$h2" ] && info "HOST-02 phase=$h2 (its baseline is kept)"
   if [ -n "$RESTORE" ]; then
     local magic n; magic="$(head -c 6 "$R$RESTORE" 2>/dev/null | tr -d '\n')"
-    if [ "$magic" = NPBK1 ]; then pass "server backup $RESTORE ($(du -h "$R$RESTORE" 2>/dev/null | cut -f1))"; else fail "$RESTORE is not a Nostek server backup (.npbk)"; fi
+    if [ "$magic" = NPBK1 ] || [ "$magic" = NPBK2 ]; then pass "server backup $RESTORE ($(du -h "$R$RESTORE" 2>/dev/null | cut -f1))"; else fail "$RESTORE is not a Nostek server backup (.npbk)"; fi
     if [ -n "$PASSF" ]; then
       n="$(LC_ALL=C.UTF-8 tr -d '\r\n' < "$PASSF" | wc -m)"
       if [ "$n" -ge 12 ]; then pass "passphrase file ($n characters)"; else fail "the passphrase has fewer than 12 characters"; fi
