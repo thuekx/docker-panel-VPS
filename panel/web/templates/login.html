@@ -7,4 +7,9 @@
   <label>{{t .Lang "login.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
   <button class="primary" type="submit">{{t .Lang "login.submit"}}</button>
 </form>
+<div class="passkey-login" data-passkey-login data-csrf="{{.CSRF}}" hidden>
+  <p class="muted or">{{t .Lang "pk.or"}}</p>
+  <button class="secondary" type="button" data-busy="{{t .Lang "pk.busy"}}">{{t .Lang "pk.login"}}</button>
+  <p class="err" role="alert" data-pk-msg hidden></p>
+</div>
 {{end}}

@@ -44,6 +44,24 @@
   </form>
 </article>
 </section>
+<section class="card wide" data-anim="card" id="passkeys">
+  <h2><span class="h-ico c-green" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "pk.title"}}</h2>
+  <p class="muted">{{t $l "pk.help"}}</p>
+  {{if $d.Passkeys}}<div class="table-wrap"><table><thead><tr><th>{{t $l "pk.name"}}</th><th>{{t $l "pk.added"}}</th><th>{{t $l "pk.used"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Passkeys}}<tr><td><b>{{.Name}}</b></td><td>{{.Created}}</td><td>{{if .Used}}{{.Used}}{{else}}<span class="muted">{{t $l "pk.never"}}</span>{{end}}</td>
+    <td><details class="menu"><summary class="ghost btn danger-text">{{t $l "pk.remove"}}</summary>
+      <form method="post" action="/profile/passkeys/delete" class="form"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="id" value="{{.ID}}">
+        <label>{{t $l "profile.pw.current"}}<input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="danger" type="submit">{{t $l "pk.remove.go"}}</button></form></details></td></tr>{{end}}
+  </tbody></table></div>{{else}}<p class="muted">{{t $l "pk.none"}}</p>{{end}}
+  <form class="form" data-passkey-add data-csrf="{{.CSRF}}" autocomplete="off" hidden>
+    <label>{{t $l "pk.name"}}<input name="name" maxlength="60" placeholder="{{t $l "pk.name.example"}}"></label>
+    <label>{{t $l "profile.pw.current"}}<input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit" data-busy="{{t $l "pk.busy"}}">{{t $l "pk.add"}}</button>
+    <p class="err" role="alert" data-pk-msg hidden></p>
+  </form>
+  <p class="muted" data-passkey-none>{{t $l "pk.unsupported"}}</p>
+</section>
 <section class="card wide" data-anim="card" id="logins">
   <h2><span class="h-ico c-violet" aria-hidden="true">{{template "ico-list"}}</span>{{t $l "login.hist"}}</h2>
   <p class="muted">{{t $l "login.hist.help"}}</p>

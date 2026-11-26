@@ -42,6 +42,7 @@ type profileData struct {
 	Accents   []string
 	Accent    string
 	Logins    []signinRow
+	Passkeys  []passkeyRow // AUTH-02
 }
 
 // signinRow is one line of the login history (OPS-01 wave 2).
@@ -58,7 +59,7 @@ func (s *Server) renderProfile(w http.ResponseWriter, r *http.Request, code int,
 	u := userOf(r)
 	n, _ := s.st.RecoveryCodesLeft(u.ID)
 	p := page{Title: s.tr.T(s.lang(r), "nav.profile"), Active: "profile", Flash: r.URL.Query().Get("saved"),
-		Data: profileData{Email: u.Email, TOTP: u.TOTPEnabled, CodesLeft: n, Accents: accents, Accent: s.accent(r), Logins: s.loginRows(u.ID)}}
+		Data: profileData{Email: u.Email, TOTP: u.TOTPEnabled, CodesLeft: n, Accents: accents, Accent: s.accent(r), Logins: s.loginRows(u.ID), Passkeys: s.passkeyRows(u.ID)}}
 	if errKey != "" {
 		p.Error = s.tr.T(s.lang(r), errKey)
 		p.Flash = ""
@@ -132,7 +133,7 @@ func (s *Server) loginRows(userID int64) []signinRow {
 	out := make([]signinRow, 0, len(list))
 	for _, l := range list {
 		out = append(out, signinRow{At: l.At.In(s.loc()).Format("02 Jan 2006 15:04"), IP: l.IP, Browser: browser(l.Agent), Result: l.Result,
-			OK: l.Result == "ok" || l.Result == "recovery", NewIP: l.NewIP})
+			OK: l.Result == "ok" || l.Result == "recovery" || l.Result == "passkey", NewIP: l.NewIP})
 	}
 	return out
 }
