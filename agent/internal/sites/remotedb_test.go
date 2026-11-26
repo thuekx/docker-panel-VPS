@@ -195,4 +195,3 @@ func TestRemoteDBPostgresTLS(t *testing.T) {
 		t.Fatal("a plain startup passed")
 	}
 }
-
