@@ -100,7 +100,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -238,6 +238,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /settings/alerts", s.need(true, s.alertsSubmit))
 	mux.HandleFunc("GET /settings/api", s.need(true, s.apiKeysPage))
 	mux.HandleFunc("POST /settings/api", s.need(true, s.apiKeysAction))
+	mux.HandleFunc("GET /settings/certs", s.need(true, s.certSettingsPage))
+	mux.HandleFunc("POST /settings/certs", s.need(true, s.certSettingsAction))
 	mux.HandleFunc("GET /settings/backup", s.need(true, s.serverBackupPage))
 	mux.HandleFunc("POST /settings/backup", s.need(true, s.serverBackupAction))
 	mux.HandleFunc("GET /settings/backup/file/{name}", s.need(true, s.serverBackupDownload))

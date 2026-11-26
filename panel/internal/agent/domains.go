@@ -38,6 +38,10 @@ type Domains struct {
 	Redirects   []Redirect    `json:"redirects"`
 	MaxAliases  int           `json:"max_aliases"`
 	Job         *Job          `json:"job"`
+	// CERT-01: the wildcard zone in use (""), the zones the website may take one of, whether ClouDNS is set
+	Wildcard      string   `json:"wildcard"`
+	WildcardZones []string `json:"wildcard_zones"`
+	DNSProvider   bool     `json:"dns_provider"`
 }
 
 // DomainChange is one change: op add | remove | refresh | redirect-add | redirect-remove.

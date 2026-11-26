@@ -36,6 +36,10 @@ type fakeAgent struct {
 	sbkJob    agent.Job
 	cert      agent.CertInfo // CERT-01
 	certCalls []string
+	dns       agent.DNSConfig // CERT-01 wildcard: the ClouDNS sub-user
+	dnsCalls  []string
+	wcZones   []string // zones the fake site may take a wildcard of
+	wcOn      string
 	app       string // APP-01: app of the fake site (empty = WordPress)
 	appDB     bool
 	trash     []agent.Trashed
@@ -107,6 +111,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	write := func(code int, v any) { w.WriteHeader(code); json.NewEncoder(w).Encode(v) }
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/files") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/db") {
 		f.filesDB(w, r, write)
+		return
+	}
+	if r.URL.Path == "/v1/dns" || r.URL.Path == "/v1/dns/delete" || r.URL.Path == "/v1/sites/voltix-id/wildcard" {
+		f.dnsRoutes(w, r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/cert") {

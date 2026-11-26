@@ -93,6 +93,22 @@
     <p class="muted small">{{t $l "cert.key.help"}}</p>
     <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if $d.Err}} disabled{{end}}>{{t $l "cert.go"}}</button>
   </form></details>
+  {{if not $d.Cert.Own}}
+  <h3 id="wildcard">{{t $l "wc.title"}}</h3>
+  {{if $d.D.Wildcard}}
+  <p><span class="pill s-ok">{{t $l "alert.on"}}</span> {{t $l "wc.on" $d.D.Wildcard}}</p>
+  <form method="post" action="/domains/{{$s.ID}}/cert"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="wildcard"><input type="hidden" name="zone" value="">
+    <button class="ghost danger-text" type="submit" data-confirm="{{t $l "wc.off.ask"}}"{{if $d.Running}} disabled{{end}}>{{t $l "wc.off"}}</button></form>
+  {{else if not $d.D.WildcardZones}}<p class="muted">{{t $l "wc.preview"}}</p>
+  {{else if not $d.D.DNSProvider}}<p class="muted">{{t $l "wc.noprovider"}}</p>
+  <a class="secondary btn" href="/settings/certs">{{t $l "wc.setup"}}</a>
+  {{else}}
+  <p class="muted">{{t $l "wc.help"}}</p>
+  <form method="post" action="/domains/{{$s.ID}}/cert" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="wildcard">
+    <label>{{t $l "wc.zone"}}<select name="zone">{{range $d.D.WildcardZones}}<option value="{{.}}">*.{{.}}</option>{{end}}</select></label>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "wc.go"}}</button>
+  </form>{{end}}
+  {{end}}
 </section>
 {{if $d.Err}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
 <p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>

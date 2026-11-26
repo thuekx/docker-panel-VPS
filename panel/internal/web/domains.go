@@ -203,6 +203,25 @@ func (s *Server) certAction(w http.ResponseWriter, r *http.Request) {
 		}
 		s.audit1(u, r, "cert.set", site.ID+" "+strings.Join(ci.Names, ",")+" until "+time.Unix(ci.NotAfter, 0).UTC().Format("2006-01-02"))
 		http.Redirect(w, r, base+"?done=cert#cert", http.StatusSeeOther)
+	case "wildcard":
+		// CERT-01: zone "" turns the wildcard off; the agent checks the zone against the website and ClouDNS
+		zone := strings.ToLower(strings.TrimSpace(f.Get("zone")))
+		if len(zone) > 253 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		job, err := s.ag.StartWildcard(ctx, site.ID, zone)
+		detail := site.ID + " off"
+		if zone != "" {
+			detail = site.ID + " zone " + zone
+		}
+		if err != nil {
+			s.audit1(u, r, "cert.wildcard", detail+" refused: "+err.Error())
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "cert.wildcard", detail)
+		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
 	case "remove":
 		if err := s.ag.RemoveCert(ctx, site.ID); err != nil {
 			back(err.Error())
