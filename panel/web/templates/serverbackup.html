@@ -1,0 +1,65 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$csrf := .CSRF}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "sbk.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{with $d.Job}}{{$j := .}}
+{{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
+<section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
+  <div class="stat-head"><span><b class="ink">{{t $l "sbk.job"}}</b></span>
+  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l "sbk.job"}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <ol class="stepper">{{range $d.Steps}}
+    <li class="st-{{.State}}" data-step="{{.Key}}">
+      <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
+      <span class="txt"><span class="now">{{t $l (printf "sbk.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "sbk.step.%s" .Key)}}</span></span>
+    </li>{{end}}
+  </ol>
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{if $j.Progress}}{{$j.Progress}} · {{end}}{{t $l "sbk.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l "sbk.job.made" $d.Result}}</p>{{end}}
+  {{if $j.Error}}<p class="banner warn">{{t $l "sbk.job.fail"}}</p>
+  <details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
+</section>
+{{end}}
+<section class="grid pair">
+<article class="card tone c-teal" data-anim="card" id="create">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-archive"}}</span>{{t $l "sbk.title"}}</h2>
+  <p class="muted">{{t $l "sbk.help"}}</p>
+  <form method="post" action="/settings/backup" class="form" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="create">
+    <label>{{t $l "sbk.passphrase"}}<input type="password" name="passphrase" minlength="{{$d.Min}}" maxlength="1024" autocomplete="new-password" required></label>
+    <label>{{t $l "sbk.passphrase2"}}<input type="password" name="passphrase2" minlength="{{$d.Min}}" maxlength="1024" autocomplete="new-password" required></label>
+    <p class="banner warn">{{t $l "sbk.passphrase.help" $d.Min}}</p>
+    <label>{{t $l "sbk.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+    <div class="row"><button class="primary" type="submit" data-busy="{{t $l "sbk.now.busy"}}"{{if or $d.Err $d.Low (and $d.Job (eq $d.Job.State "running"))}} disabled{{end}}>{{t $l "sbk.now"}}</button>
+    {{if $d.Free}}<span class="muted">{{t $l "sbk.free" $d.Free $d.Need}}</span>{{end}}</div>
+    {{if $d.Low}}<p class="banner warn">{{t $l "sbk.low"}}</p>{{end}}
+  </form>
+</article>
+<article class="card tone c-blue" data-anim="card" id="move">
+  <h2>{{t $l "sbk.move"}}</h2>
+  <ol class="muted">
+    <li>{{t $l "sbk.move.1"}}</li>
+    <li>{{t $l "sbk.move.2"}}</li>
+    <li>{{t $l "sbk.move.3"}}</li>
+  </ol>
+  <pre class="logs">sudo bash nostek-install.sh INSTALL --domain {{$d.Host}} --restore /root/nostek-server-….npbk</pre>
+  <p class="muted">{{t $l "sbk.move.note"}}</p>
+</article>
+</section>
+<section class="card wide tone c-violet" data-anim="card" id="list">
+  <h2>{{t $l "sbk.list"}}</h2>
+  {{if $d.Err}}<p class="banner warn">{{t $l "sbk.err"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>
+  {{else if not $d.Rows}}<p class="muted">{{t $l "sbk.none"}}</p>
+  {{else}}<div class="table-wrap"><table class="bak-table"><thead><tr><th>{{t $l "bak.when"}}</th><th class="num">{{t $l "bak.size"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Rows}}<tr>
+    <td><b>{{.When}}</b><div class="muted"><code>{{.Name}}</code></div></td>
+    <td class="num">{{.Human}}</td>
+    <td class="bak-acts">
+      <a class="ghost btn" href="/settings/backup/file/{{.Name}}">{{t $l "bak.download"}}</a>
+      <form method="post" action="/settings/backup"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="delete"><input type="hidden" name="name" value="{{.Name}}"><button class="ghost danger-text" type="submit" data-confirm="{{t $l "sbk.delete.ask" .When}}">{{t $l "bak.delete"}}</button></form>
+    </td></tr>{{end}}
+  </tbody></table></div>
+  <p class="muted">{{t $l "sbk.keep" 3}}</p>{{end}}
+</section>
+<p><a href="/settings">{{t $l "sbk.back"}}</a></p>
+{{end}}

@@ -319,7 +319,6 @@ func (m *Manager) serverBackup(ctx context.Context, j *Job, pass, panelVersion, 
 			os.Remove(part)
 		}
 	}()
-	j.Step("seal")
 	sw, err := npbk.NewWriter(out, pass)
 	if err != nil {
 		return "", err
@@ -343,12 +342,13 @@ func (m *Manager) serverBackup(ctx context.Context, j *Job, pass, panelVersion, 
 	if err != nil {
 		return "", err
 	}
-	for _, s := range list {
+	j.Step("websites")
+	for i, s := range list {
 		if s.Phase != "ready" {
 			man.Skipped = append(man.Skipped, s.ID+": not ready ("+s.Phase+")")
 			continue
 		}
-		j.Step("website " + s.ID)
+		j.Progress(fmt.Sprintf("%s (%d/%d)", s.Domain, i+1, len(list)))
 		st, err := m.siteTar(ctx, s, dir)
 		if err != nil {
 			return "", fmt.Errorf("website %s: %w", s.ID, err)
@@ -358,7 +358,7 @@ func (m *Manager) serverBackup(ctx context.Context, j *Job, pass, panelVersion, 
 		if err != nil {
 			return "", fmt.Errorf("website %s: %w", s.ID, err)
 		}
-		bk, err := m.backup(ctx, j, s, "manual")
+		bk, err := m.backup(ctx, &Job{}, s, "manual") // its own steps stay out of the server job
 		if err != nil {
 			return "", fmt.Errorf("website %s: %w", s.ID, err)
 		}

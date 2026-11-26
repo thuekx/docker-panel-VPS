@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -12,7 +13,10 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-type Store struct{ DB *sql.DB }
+type Store struct {
+	DB   *sql.DB
+	Path string // the database file ("" for a store made in a test without a file)
+}
 
 type User struct {
 	ID, OrgID           int64
@@ -80,10 +84,21 @@ func Open(path string) (*Store, error) {
 	if _, err := db.Exec(schema + apiKeySchema); err != nil {
 		return nil, fmt.Errorf("schema: %w", err)
 	}
-	return &Store{DB: db}, nil
+	return &Store{DB: db, Path: path}, nil
 }
 
 func (s *Store) Close() error { return s.DB.Close() }
+
+// Snapshot writes a consistent copy of the database to dst (SQLite VACUUM INTO), readable by this user only.
+func (s *Store) Snapshot(dst string) error {
+	if err := os.Remove(dst); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if _, err := s.DB.Exec(`VACUUM INTO ?`, dst); err != nil {
+		return err
+	}
+	return os.Chmod(dst, 0o600)
+}
 
 func (s *Store) UserCount() (int, error) {
 	var n int

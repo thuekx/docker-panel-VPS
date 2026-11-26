@@ -221,15 +221,16 @@ var nodeSteps = []string{"files", "pull images", "fetch and build", "start new r
 
 // jobKindSteps is the order of the steps of the other jobs (BAK-01, APP-02 deploy).
 var jobKindSteps = map[string][]string{
-	"deploy":       {"fetch and build", "start new release"},
-	"backup":       {"copy database", "copy files"},
-	"restore":      {"safety database", "safety files", "restore database", "restore files", "switch files"},
-	"image":        {"pull new images", "copy database", "copy files", "recreate containers"},
-	"migrate":      migrateSteps,
-	"domains":      {"routes"}, // "addresses" and "check" run only when the main address moves
-	"security":     {"routes"},
-	"malware-scan": {"signatures", "scan"},
-	"optimize":     {"routes"}, // PHP-01; a PHP change takes its steps from the website (phpSteps)
+	"deploy":        {"fetch and build", "start new release"},
+	"backup":        {"copy database", "copy files"},
+	"restore":       {"safety database", "safety files", "restore database", "restore files", "switch files"},
+	"image":         {"pull new images", "copy database", "copy files", "recreate containers"},
+	"migrate":       migrateSteps,
+	"domains":       {"routes"}, // "addresses" and "check" run only when the main address moves
+	"security":      {"routes"},
+	"malware-scan":  {"signatures", "scan"},
+	"optimize":      {"routes"},                      // PHP-01; a PHP change takes its steps from the website (phpSteps)
+	"server-backup": {"panel", "websites", "finish"}, // BAK-02
 }
 
 // createSteps is the order of the steps a create of this website runs, so the list is right from the first poll
