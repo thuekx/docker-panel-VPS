@@ -494,9 +494,10 @@ func (m *Manager) create(j *Job, s Site) {
 	defer cancel()
 	dir := m.dir(s.ID)
 	fail := func(step string, err error, out []byte) {
-		j.Fail(fmt.Sprintf("%s: %v %s", step, err, tail(out)))
+		// the website is marked failed before the job: whoever sees the failed job reads a failed website
 		s.Phase = "failed"
 		_ = writeSite(dir, s)
+		j.Fail(fmt.Sprintf("%s: %v %s", step, err, tail(out)))
 	}
 	if s.IsRuntime() {
 		m.createNode(ctx, j, s, fail)
