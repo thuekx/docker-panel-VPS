@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-echo amd64
+echo "${FAKE_ARCH:-amd64}"

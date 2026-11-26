@@ -9,7 +9,7 @@ import (
 var pinned = regexp.MustCompile(`^[a-z0-9./-]+:[a-z0-9._-]+@sha256:[0-9a-f]{64}$`)
 
 func TestEveryImagePinned(t *testing.T) {
-	imgs := []string{CLI, MariaDB, Nginx, Composer, ClamAV}
+	imgs := []string{CLI, MariaDB, Nginx, Composer, ClamAV, ClamAVDebian}
 	for _, p := range All() {
 		imgs = append(imgs, p.Apache, p.FPM, p.CLI)
 	}
@@ -38,5 +38,11 @@ func TestLaravelImage(t *testing.T) {
 			t.Errorf("PHP %s: bad or reused image tag %q", p.Version, img)
 		}
 		seen[img] = true
+	}
+}
+
+func TestClamAVFor(t *testing.T) {
+	if ClamAVFor("amd64") != ClamAV || ClamAVFor("arm64") != ClamAVDebian {
+		t.Fatal("ClamAV image per CPU type")
 	}
 }

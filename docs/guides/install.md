@@ -1,12 +1,14 @@
 # Install Nostek Panel on a fresh server
 
-One command installs Nostek Panel on a fresh Ubuntu server: the base (time zone, updates, swap, Docker Engine,
+One command installs Nostek Panel on a fresh Ubuntu or Debian server: the base (time zone, updates, swap, Docker Engine,
 fail2ban, firewall), the panel and its agent. At the end it prints a one-time link to create the first admin.
 
 ## Before you start
 
-- A fresh **Ubuntu 22.04 or 24.04** server (amd64 or arm64), at least **1 GB memory** (2 GB or more is better) and
-  **15 GB free disk**, with root or sudo access over SSH.
+- A fresh **Ubuntu 22.04 or 24.04** or **Debian 12** server (amd64 or arm64), at least **1 GB memory** (2 GB or more is better) and
+  **15 GB free disk**, with root or sudo access over SSH. On Debian 12 and on arm64 the installer takes v1.47.0 or
+  newer. Websites run on the Docker engine everywhere; the native engine (host Nginx + PHP-FPM) needs Ubuntu 24.04.
+  A minimal Debian may lack curl: `apt-get install -y curl` first.
 - A name for the panel, such as `panel.example.com`, with an **A record** to the server's public IPv4 address. The
   HTTPS certificate needs it.
 - Optional but useful: a wildcard record `*.preview.example.com` to the same address. A website whose own domain
@@ -18,13 +20,13 @@ fail2ban, firewall), the panel and its agent. At the end it prints a one-time li
 ## Install
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.41.0/packages/inst-01/nostek-install.sh
-echo "684822b0fd6c8a76aa9e24ded1dc744744195a18e1679e876483316405960b3f  nostek-install.sh" | sha256sum -c -
+curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.47.0/packages/inst-01/nostek-install.sh
+echo "ef9c51dcf31a6d1d8a9d3ead60783231aaec97c3f4b549be52f555b719a16f36  nostek-install.sh" | sha256sum -c -
 sudo bash nostek-install.sh PREFLIGHT --domain panel.example.com
 sudo bash nostek-install.sh INSTALL --domain panel.example.com --timezone Asia/Jakarta
 ```
 
-- `PREFLIGHT` only checks and changes nothing: Ubuntu version, memory, disk, host name, public address, the
+- `PREFLIGHT` only checks and changes nothing: system version and architecture, memory, disk, host name, public address, the
   panel name's DNS, the preview wildcard, free ports and the download sources (Docker, GitHub, Docker Hub).
 - `INSTALL` runs the same checks, shows what it will do and asks you to type `yes` (or add `--yes`). It takes
   usually 10 to 20 minutes, most of it building the panel.

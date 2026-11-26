@@ -9,7 +9,7 @@ MUTANTS=(
   's/  for p in $SSHP; do ufw allow "$p\/tcp"/  for p in 22; do ufw allow "$p\/tcp"/'   # only port 22 kept open
   's/  systemd-run --unit="$TIMER_UNIT"/  true --unit="$TIMER_UNIT"/'                  # no firewall safety timer
   's/  \[ "$a" = yes \] || refuse/  true || refuse/'                                     # installs without consent
-  's/ver_ge "[^"]*" "$MIN_RELEASE" ||/true ||/g'                                   # too old a release
+  's/ver_ge "[^"]*" "$(min_release)" ||/true ||/g'                                # too old a release
   's/printf .%s\\n. $a | grep -qxF "$IP"; then pass "$DOMAIN points/true; then pass "$DOMAIN points/'  # DNS not checked
   's/if \[ "$(state_get phase)" = DONE \]; then fail "already installed/if false; then fail "already installed/'  # installs twice
   's/chmod 600 "$LOG"/chmod 644 "$LOG"/'                                                # log readable by all
@@ -17,6 +17,9 @@ MUTANTS=(
   's/ver_ge "$v" "$MIN_RESTORE" ||/true ||/'                                               # old release restores
   's/  core stop panel >\/dev\/null 2>\&1 || die/  true || die/'                             # panel database replaced while it runs
   's/\[ "$n" -ge 12 \]; then pass "passphrase file/true; then pass "passphrase file/'       # short passphrase accepted
+  's/"debian 12") DISTRO=debian;/"debian 1"*) DISTRO=debian;/'                            # any Debian accepted
+  's/"debian 12") DISTRO=debian;/"debian 12") DISTRO=ubuntu;/'                              # Debian gets the Ubuntu Docker repository
+  's/then echo "$MIN_INST02"; else/then echo "$MIN_RELEASE"; else/'                       # Debian or arm64 gets a release not built for it
 )
 killed=0; n=0
 for m in "${MUTANTS[@]}"; do

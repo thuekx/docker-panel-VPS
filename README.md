@@ -13,13 +13,13 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-0FB5A6"></a>
   <img alt="Status: design" src="https://img.shields.io/badge/status-design%20phase-2EE6C5">
-  <img alt="Ubuntu 22.04 / 24.04" src="https://img.shields.io/badge/ubuntu-22.04%20%7C%2024.04-0B1530">
+  <img alt="Ubuntu 22.04 / 24.04, Debian 12" src="https://img.shields.io/badge/ubuntu%2022.04%20%7C%2024.04%20%7C%20debian%2012-amd64%20%7C%20arm64-0B1530">
   <img alt="Runs on Docker" src="https://img.shields.io/badge/runs%20on-Docker-0A6E8A">
 </p>
 
 ---
 
-> **Status:** installable with one command on a fresh Ubuntu 22.04/24.04 server ([install guide](docs/guides/install.md)). Follow the [roadmap](docs/governance/master-roadmap.md).
+> **Status:** installable with one command on a fresh Ubuntu 22.04/24.04 or Debian 12 server (amd64 or arm64) ([install guide](docs/guides/install.md)). Follow the [roadmap](docs/governance/master-roadmap.md).
 
 ## Why Nostek Panel
 
@@ -72,12 +72,12 @@ pulled as official container images and keeps its own licence. Details: [archite
 
 ## Quick start
 
-On a fresh Ubuntu 22.04 or 24.04 server, with an A record from your panel name to the server
+On a fresh Ubuntu 22.04/24.04 or Debian 12 server (amd64 or arm64), with an A record from your panel name to the server
 ([full guide](docs/guides/install.md)):
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.41.0/packages/inst-01/nostek-install.sh
-echo "684822b0fd6c8a76aa9e24ded1dc744744195a18e1679e876483316405960b3f  nostek-install.sh" | sha256sum -c -
+curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.47.0/packages/inst-01/nostek-install.sh
+echo "ef9c51dcf31a6d1d8a9d3ead60783231aaec97c3f4b549be52f555b719a16f36  nostek-install.sh" | sha256sum -c -
 sudo bash nostek-install.sh INSTALL --domain panel.example.com --timezone Asia/Jakarta
 ```
 
