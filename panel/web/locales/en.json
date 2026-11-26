@@ -1444,5 +1444,9 @@
   "wc.setup": "Set up ClouDNS",
   "wc.help": "One certificate for the zone and every subdomain one level below it. The edge asks for it through ClouDNS; other names keep one Let's Encrypt certificate each.",
   "wc.zone": "Zone",
-  "wc.go": "Use the wildcard"
+  "wc.go": "Use the wildcard",
+  "alert.kind.certificate": "Own certificate ending",
+  "alert.kind.certificate.help": "a certificate uploaded for a website ends within 14 days (Let's Encrypt renews by itself)",
+  "alert.cert": "The own certificate of %s ends %s (%d days left). Upload a new one on the Domains page, or remove it to go back to Let's Encrypt.",
+  "alert.cert.ended": "The own certificate of %s ended %s. Upload a new one on the Domains page, or remove it to go back to Let's Encrypt."
 }

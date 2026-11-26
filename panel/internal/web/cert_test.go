@@ -7,8 +7,10 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
+	"github.com/thuekx/docker-panel-VPS/panel/internal/alert"
 )
 
 func TestCertificateCard(t *testing.T) {
@@ -194,5 +196,44 @@ func TestWildcardAndClouDNS(t *testing.T) {
 	}
 	if strings.Contains(audit, "right-pass") || strings.Contains(audit, "wrong-pass") {
 		t.Fatalf("audit holds a password:\n%s", audit)
+	}
+}
+
+func TestCertificateAlert(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	e.srv.SetAlertKey(alert.NewKey([]byte("0123456789abcdef0123456789abcdef")))
+	e.srv.alertSync = true
+	got := fakeTelegram(t)
+	sealed, _ := e.srv.akey.Seal(testTok)
+	e.st.SetSetting(kTgChat, "1")
+	e.st.SetSetting(kTgToken, sealed)
+	e.st.SetSetting(kKindsOff, "disk,memory,backup,watchdog")
+	f.cert = agent.CertInfo{Own: true, Names: []string{"voltix.id"}, Issuer: "Origin CA", NotAfter: e.clock.Add(40 * 24 * time.Hour).Unix()}
+	e.srv.AlertTick(t.Context())
+	if len(*got) != 0 {
+		t.Fatalf("40 days left is no news: %q", *got)
+	}
+	f.cert.NotAfter = e.clock.Add(5*24*time.Hour + time.Hour).Unix()
+	e.srv.alerts.certAt = time.Time{}
+	e.srv.AlertTick(t.Context())
+	if len(*got) != 1 || !strings.Contains((*got)[0], "(5 days left)") {
+		t.Fatalf("%q", *got)
+	}
+	e.srv.alerts.certAt = time.Time{}
+	e.srv.AlertTick(t.Context())
+	if len(*got) != 1 {
+		t.Fatalf("sent twice: %q", *got)
+	}
+	f.cert.NotAfter = e.clock.Add(-time.Hour).Unix() // another certificate, already over
+	e.srv.AlertTick(t.Context())
+	if len(*got) != 1 {
+		t.Fatal("looked again within the hour")
+	}
+	e.srv.alerts.certAt = time.Time{}
+	e.srv.AlertTick(t.Context())
+	if len(*got) != 2 || !strings.Contains((*got)[1], "ended") {
+		t.Fatalf("%q", *got)
 	}
 }

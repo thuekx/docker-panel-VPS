@@ -1444,5 +1444,9 @@
   "wc.setup": "Pasang ClouDNS",
   "wc.help": "Satu sertifikat untuk zona dan semua subdomain satu tingkat di bawahnya. Edge memintanya lewat ClouDNS; nama lain tetap memakai Let's Encrypt per nama.",
   "wc.zone": "Zona",
-  "wc.go": "Pakai wildcard"
+  "wc.go": "Pakai wildcard",
+  "alert.kind.certificate": "Sertifikat sendiri hampir habis",
+  "alert.kind.certificate.help": "sertifikat yang diunggah untuk sebuah website berakhir dalam 14 hari (Let's Encrypt diperpanjang otomatis)",
+  "alert.cert": "Sertifikat sendiri %s berakhir %s (sisa %d hari). Unggah yang baru di halaman Domain, atau hapus agar kembali ke Let's Encrypt.",
+  "alert.cert.ended": "Sertifikat sendiri %s sudah berakhir %s. Unggah yang baru di halaman Domain, atau hapus agar kembali ke Let's Encrypt."
 }

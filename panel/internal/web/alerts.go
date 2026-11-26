@@ -18,7 +18,7 @@ import (
 )
 
 // AlertKinds are the alerts that can be switched on and off.
-var AlertKinds = []string{"login", "watchdog", "disk", "memory", "backup"}
+var AlertKinds = []string{"login", "watchdog", "disk", "memory", "backup", "certificate"}
 
 const (
 	kTgChat   = "alert.tg.chat"
@@ -38,7 +38,13 @@ type alertState struct {
 	mu     sync.Mutex
 	active map[string]bool
 	memBad int
+	// CERT-01: own certificates are looked at once an hour; one alert per certificate (website + end)
+	certAt   time.Time
+	certSent map[string]bool
 }
+
+// certWarnDays is how long before its end an own certificate is reported (Let's Encrypt renews by itself).
+const certWarnDays = 14
 
 // SetAlertKey gives the server the key that seals the alert secrets.
 func (s *Server) SetAlertKey(k *alert.Key) { s.akey = k }
@@ -213,6 +219,10 @@ func (s *Server) AlertTick(ctx context.Context) {
 	}
 	actx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
+	if now := s.now(); now.Sub(st.certAt) >= time.Hour {
+		st.certAt = now
+		s.certAlerts(actx, org, lang, now)
+	}
 	seqS := s.st.Setting(kWatchSeq, "")
 	since, _ := strconv.ParseInt(seqS, 10, 64)
 	v, err := s.ag.Watchdog(actx, since)
@@ -233,6 +243,36 @@ func (s *Server) AlertTick(ctx context.Context) {
 		}
 	}
 	_ = s.st.SetSetting(kWatchSeq, strconv.FormatInt(v.Seq, 10))
+}
+
+// certAlerts reports own certificates that end within certWarnDays (caller holds s.alerts.mu).
+func (s *Server) certAlerts(ctx context.Context, org int64, lang string, now time.Time) {
+	list, err := s.ag.Sites(ctx)
+	if err != nil {
+		return
+	}
+	st := &s.alerts
+	if st.certSent == nil {
+		st.certSent = map[string]bool{}
+	}
+	for _, site := range list {
+		ci, err := s.ag.Cert(ctx, site.ID)
+		if err != nil || !ci.Own || ci.NotAfter == 0 {
+			continue
+		}
+		end := time.Unix(ci.NotAfter, 0)
+		days := int(end.Sub(now).Hours() / 24)
+		key := site.ID + "@" + strconv.FormatInt(ci.NotAfter, 10)
+		if days > certWarnDays || st.certSent[key] {
+			continue
+		}
+		st.certSent[key] = true
+		text := s.tr.T(lang, "alert.cert", site.Domain, end.In(s.loc()).Format("02 Jan 2006"), days)
+		if !end.After(now) {
+			text = s.tr.T(lang, "alert.cert.ended", site.Domain, end.In(s.loc()).Format("02 Jan 2006"))
+		}
+		s.notify(org, "certificate", text)
+	}
 }
 
 // AlertLoop runs AlertTick every minute until ctx ends.
