@@ -28,6 +28,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/thuekx/docker-panel-VPS/agent/internal/npbk"
@@ -216,7 +217,11 @@ func tarFile(tw *tar.Writer, name, src string, mode int64, at time.Time) error {
 	if err != nil {
 		return err
 	}
-	if err := tw.WriteHeader(&tar.Header{Name: name, Mode: mode, Size: fi.Size(), ModTime: at, Typeflag: tar.TypeReg, Format: tar.FormatPAX}); err != nil {
+	h := &tar.Header{Name: name, Mode: mode, Size: fi.Size(), ModTime: at, Typeflag: tar.TypeReg, Format: tar.FormatPAX}
+	if sys, ok := fi.Sys().(*syscall.Stat_t); ok { // kept as it is, so a restore gives the file back to the same user
+		h.Uid, h.Gid = int(sys.Uid), int(sys.Gid)
+	}
+	if err := tw.WriteHeader(h); err != nil {
 		return err
 	}
 	n, err := io.Copy(tw, io.LimitReader(f, fi.Size()))
