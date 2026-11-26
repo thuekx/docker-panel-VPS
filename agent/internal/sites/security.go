@@ -572,9 +572,9 @@ func (s Site) securityLabels() []string {
 			fmt.Sprintf("traefik.http.routers.%s.rule: %q", r.name, r.rule),
 			fmt.Sprintf(`traefik.http.routers.%s.priority: "%d"`, r.name, r.priority),
 			fmt.Sprintf(`traefik.http.routers.%s.entrypoints: websecure`, r.name),
-			fmt.Sprintf(`traefik.http.routers.%s.tls.certresolver: le`, r.name),
 			fmt.Sprintf(`traefik.http.routers.%s.service: %s`, r.name, s.wafService(true)),
 			fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s`, r.name, strings.Join(r.middlewares, ",")))
+		l = append(l, s.tlsLabels(r.name, "")...)
 	}
 	return l
 }
@@ -585,8 +585,8 @@ func (s Site) securityEdgeYAML() (routers, middlewares string) {
 	rs, ms := s.securityEdge("$")
 	var r, m strings.Builder
 	for _, x := range rs {
-		fmt.Fprintf(&r, "    %s:\n      rule: %q\n      priority: %d\n      entryPoints: [websecure]\n      service: %s\n      tls:\n        certResolver: le\n      middlewares: [%s]\n",
-			x.name, x.rule, x.priority, s.wafService(false), strings.Join(x.middlewares, ", "))
+		fmt.Fprintf(&r, "    %s:\n      rule: %q\n      priority: %d\n      entryPoints: [websecure]\n      service: %s\n%s      middlewares: [%s]\n",
+			x.name, x.rule, x.priority, s.wafService(false), s.tlsYAML(""), strings.Join(x.middlewares, ", "))
 	}
 	for _, x := range ms {
 		switch x.kind {

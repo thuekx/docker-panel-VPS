@@ -167,7 +167,11 @@ type Domains struct {
 	Hosts       []DomainCheck `json:"hosts"`
 	Redirects   []Redirect    `json:"redirects"`
 	MaxAliases  int           `json:"max_aliases"`
-	Job         *JobView      `json:"job,omitempty"` // the newest domains job of the website
+	// CERT-01: the website's wildcard zone ("" = none), the zones it may take one of, and whether a DNS provider is set
+	Wildcard      string   `json:"wildcard,omitempty"`
+	WildcardZones []string `json:"wildcard_zones,omitempty"`
+	DNSProvider   bool     `json:"dns_provider"`
+	Job           *JobView `json:"job,omitempty"` // the newest domains job of the website
 }
 
 // lookup classifies what DNS says about a name.
@@ -223,7 +227,10 @@ func (m *Manager) Domains(ctx context.Context, id string) (Domains, error) {
 		return Domains{}, err
 	}
 	out := Domains{PublicIPv4: m.cfg.PublicIPv4, PreviewZone: m.cfg.PreviewZone, Canonical: s.Canonical(),
-		Redirects: s.Redirects, MaxAliases: spec.MaxAliases}
+		Redirects: s.Redirects, MaxAliases: spec.MaxAliases, Wildcard: s.Wildcard, WildcardZones: s.WildcardZones()}
+	if _, err := os.Stat(m.dnsPassFile()); err == nil {
+		out.DNSProvider = true
+	}
 	if out.Redirects == nil {
 		out.Redirects = []Redirect{}
 	}

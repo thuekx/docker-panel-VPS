@@ -65,6 +65,8 @@ type Site struct {
 	MIME       []MIME `json:"mime,omitempty"`
 	// SEC-01 wave 3b: the web application firewall (nil = off)
 	WAF *WAF `json:"waf,omitempty"`
+	// CERT-01: the DNS zone whose wildcard certificate (zone + *.zone, DNS challenge) covers the website's names in it
+	Wildcard string `json:"wildcard,omitempty"`
 	// PHP-01: the PHP version before the last change (the way back)
 	PrevPHP string `json:"prev_php,omitempty"`
 	// PHP-01: compression and browser cache at the edge (nil = off)
@@ -192,9 +194,9 @@ func (s Site) labels() []string {
 		l = append(l,
 			fmt.Sprintf("traefik.http.routers.%s.rule: Host(`%s`)", r, h.Name),
 			fmt.Sprintf(`traefik.http.routers.%s.entrypoints: websecure`, r),
-			fmt.Sprintf(`traefik.http.routers.%s.tls.certresolver: le`, r),
 			fmt.Sprintf(`traefik.http.routers.%s.service: %s`, r, s.wafService(true)),
 		)
+		l = append(l, s.tlsLabels(r, h.Name)...)
 		if h.Name != canon {
 			l = append(l, fmt.Sprintf(`traefik.http.routers.%s.middlewares: %s-canon`, r, rid))
 		} else if mw := s.servedMiddlewares(); len(mw) > 0 {
@@ -824,4 +826,53 @@ func (s Site) readyServices(b *strings.Builder) {
 %s
     networks: [nostek-edge, out]
 `, r.Image, wwwData, wwwData, indent(env, 6), r.Data, health, indent(s.labels(), 6))
+}
+
+// wildcardCovers says whether the website's wildcard certificate covers a name (the zone itself, or one label
+// under it: a wildcard covers one level only).
+func (s Site) wildcardCovers(name string) bool {
+	z := s.Wildcard
+	if !s.wildcardOn() {
+		return false
+	}
+	if name == z {
+		return true
+	}
+	sub, ok := strings.CutSuffix(name, "."+z)
+	return ok && sub != "" && !strings.Contains(sub, ".")
+}
+
+// tlsLabels are a router's certificate labels: the wildcard (resolver dns, zone + *.zone) for a name it covers
+// (host "" = a router over several names, while the website has a wildcard), else Let's Encrypt over HTTP.
+func (s Site) tlsLabels(r, host string) []string {
+	if (host == "" && s.wildcardOn()) || (host != "" && s.wildcardCovers(host)) {
+		return []string{
+			fmt.Sprintf(`traefik.http.routers.%s.tls.certresolver: dns`, r),
+			fmt.Sprintf(`traefik.http.routers.%s.tls.domains[0].main: %s`, r, s.Wildcard),
+			fmt.Sprintf(`traefik.http.routers.%s.tls.domains[0].sans: "*.%s"`, r, s.Wildcard),
+		}
+	}
+	return []string{fmt.Sprintf(`traefik.http.routers.%s.tls.certresolver: le`, r)}
+}
+
+// tlsYAML is the same for the edge's file provider (native websites), indented under a router.
+func (s Site) tlsYAML(host string) string {
+	if (host == "" && s.wildcardOn()) || (host != "" && s.wildcardCovers(host)) {
+		return fmt.Sprintf("      tls:\n        certResolver: dns\n        domains:\n          - main: %q\n            sans: [%q]\n", s.Wildcard, "*."+s.Wildcard)
+	}
+	return "      tls:\n        certResolver: le\n"
+}
+
+// wildcardOn: the website has a wildcard and its zone is still above its main name (a later name change can move
+// the main name out of the zone; the wildcard is then left unused until it is turned off).
+func (s Site) wildcardOn() bool {
+	if s.Wildcard == "" {
+		return false
+	}
+	for _, z := range s.WildcardZones() {
+		if z == s.Wildcard {
+			return true
+		}
+	}
+	return false
 }

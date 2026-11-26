@@ -97,6 +97,8 @@ type Manager struct {
 	tlsRoots *x509.CertPool
 	// certRoots decides whether an own certificate is publicly trusted (nil = the system roots; tests set theirs)
 	certRoots *x509.CertPool
+	// cloudnsURL points ClouDNS calls at a test server (CERT-01; "" = the real API)
+	cloudnsURL string
 	// APP-02c: deploys asked by a webhook while another job runs wait here, one per website
 	hookMu    sync.Mutex
 	hookWait  map[string]bool
