@@ -3,6 +3,16 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.38.0] — 2026-11-26
+
+### Added
+- **Update from the panel** (UPD-01): Settings → Update lists the newer releases with their notes and installs one
+  with a press: the release is fetched by its commit and its install scripts are checked against their sha256, a
+  server backup is made first (optional, on by default), then the agent and the panel are updated and both checked.
+  The page shows the steps live, also while the panel restarts. Any failure puts the previous release back, with the
+  panel's database from just before. Needs the account password; in the audit log. This release itself is installed
+  with the runbook once; later releases can come from the panel. Guide: [docs/guides/update.md](docs/guides/update.md).
+
 ## [1.37.0] — 2026-11-26
 
 ### Added
