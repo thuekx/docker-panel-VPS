@@ -106,6 +106,12 @@ func TestFileRoutes(t *testing.T) {
 	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/db/tables", `{"op":"check"}`); code != 200 || out["ok"] != true {
 		t.Errorf("table check = %d %v", code, out)
 	}
+	if code, out := do(t, c, "GET", "/v1/sites/voltix-id/db/remote", ""); code != 200 || out["on"] != false {
+		t.Errorf("remote = %d %v", code, out)
+	}
+	if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/db/remote", `{"allow":["0.0.0.0/0"]}`); code != 400 {
+		t.Errorf("remote for everyone answered %d", code)
+	}
 	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/db/query", `{"sql":""}`); code != 400 {
 		t.Errorf("empty SQL answered %d %v", code, out)
 	}

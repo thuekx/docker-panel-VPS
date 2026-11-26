@@ -118,6 +118,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "warning: migrate_test_allow / migrate_test_ca / clam_test_db are set: test harness only")
 	}
 	m := sites.New(sc, sites.ExecRunner{}, nil)
+	m.UseFirewall(sites.ExecHost{}) // DB-02: ufw rules of the database ports
 	// NATIVE-01: native.json next to the config turns the native engine on; a broken one leaves Docker only
 	if nc, err := sites.LoadNative(filepath.Join(filepath.Dir(cfgPath), "native.json")); err != nil {
 		fmt.Fprintln(os.Stderr, "native engine off:", err)
@@ -207,6 +208,9 @@ func serve(cfg Config, m *sites.Manager) error {
 	}
 	if err := m.SyncCerts(); err != nil { // CERT-01: own certificates follow the website folders
 		fmt.Fprintln(os.Stderr, "certificate files:", err)
+	}
+	if err := m.SyncRemoteDB(ctx); err != nil { // DB-02: database ports from outside
+		fmt.Fprintln(os.Stderr, "database ports:", err)
 	}
 	if err := m.SyncSFTP(); err != nil { // SFTP-01: accounts follow the website's file user
 		fmt.Fprintln(os.Stderr, "sftp files:", err)

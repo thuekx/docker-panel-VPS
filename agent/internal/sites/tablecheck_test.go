@@ -17,7 +17,7 @@ const checkXML = `<?xml version="1.0"?>
 	<field name="Msg_text">OK</field>
   </row>
   <row>
-	<field name="Table">wordpress.we`+"`"+`ird</field>
+	<field name="Table">wordpress.we` + "`" + `ird</field>
 	<field name="Op">check</field>
 	<field name="Msg_type">Error</field>
 	<field name="Msg_text">Table is marked as crashed</field>
