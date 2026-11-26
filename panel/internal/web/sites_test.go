@@ -88,6 +88,8 @@ type fakeAgent struct {
 	perfJob    *agent.Job
 	redis      *agent.RedisView // REDIS-01; nil = an agent without Redis routes
 	redisCalls []string
+	ion        *agent.IonCubeView // PHP-02; nil = an agent without ionCube routes
+	ionCalls   []string
 	metrics    agent.Metrics // OPS-01
 	cron       agent.Cron
 	cronCalls  []string
@@ -223,6 +225,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/metrics") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/cron") {
 		f.opsAPI(r, write)
+		return
+	}
+	if r.URL.Path == "/v1/sites/voltix-id/ioncube" {
+		f.ionAPI(r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/redis") {

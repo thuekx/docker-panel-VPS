@@ -53,6 +53,9 @@ func (m *Manager) phpWhy(s Site, v string) string {
 	if s.IsNative() && (m.native == nil || !slices.Contains(m.native.PHP, v)) {
 		return fmt.Sprintf("PHP %s is not installed for the native engine", v)
 	}
+	if c, ok := m.ionCache(); s.IonCube && ok && !slices.Contains(c.Versions, v) {
+		return fmt.Sprintf("ionCube has no loader for PHP %s yet", v) // PHP-02
+	}
 	return ""
 }
 
@@ -191,6 +194,11 @@ func (m *Manager) changePHP(ctx context.Context, j *Job, s Site, v string) error
 	cf := keepImages(cfNew, string(disk), follow...)
 	// 1. pull the new images while the website keeps running on the old ones
 	j.Step("pull new images")
+	if next.IonCube { // PHP-02: the loader of the new version sits next to the old one until the change is done
+		if err := m.ionInstall(ctx, s.ID, v); err != nil {
+			return fmt.Errorf("nothing was changed: %w", err)
+		}
+	}
 	seen := map[string]bool{}
 	for _, x := range composeImages(cf) {
 		if !slices.Contains(follow, x.service) || strings.HasPrefix(x.image, localImage) || seen[x.image] {
@@ -252,6 +260,9 @@ func (m *Manager) changePHP(ctx context.Context, j *Job, s Site, v string) error
 	j.Step("recreate containers")
 	if out, err := m.compose(ctx, s.ID, nil, "up", "-d", "--wait", "--wait-timeout", "300"); err != nil {
 		return putBack(fmt.Sprintf("the website did not start on PHP %s: %s", v, tail(out)))
+	}
+	if next.IonCube {
+		m.ionTidy(s.ID, v)
 	}
 	j.Step("done " + name)
 	return nil

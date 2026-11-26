@@ -356,13 +356,20 @@ func (m *Manager) StartRedis(id string, c *RedisConf) (string, error) {
 // redisStack writes compose.yml and site.json for next and starts the stack; on a failure the files of before
 // come back and the website is started on them again.
 func (m *Manager) redisStack(ctx context.Context, prev, next Site) error {
+	return m.swapStack(ctx, prev, next, "with Redis", "redis")
+}
+
+// swapStack writes compose.yml and site.json for next (the services in follow take their new image, the others keep
+// what they run) and starts the stack; on a failure the files of before come back and the website is started on
+// them again. what names the change in the error ("with Redis").
+func (m *Manager) swapStack(ctx context.Context, prev, next Site, what string, follow ...string) error {
 	dir := m.dir(next.ID)
 	old, _ := os.ReadFile(filepath.Join(dir, "compose.yml"))
 	cf, err := next.Compose()
 	if err != nil {
 		return err
 	}
-	cf = keepImages(cf, string(old), "redis")
+	cf = keepImages(cf, string(old), follow...)
 	if err := writeFile(filepath.Join(dir, "compose.yml"), []byte(cf), 0o644); err != nil {
 		return err
 	}
@@ -379,9 +386,9 @@ func (m *Manager) redisStack(ctx context.Context, prev, next Site) error {
 	_ = writeFile(filepath.Join(dir, "compose.yml"), old, 0o644)
 	_ = writeSite(dir, prev)
 	if out2, err2 := m.compose(ctx, next.ID, nil, "up", "-d", "--remove-orphans", "--wait", "--wait-timeout", fmt.Sprint(StartTimeout)); err2 != nil {
-		return fmt.Errorf("the website did not start with Redis (%s), nor without it: %s", tail(out), tail(out2))
+		return fmt.Errorf("the website did not start %s (%s), nor as before: %s", what, tail(out), tail(out2))
 	}
-	return fmt.Errorf("the website did not start with Redis; it runs as before: %s", tail(out))
+	return fmt.Errorf("the website did not start %s; it runs as before: %s", what, tail(out))
 }
 
 func (m *Manager) redisOn(ctx context.Context, j *Job, s Site, c RedisConf) error {

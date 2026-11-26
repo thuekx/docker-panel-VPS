@@ -56,6 +56,21 @@
     <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "perf.opt.save"}}</button>
   </form>
 </article>
+{{with $d.Ion}}<article class="card wide tone c-amber" data-anim="card" id="ioncube">
+  <div class="deploy-head"><h2>{{t $l "perf.ion.title"}}</h2>{{if .On}}{{if .Loaded}}<span class="pill s-ok">{{t $l "perf.ion.loaded"}}</span>{{else}}<span class="pill s-bad">{{t $l "perf.ion.notloaded"}}</span>{{end}}{{else}}<span class="pill s-unknown">{{t $l "perf.opt.off"}}</span>{{end}}</div>
+  <p class="muted">{{t $l "perf.ion.help"}}</p>
+  {{if not .Possible}}<p class="muted">{{t $l "perf.ion.none"}}</p>{{else}}
+  {{if .Loaded}}<p class="facts"><span><code>{{.Loaded}}</code></span></p>{{end}}
+  {{with .Cache}}<p class="muted small">{{t $l "perf.ion.cache" $d.IonAt}} {{range $i, $v := .Versions}}{{if $i}}, {{end}}{{$v}}{{end}} · sha256 <code class="wrap">{{.SHA256}}</code></p>{{end}}
+  <form method="post" action="/perf/{{$s.ID}}" class="form">
+    <input type="hidden" name="csrf" value="{{$csrf}}">
+    {{if .On}}<input type="hidden" name="op" value="ioncube-off">
+    <button class="ghost danger-text" type="submit" data-confirm="{{t $l "perf.ion.off.ask"}}"{{if $d.Running}} disabled{{end}}>{{t $l "perf.ion.off"}}</button>
+    {{else}}<input type="hidden" name="op" value="ioncube-on">
+    <p class="muted small">{{t $l "perf.ion.how"}}</p>
+    <button class="primary" type="submit" data-confirm="{{t $l "perf.ion.on.ask"}}"{{if $d.Running}} disabled{{end}}>{{t $l "perf.ion.on"}}</button>{{end}}
+  </form>{{end}}
+</article>{{end}}
 {{with $d.Redis}}{{$rd := .}}<article class="card wide tone c-red" data-anim="card" id="redis">
   <div class="deploy-head"><h2>{{t $l "perf.redis.title"}}</h2>{{if .Conf}}{{if .Running}}<span class="pill s-ok">{{t $l "perf.redis.running"}}</span>{{else}}<span class="pill s-bad">{{t $l "perf.redis.down"}}</span>{{end}}{{else}}<span class="pill s-unknown">{{t $l "perf.opt.off"}}</span>{{end}}</div>
   <p class="muted">{{t $l "perf.redis.help"}}</p>
