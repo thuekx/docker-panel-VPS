@@ -237,3 +237,69 @@ func TestCertificateAlert(t *testing.T) {
 		t.Fatalf("%q", *got)
 	}
 }
+
+func TestCertRequestAndSelfSigned(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	for _, lang := range []string{"en", "id"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		for _, q := range []string{"?done=csr", "?done=csrdeleted", "?done=selfsigned"} {
+			if code, body, _ := e.get(e.c, "/domains/voltix-id"+q); code != 200 || missingKey.MatchString(body) || strings.Contains(body, "%!") {
+				t.Errorf("%s (%s): %d %v", q, lang, code, missingKey.FindString(body))
+			}
+		}
+	}
+	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
+	_, body, _ := e.get(e.c, "/domains/voltix-id")
+	for _, want := range []string{"Make a certificate request (CSR)", `name="names" value="voltix.id" checked>`, `name="names" value="shop.voltix.id">`, "Self-signed certificate"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, `value="voltix-id.preview.nostek.dev"`) {
+		t.Error("the preview address is offered")
+	}
+	// no names: nothing reaches the agent
+	if _, _, h := e.post(e.c, "/domains/voltix-id/cert", url.Values{"op": {"csr"}}, "/domains/voltix-id"); !strings.Contains(h.Get("Location"), "err=") || len(f.certCalls) != 0 {
+		t.Fatalf("no names: %s %v", h.Get("Location"), f.certCalls)
+	}
+	code, _, h := e.post(e.c, "/domains/voltix-id/cert", url.Values{"op": {"csr"}, "names": {"voltix.id", "www.voltix.id"}, "key": {"rsa2048"}, "org": {" PT Voltix "}, "country": {"ID"}}, "/domains/voltix-id")
+	if code != 303 || h.Get("Location") != "/domains/voltix-id?done=csr#csr" || f.certCalls[0] != `CSR {"names":["voltix.id","www.voltix.id"],"key":"rsa2048","org":"PT Voltix","unit":"","city":"","state":"","country":"ID"}` {
+		t.Fatalf("csr: %d %s %v", code, h.Get("Location"), f.certCalls)
+	}
+	_, body, _ = e.get(e.c, "/domains/voltix-id")
+	for _, want := range []string{"Certificate request waiting.", "BEGIN CERTIFICATE REQUEST", "leave the key empty to use the key made for it", "Delete request"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("waiting request lacks %q", want)
+		}
+	}
+	// the certificate comes back without a key
+	cert := "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"
+	if code, _, h := e.post(e.c, "/domains/voltix-id/cert", url.Values{"op": {"set"}, "cert": {cert}}, "/domains/voltix-id"); code != 303 || h.Get("Location") != "/domains/voltix-id?done=cert#cert" || !strings.Contains(f.certCalls[1], `"key":""`) {
+		t.Fatalf("paired: %d %s %v", code, h.Get("Location"), f.certCalls)
+	}
+	if _, _, h := e.post(e.c, "/domains/voltix-id/cert", url.Values{"op": {"csr-delete"}}, "/domains/voltix-id"); h.Get("Location") != "/domains/voltix-id?done=csrdeleted#cert" {
+		t.Fatalf("delete: %s", h.Get("Location"))
+	}
+	// self-signed
+	if _, _, h := e.post(e.c, "/domains/voltix-id/cert", url.Values{"op": {"self-signed"}, "names": {"voltix.id"}, "days": {"x"}}, "/domains/voltix-id"); !strings.Contains(h.Get("Location"), "err=") {
+		t.Fatalf("bad days: %s", h.Get("Location"))
+	}
+	if _, _, h := e.post(e.c, "/domains/voltix-id/cert", url.Values{"op": {"self-signed"}, "names": {"voltix.id"}, "key": {"ec256"}, "days": {"90"}}, "/domains/voltix-id"); h.Get("Location") != "/domains/voltix-id?done=selfsigned#cert" {
+		t.Fatalf("self-signed: %s", h.Get("Location"))
+	}
+	if last := f.certCalls[len(f.certCalls)-1]; last != `SELF {"days":90,"key":"ec256","names":["voltix.id"]}` {
+		t.Errorf("sent %s", last)
+	}
+	_, body, _ = e.get(e.c, "/domains/voltix-id")
+	if !strings.Contains(body, `<span class="pill s-warn">Self-signed</span>`) || !strings.Contains(body, "signed by itself") {
+		t.Errorf("self-signed card:\n%s", body)
+	}
+	_, audit, _ := e.get(e.c, "/audit")
+	for _, want := range []string{"voltix-id voltix.id ec256", "cert.csr-delete", "cert.self-signed"} {
+		if !strings.Contains(audit, want) {
+			t.Errorf("audit lacks %q", want)
+		}
+	}
+}

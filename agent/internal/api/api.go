@@ -131,6 +131,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/sites/{id}/cert", s.cert)
 	mux.HandleFunc("PUT /v1/sites/{id}/cert", s.certSet)
 	mux.HandleFunc("POST /v1/sites/{id}/cert/delete", s.certRemove)
+	mux.HandleFunc("GET /v1/sites/{id}/cert/csr", s.certRequest) // CERT-02
+	mux.HandleFunc("POST /v1/sites/{id}/cert/csr", s.certRequestCreate)
+	mux.HandleFunc("POST /v1/sites/{id}/cert/csr/delete", s.certRequestDelete)
+	mux.HandleFunc("POST /v1/sites/{id}/cert/self-signed", s.certSelfSigned)
 	mux.HandleFunc("POST /v1/sites/{id}/wildcard", s.wildcard)
 	mux.HandleFunc("GET /v1/dns", s.dns)
 	mux.HandleFunc("POST /v1/dns", s.dnsSet)

@@ -28,6 +28,8 @@ func selfSigned(t *testing.T, name string) (string, string) {
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})), string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: kb}))
 }
 
+func strconvQuote(v string) string { b, _ := json.Marshal(v); return string(b) }
+
 func TestCertRoutes(t *testing.T) {
 	c, logPath := serve(t, map[int]bool{os.Getuid(): true})
 	_, out := do(t, c, "POST", "/v1/sites", good)
@@ -68,7 +70,31 @@ func TestCertRoutes(t *testing.T) {
 	if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/cert/delete", ""); code != 404 {
 		t.Fatalf("second remove %d", code)
 	}
+	// CERT-02: a request made here, its certificate paired without a key; a self-signed certificate
+	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/cert/csr", `{"names":["voltix.id"],"key":"ec256","country":"ID"}`); code != 200 || !strings.Contains(out["csr"].(string), "CERTIFICATE REQUEST") {
+		t.Fatalf("csr %d %v", code, out)
+	}
+	if code, out := do(t, c, "GET", "/v1/sites/voltix-id/cert/csr", ""); code != 200 || out["key"] != "ec256" {
+		t.Fatalf("csr get %d %v", code, out)
+	}
+	if code, out := do(t, c, "PUT", "/v1/sites/voltix-id/cert", `{"cert":`+strconvQuote(crt)+`,"key":""}`); code != 400 || !strings.Contains(out["error"].(string), "waiting request") {
+		t.Fatalf("unpaired %d %v", code, out)
+	}
+	if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/cert/csr/delete", ""); code != 200 {
+		t.Fatalf("csr delete %d", code)
+	}
+	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/cert/self-signed", `{"names":["voltix.id"],"days":90}`); code != 200 || out["self_signed"] != true {
+		t.Fatalf("self-signed %d %v", code, out)
+	}
+	if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/cert/self-signed", `{"names":["voltix.id"],"days":9999}`); code != 400 {
+		t.Fatalf("self-signed too long %d", code)
+	}
 	b, _ := os.ReadFile(logPath)
+	for _, want := range []string{"cert-csr", "voltix.id ec256", "cert-csr-delete", "cert-self-signed"} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("audit lacks %q", want)
+		}
+	}
 	if !strings.Contains(string(b), "cert-set") || !strings.Contains(string(b), "voltix.id until ") || strings.Contains(string(b), "PRIVATE") {
 		t.Fatalf("audit:\n%s", b)
 	}

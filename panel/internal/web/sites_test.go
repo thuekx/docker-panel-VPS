@@ -48,7 +48,8 @@ type fakeAgent struct {
 	qCalls     []string
 	cert       agent.CertInfo // CERT-01
 	certCalls  []string
-	dns        agent.DNSConfig // CERT-01 wildcard: the ClouDNS sub-user
+	csr        agent.CertRequest // CERT-02: the waiting request
+	dns        agent.DNSConfig   // CERT-01 wildcard: the ClouDNS sub-user
 	dnsCalls   []string
 	wcZones    []string // zones the fake site may take a wildcard of
 	wcOn       string
@@ -134,8 +135,24 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/cert") {
 		b, _ := io.ReadAll(r.Body)
 		switch {
+		case strings.HasSuffix(r.URL.Path, "/cert/csr") && r.Method == "GET":
+			write(200, f.csr)
+		case strings.HasSuffix(r.URL.Path, "/cert/csr"):
+			f.certCalls = append(f.certCalls, "CSR "+string(b))
+			f.csr = agent.CertRequest{CSR: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC\n-----END CERTIFICATE REQUEST-----\n", Names: []string{"voltix.id"}, KeyType: "ec256", Created: 1795700000}
+			write(200, f.csr)
+		case strings.HasSuffix(r.URL.Path, "/cert/csr/delete"):
+			f.certCalls = append(f.certCalls, "CSR-DELETE")
+			f.csr = agent.CertRequest{}
+			write(200, map[string]bool{"ok": true})
+		case strings.HasSuffix(r.URL.Path, "/cert/self-signed"):
+			f.certCalls = append(f.certCalls, "SELF "+string(b))
+			f.cert = agent.CertInfo{Own: true, SelfSign: true, Names: []string{"voltix.id"}, Issuer: "voltix.id", NotAfter: 1900000000}
+			write(200, f.cert)
 		case r.Method == "GET":
 			write(200, f.cert)
+		case r.Method == "PUT" && strings.Contains(string(b), `"key":""`) && f.csr.CSR == "":
+			write(400, map[string]string{"error": "bad input: the private key is needed: this certificate does not belong to the waiting request"})
 		case r.Method == "PUT" && strings.Contains(string(b), "BAD"):
 			write(400, map[string]string{"error": "bad input: the private key does not belong to the certificate"})
 		case r.Method == "PUT":

@@ -3,6 +3,20 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.44.0] — 2026-11-27
+
+### Added
+- **Certificate request (CSR)** (CERT-02): Domains → Certificate → Make a certificate request.
+  - Choose the names (with `*.domain` for a wildcard), an ECDSA or RSA key and, for an organisation-validated
+    certificate, the company details.
+  - The private key is made on the server and never leaves it. Paste the certificate the authority sends back
+    without a key, and the panel pairs it with the waiting key.
+- **Self-signed certificate** for test names and private networks: made and served at once, for 30–825 days, and
+  marked "Self-signed" on the card. Guide: [docs/guides/certificates.md](docs/guides/certificates.md).
+
+### Changed
+- Removing an own certificate keeps a waiting certificate request.
+
 ## [1.43.0] — 2026-11-27
 
 ### Added

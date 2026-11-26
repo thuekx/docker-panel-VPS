@@ -32,6 +32,7 @@ type CertInfo struct {
 	Trusted   bool     `json:"trusted"`             // a public CA (the system roots) signs the chain
 	Uncovered []string `json:"uncovered,omitempty"` // names of the website it does not cover (they keep Let's Encrypt)
 	Uploaded  int64    `json:"uploaded,omitempty"`
+	SelfSign  bool     `json:"self_signed,omitempty"` // CERT-02: signed by its own key
 }
 
 func (m *Manager) certDir(id string) string { return filepath.Join(m.dir(id), "tls") }
@@ -109,6 +110,7 @@ func certInfo(s Site, leaf *x509.Certificate, inter *x509.CertPool, now time.Tim
 	}
 	_, err := leaf.Verify(x509.VerifyOptions{Intermediates: inter, Roots: roots, CurrentTime: now, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
 	ci.Trusted = err == nil
+	ci.SelfSign = bytes.Equal(leaf.RawIssuer, leaf.RawSubject) && leaf.CheckSignature(leaf.SignatureAlgorithm, leaf.RawTBSCertificate, leaf.Signature) == nil
 	for _, h := range s.Hosts {
 		if h.Role == "preview" {
 			continue // the preview name lives under the panel's own zone
@@ -203,6 +205,13 @@ func (m *Manager) SetCert(id string, certPEM, keyPEM []byte) (CertInfo, error) {
 		return CertInfo{}, err
 	}
 	now := m.now()
+	fromRequest := false
+	if len(bytes.TrimSpace(keyPEM)) == 0 { // CERT-02: the certificate of a waiting request, paired with its key
+		if keyPEM = m.requestKey(id, certPEM); keyPEM == nil {
+			return CertInfo{}, fmt.Errorf("%w: the private key is needed: this certificate does not belong to the waiting request", ErrBadInput)
+		}
+		fromRequest = true
+	}
 	leaf, inter, err := parseCert(certPEM, keyPEM, now)
 	if err != nil {
 		return CertInfo{}, err
@@ -227,6 +236,9 @@ func (m *Manager) SetCert(id string, certPEM, keyPEM []byte) (CertInfo, error) {
 	if err := m.writeEdgeCert(id); err != nil {
 		return CertInfo{}, err
 	}
+	if fromRequest {
+		_ = os.RemoveAll(m.requestDir(id))
+	}
 	ci := certInfo(s, leaf, inter, now, m.certRoots)
 	ci.Uploaded = now.Unix()
 	return ci, nil
@@ -245,7 +257,12 @@ func (m *Manager) RemoveCert(id string) error {
 		return fmt.Errorf("%w: the website has no own certificate", ErrNotFound)
 	}
 	m.dropEdgeCert(id)
-	return os.RemoveAll(m.certDir(id))
+	for _, f := range []string{"cert.pem", "key.pem"} { // a waiting request (CERT-02) stays
+		if err := os.Remove(filepath.Join(m.certDir(id), f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
 }
 
 // writeEdgeCert copies a website's pair to the edge (key readable by the edge's user only) and writes its file.
