@@ -3,6 +3,22 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.35.0] — 2026-11-26
+
+### Added
+- **Own certificate per website** (CERT-01): Domains → Certificate takes a certificate and its key in PEM (for
+  example a Cloudflare origin certificate, or one bought elsewhere). The agent checks that the key belongs to it, that
+  it is valid and that it covers the website's main name; the edge uses it at once, and names it does not cover keep
+  Let's Encrypt. The key is never shown again or logged. Removing it goes back to Let's Encrypt. A new alert kind
+  warns 14 days before an own certificate ends.
+- **Wildcard certificates through ClouDNS**: Settings → Wildcard certificates takes a ClouDNS API sub-user (tested at
+  ClouDNS first, kept only in files the edge reads); a website's Domains page then puts its names in a zone on one
+  `zone + *.zone` certificate through the DNS challenge. Guide: [docs/guides/certificates.md](docs/guides/certificates.md).
+
+### Changed
+- The edge has a second certificate resolver for the DNS challenge (PANEL-01 UPDATE carries it); without a ClouDNS
+  sub-user it stays unused.
+
 ## [1.34.0] — 2026-11-26
 
 ### Added

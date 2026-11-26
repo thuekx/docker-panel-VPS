@@ -679,6 +679,9 @@ func (m *Manager) RestoreSites(ctx context.Context, file, pass string, logf func
 	if err := m.SyncSFTP(); err != nil {
 		logf("sftp files: %v", err)
 	}
+	if err := m.SyncCerts(); err != nil {
+		logf("certificate files: %v", err)
+	}
 	return out, nil
 }
 

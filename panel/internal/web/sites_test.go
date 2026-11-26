@@ -34,6 +34,12 @@ type fakeAgent struct {
 	sbkCopy   string   // BAK-02: where the panel writes its database copy
 	sbkSeen   []byte   // BAK-02: the start of that copy when the backup was asked
 	sbkJob    agent.Job
+	cert      agent.CertInfo // CERT-01
+	certCalls []string
+	dns       agent.DNSConfig // CERT-01 wildcard: the ClouDNS sub-user
+	dnsCalls  []string
+	wcZones   []string // zones the fake site may take a wildcard of
+	wcOn      string
 	app       string // APP-01: app of the fake site (empty = WordPress)
 	appDB     bool
 	trash     []agent.Trashed
@@ -105,6 +111,28 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	write := func(code int, v any) { w.WriteHeader(code); json.NewEncoder(w).Encode(v) }
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/files") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/db") {
 		f.filesDB(w, r, write)
+		return
+	}
+	if r.URL.Path == "/v1/dns" || r.URL.Path == "/v1/dns/delete" || r.URL.Path == "/v1/sites/voltix-id/wildcard" {
+		f.dnsRoutes(w, r, write)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/cert") {
+		b, _ := io.ReadAll(r.Body)
+		switch {
+		case r.Method == "GET":
+			write(200, f.cert)
+		case r.Method == "PUT" && strings.Contains(string(b), "BAD"):
+			write(400, map[string]string{"error": "bad input: the private key does not belong to the certificate"})
+		case r.Method == "PUT":
+			f.certCalls = append(f.certCalls, "PUT "+string(b))
+			f.cert = agent.CertInfo{Own: true, Names: []string{"voltix.id"}, Issuer: "Origin CA", NotAfter: 1900000000}
+			write(200, f.cert)
+		default:
+			f.certCalls = append(f.certCalls, "POST "+r.URL.Path)
+			f.cert = agent.CertInfo{}
+			write(200, map[string]bool{"ok": true})
+		}
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/server-backups") || strings.HasPrefix(r.URL.Path, "/v1/jobs/j5bc") {

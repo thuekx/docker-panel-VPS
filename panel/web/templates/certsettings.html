@@ -1,0 +1,39 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$csrf := .CSRF}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "dns.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+<section class="grid pair">
+<article class="card tone c-green" data-anim="card" id="cloudns">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "dns.title"}}{{if $d.C.Configured}} <span class="pill s-ok">{{t $l "alert.on"}}</span>{{end}}</h2>
+  <p class="muted">{{t $l "dns.help"}}</p>
+  {{if $d.Err}}<p class="banner warn">{{t $l "sbk.err"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>
+  {{else if $d.C.Configured}}
+  <p>{{t $l "dns.set.as" $d.C.SubAuthID $d.Since}}</p>
+  {{if $d.C.EdgeError}}<p class="banner warn">{{$d.C.EdgeError}}</p>{{end}}
+  {{if $d.C.Sites}}<p class="muted">{{t $l "dns.used"}} {{range $i, $n := $d.C.Sites}}{{if $i}}, {{end}}<a href="/domains/{{$n}}#cert"><code>{{$n}}</code></a>{{end}}</p>
+  {{else}}<form method="post" action="/settings/certs"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="remove">
+    <button class="ghost danger-text" type="submit" data-confirm="{{t $l "dns.remove.ask"}}">{{t $l "dns.remove"}}</button></form>{{end}}
+  {{end}}
+  {{if not $d.Err}}
+  <details{{if not $d.C.Configured}} open{{end}}><summary>{{if $d.C.Configured}}{{t $l "dns.replace"}}{{else}}{{t $l "dns.add"}}{{end}}</summary>
+  <form method="post" action="/settings/certs" class="form" autocomplete="off"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="set">
+    <label>{{t $l "dns.id"}}<input name="sub_auth_id" inputmode="numeric" pattern="[0-9]{1,12}" maxlength="12" required></label>
+    <label>{{t $l "dns.password"}}<input type="password" name="password" maxlength="256" autocomplete="new-password" required></label>
+    <p class="muted small">{{t $l "dns.password.help"}}</p>
+    <p class="banner warn">{{t $l "dns.restart"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dns.busy"}}">{{t $l "dns.go"}}</button>
+  </form></details>
+  {{end}}
+</article>
+<article class="card tone c-blue" data-anim="card" id="how">
+  <h2>{{t $l "dns.how"}}</h2>
+  <ol class="muted">
+    <li>{{t $l "dns.how.1"}}</li>
+    <li>{{t $l "dns.how.2"}}</li>
+    <li>{{t $l "dns.how.3"}}</li>
+    <li>{{t $l "dns.how.4"}}</li>
+  </ol>
+</article>
+</section>
+<p><a href="/settings">{{t $l "sbk.back"}}</a></p>
+{{end}}

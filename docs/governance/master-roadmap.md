@@ -32,7 +32,7 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 | 14 | INST-01 | Public one-command installer for any fresh Ubuntu VPS; preflight of hostname, DNS and ports, sha256-verified release download (RAYX-1, 2026-11-18); base without backup, backups set up afterwards ([inst-01.md](../design/inst-01.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.32.0 2026-11-26 |
 | 14a | API-01 | Open panel API with API keys per purpose (limited rights, revocable), base for automation and add-ons (RAYX-1) ([api-01.md](../design/api-01.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.33.0 2026-11-26 |
 | 14b | BAK-02 | Backup of the panel itself (settings, website list, keys) and restore onto a new VPS (RAYX-1) ([bak-02.md](../design/bak-02.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.34.0 2026-11-26 |
-| 14c | CERT-01 | Wildcard certificates (DNS challenge) and upload of an own certificate (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
+| 14c | CERT-01 | Wildcard certificates (DNS challenge, ClouDNS) and upload of an own certificate (RAYX-1) ([cert-01.md](../design/cert-01.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.35.0 2026-11-26 |
 | 14d | DB-02 | Database access from outside per IP (off by default), check and repair tables (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
 | 14e | AUTH-02 | Passkey login next to 2FA (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
 | 15 | UPD-01 | Update the panel from the panel instead of a terminal runbook (CC-FIRST-1): a release list with notes, sha256 check of the release, a server backup first, live progress, automatic roll-back when VERIFY fails (RAYX-2, 2026-11-26) | Rancang panel Docker untuk VPS fresh | ○ |

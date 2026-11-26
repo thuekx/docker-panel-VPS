@@ -37,8 +37,15 @@ const ip = "203.0.113.10"
 // serve starts the API on a real Unix socket so the peer check runs as in production.
 func serve(t *testing.T, allowed map[int]bool) (*http.Client, string) {
 	t.Helper()
+	c, logPath, _ := serveM(t, allowed)
+	return c, logPath
+}
+
+// serveM is serve that also hands back the manager (for tests that point it at a fake outside service).
+func serveM(t *testing.T, allowed map[int]bool) (*http.Client, string, *sites.Manager) {
+	t.Helper()
 	dir := t.TempDir()
-	m := sites.New(sites.Config{Data: dir, PublicIPv4: ip, PanelDomain: "panel.nostek.dev", PreviewZone: "preview.nostek.dev", FileUID: os.Getuid()},
+	m := sites.New(sites.Config{Data: dir, PublicIPv4: ip, PanelDomain: "panel.nostek.dev", PreviewZone: "preview.nostek.dev", FileUID: os.Getuid(), PanelUID: os.Getuid()},
 		nopRunner{}, func(ctx context.Context, h string) ([]string, error) {
 			if strings.HasSuffix(h, ".preview.nostek.dev") {
 				return []string{ip}, nil
@@ -58,7 +65,7 @@ func serve(t *testing.T, allowed map[int]bool) (*http.Client, string) {
 	c := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) { return net.Dial("unix", sock) },
 	}}
-	return c, logPath
+	return c, logPath, m
 }
 
 func do(t *testing.T, c *http.Client, method, path, body string) (int, map[string]any) {

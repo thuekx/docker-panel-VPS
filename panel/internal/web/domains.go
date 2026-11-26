@@ -24,16 +24,19 @@ type domainRow struct {
 }
 
 type domainsData struct {
-	Site    agent.Site
-	D       agent.Domains
-	Rows    []domainRow
-	Err     string
-	Job     *agent.Job
-	Steps   []stepRow
-	Percent int
-	Running bool
-	Ready   int // names that point here but are not served yet
-	Aliases int
+	Site     agent.Site
+	D        agent.Domains
+	Rows     []domainRow
+	Err      string
+	Job      *agent.Job
+	Steps    []stepRow
+	Percent  int
+	Running  bool
+	Ready    int // names that point here but are not served yet
+	Aliases  int
+	Cert     agent.CertInfo // CERT-01: the website's own certificate
+	CertEnd  string
+	CertDays int
 }
 
 // domainWhy says, as a locale key, what a name needs.
@@ -83,6 +86,13 @@ func (s *Server) domainsPage(w http.ResponseWriter, r *http.Request) {
 			d.Aliases++
 		}
 		d.Rows = append(d.Rows, row)
+	}
+	if ci, err := s.ag.Cert(ctx, site.ID); err == nil {
+		d.Cert = ci
+		if ci.NotAfter > 0 {
+			t := time.Unix(ci.NotAfter, 0)
+			d.CertEnd, d.CertDays = t.In(s.loc()).Format("02 Jan 2006"), int(time.Until(t).Hours()/24)
+		}
 	}
 	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
 		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && j.Kind == "domains" {
@@ -160,4 +170,66 @@ func (s *Server) domainsAction(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit1(u, r, "domains", detail)
 	http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
+}
+
+// certAction stores or removes a website's own certificate (CERT-01). The key is passed to the agent once and is
+// never logged; the audit names the certificate's names and end date.
+func (s *Server) certAction(w http.ResponseWriter, r *http.Request) {
+	site, ok := s.siteOf(w, r)
+	if !ok {
+		return
+	}
+	f, u, l := r.PostForm, userOf(r), s.lang(r)
+	ctx, cancel := s.agentCtx(r, 30*time.Second)
+	defer cancel()
+	base := "/domains/" + site.ID
+	back := func(msg string) { http.Redirect(w, r, base+"?err="+url.QueryEscape(msg)+"#cert", http.StatusSeeOther) }
+	switch f.Get("op") {
+	case "set":
+		cert, key := strings.TrimSpace(f.Get("cert")), strings.TrimSpace(f.Get("key"))
+		if cert == "" || key == "" {
+			back(s.tr.T(l, "cert.need"))
+			return
+		}
+		if len(cert) > 64<<10 || len(key) > 64<<10 {
+			back(s.tr.T(l, "cert.toobig"))
+			return
+		}
+		ci, err := s.ag.SetCert(ctx, site.ID, cert+"\n", key+"\n")
+		if err != nil {
+			s.audit1(u, r, "cert.set", site.ID+" refused: "+err.Error())
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "cert.set", site.ID+" "+strings.Join(ci.Names, ",")+" until "+time.Unix(ci.NotAfter, 0).UTC().Format("2006-01-02"))
+		http.Redirect(w, r, base+"?done=cert#cert", http.StatusSeeOther)
+	case "wildcard":
+		// CERT-01: zone "" turns the wildcard off; the agent checks the zone against the website and ClouDNS
+		zone := strings.ToLower(strings.TrimSpace(f.Get("zone")))
+		if len(zone) > 253 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		job, err := s.ag.StartWildcard(ctx, site.ID, zone)
+		detail := site.ID + " off"
+		if zone != "" {
+			detail = site.ID + " zone " + zone
+		}
+		if err != nil {
+			s.audit1(u, r, "cert.wildcard", detail+" refused: "+err.Error())
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "cert.wildcard", detail)
+		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
+	case "remove":
+		if err := s.ag.RemoveCert(ctx, site.ID); err != nil {
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "cert.remove", site.ID)
+		http.Redirect(w, r, base+"?done=certremoved#cert", http.StatusSeeOther)
+	default:
+		http.Error(w, "bad request", 400)
+	}
 }

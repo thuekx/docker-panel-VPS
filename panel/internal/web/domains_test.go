@@ -43,7 +43,8 @@ func (f *fakeAgent) domains(w http.ResponseWriter, r *http.Request, write func(i
 			{Name: "old.voltix.id", Role: "alias", Routed: true, DNS: "mixed", Cert: "error", CertError: "x509: certificate is valid for TRAEFIK DEFAULT CERT"},
 			{Name: "voltix-id.preview.nostek.dev", Role: "preview", Routed: true, DNS: "here", Cert: "valid", CertIssuer: "R13", CertExpires: time.Now().Add(80 * 24 * time.Hour).Unix()},
 		},
-		Redirects: []agent.Redirect{{From: "/old-page", To: "/new-page", Code: 301}}})
+		Redirects: []agent.Redirect{{From: "/old-page", To: "/new-page", Code: 301}},
+		Wildcard:  f.wcOn, WildcardZones: f.wcZones, DNSProvider: f.dns.Configured})
 }
 
 func TestDomainsPage(t *testing.T) {
