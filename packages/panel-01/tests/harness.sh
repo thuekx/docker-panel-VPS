@@ -40,6 +40,8 @@ new_env; unset SUDO_USER; run PREFLIGHT "${A[@]}"; ok "root shell refused" '[ $R
 new_env; run PREFLIGHT --ack PANEL-01 --expect-ip 198.51.100.7 --expect-host fake-vps --domain 'Panel.Example.test;x'; ok "bad domain refused" '[ $RC = 3 ]'
 new_env; run APPLY "${A[@]}" --src-commit main; ok "commit must be a full id" '[ $RC = 3 ] && [ ! -d "$(CORE)" ]'
 new_env; echo phase=BASE_DONE > "$PANEL01_TEST_ROOT/var/lib/nostek/host-02/state"; run PREFLIGHT "${A[@]}"; ok "needs HOST-02 done" '[ $RC = 1 ] && has "HOST-02 is not DONE"'
+new_env; rm -f "$PANEL01_TEST_ROOT/var/lib/nostek/host-02/state"; mkdir -p "$PANEL01_TEST_ROOT/var/lib/nostek/inst-01"; echo phase=BASE_DONE > "$PANEL01_TEST_ROOT/var/lib/nostek/inst-01/state"; run PREFLIGHT "${A[@]}"; ok "the installer's baseline (INST-01) is enough" 'has "PASS baseline by the installer (INST-01)" && ! has "HOST-02 is not DONE"'
+new_env; rm -f "$PANEL01_TEST_ROOT/var/lib/nostek/host-02/state"; mkdir -p "$PANEL01_TEST_ROOT/var/lib/nostek/inst-01"; echo phase=INSTALLING > "$PANEL01_TEST_ROOT/var/lib/nostek/inst-01/state"; run PREFLIGHT "${A[@]}"; ok "an unfinished installer baseline is not" '[ $RC = 1 ] && has "HOST-02 is not DONE"'
 new_env; FAKE_DNS=203.0.113.9; run PREFLIGHT "${A[@]}"; ok "dns must point to this host" '[ $RC = 1 ] && has "does not point"'
 new_env; run PREFLIGHT "${A[@]}"; ok "preflight passes and changes nothing" '[ $RC = 0 ] && has "RESULT PANEL-01 PREFLIGHT PASS" && [ ! -e "$PANEL01_TEST_ROOT/srv" ]'
 new_env; run APPLY "${A[@]}" --src-commit 0000000000000000000000000000000000000000; ok "unknown commit stops before any change" '[ $RC = 1 ] && [ ! -d "$(CORE)" ] && [ -z "$(phase)" ]'

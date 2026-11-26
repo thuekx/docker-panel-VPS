@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+[ -f "$FAKE/docker_installed" ] || exit 127
+case "$1" in ps) cat "$FAKE/containers" 2>/dev/null ;; esac
+exit 0

@@ -21,6 +21,7 @@ VARLIB="$R/var/lib/nostek"
 STATE_DIR="$VARLIB/panel-01"
 BACKUP_ROOT="$R/var/backups/nostek/panel-01"
 HOST02_STATE="$VARLIB/host-02/state"
+INST01_STATE="$VARLIB/inst-01/state"
 REPO_URL="https://github.com/thuekx/docker-panel-VPS.git"
 ACME_CA=""; TLS_TEST=0
 if [ -n "$R" ]; then   # test hooks: only active with a test root
@@ -111,6 +112,7 @@ check_host() {
 
 dc() { docker compose --project-directory "$CORE" -f "$CORE/compose.yml" --env-file "$CORE/.env" "$@"; }
 host02_phase() { grep -E '^phase=' "$HOST02_STATE" 2>/dev/null | tail -n1 | cut -d= -f2; }
+inst01_phase() { grep -E '^phase=' "$INST01_STATE" 2>/dev/null | tail -n1 | cut -d= -f2; }
 # services of our project that publish ports, other than edge
 foreign_publishers() {
   local id name ports
@@ -139,8 +141,10 @@ cert_ok() {
 # ---------- PREFLIGHT ----------
 preflight() {
   progress 1/7 "host identity"; check_host
-  progress 2/7 "HOST-02 state"
-  if [ "$(host02_phase)" = DONE ]; then pass "HOST-02 done (baseline, firewall, backup proven)"; else fail "HOST-02 is not DONE (phase=$(host02_phase)); finish HOST-02 first"; fi
+  progress 2/7 "server baseline"
+  if [ "$(host02_phase)" = DONE ]; then pass "HOST-02 done (baseline, firewall, backup proven)"
+  elif case "$(inst01_phase)" in BASE_DONE|DONE) true ;; *) false ;; esac; then pass "baseline by the installer (INST-01); backup not set up yet"
+  else fail "HOST-02 is not DONE (phase=$(host02_phase)); finish HOST-02 first (or install with nostek-install.sh)"; fi
   progress 3/7 "docker"
   if docker info >/dev/null 2>&1; then pass "docker engine $(docker version --format '{{.Server.Version}}' 2>/dev/null)"; else fail "docker engine not running"; fi
   if docker compose version >/dev/null 2>&1; then pass "docker compose $(docker compose version --short 2>/dev/null)"; else fail "docker compose plugin missing"; fi

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# getent ahostsv4 NAME: the panel name answers FAKE_DNS_IP, names under the preview zone FAKE_WILD_IP
+case "$2" in
+  np-check-*) [ -n "${FAKE_WILD_IP:-}" ] && echo "$FAKE_WILD_IP   STREAM $2" ;;
+  *) [ -n "${FAKE_DNS_IP:-}" ] && echo "$FAKE_DNS_IP   STREAM $2" ;;
+esac
+exit 0
