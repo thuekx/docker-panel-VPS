@@ -1,6 +1,6 @@
 // Command nostek-agent runs on the host as root and is the only part of Nostek Panel that may change Docker.
 // It accepts a fixed set of site actions on a Unix socket that only the panel's user can open
-// (SITE-DOCKER-1 = A). Subcommands: serve | purge | check-config | version.
+// (SITE-DOCKER-1 = A). Subcommands: serve | purge | check-config | version | server-restore (BAK-02).
 package main
 
 import (
@@ -132,13 +132,15 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "server-restore":
+		os.Exit(serverRestore(m, os.Args[2:]))
 	case "serve":
 		if err := serve(cfg, m); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	default:
-		fmt.Fprintln(os.Stderr, "usage: nostek-agent serve|purge|check-config|version")
+		fmt.Fprintln(os.Stderr, "usage: nostek-agent serve|purge|check-config|version|server-restore")
 		os.Exit(2)
 	}
 }

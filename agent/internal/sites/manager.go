@@ -79,6 +79,9 @@ type Config struct {
 	ClamTestDB string
 	// SEC-01 wave 3: the edge's access log ("" = <data>/edge/logs/access.log)
 	AccessLog string
+	// BAK-02: the panel's data folder ("" = <data>/panel) and its owner (0 = 65532)
+	PanelData string
+	PanelUID  int
 }
 
 // Manager owns all site directories. One change runs at a time.
