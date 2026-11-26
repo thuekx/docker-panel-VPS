@@ -36,6 +36,9 @@ type fakeAgent struct {
 	sbkCopy   string   // BAK-02: where the panel writes its database copy
 	sbkSeen   []byte   // BAK-02: the start of that copy when the backup was asked
 	sbkJob    agent.Job
+	upd       agent.UpdateView // UPD-01
+	updCalls  []string         // POST bodies
+	updGets   []string
 	cert      agent.CertInfo // CERT-01
 	certCalls []string
 	dns       agent.DNSConfig // CERT-01 wildcard: the ClouDNS sub-user
@@ -135,6 +138,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			f.cert = agent.CertInfo{}
 			write(200, map[string]bool{"ok": true})
 		}
+		return
+	}
+	if r.URL.Path == "/v1/update" {
+		f.update(w, r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/server-backups") || strings.HasPrefix(r.URL.Path, "/v1/jobs/j5bc") {

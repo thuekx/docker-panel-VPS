@@ -470,3 +470,5 @@ code.wrap{white-space:pre-wrap;word-break:break-all}
 .toast-x{flex:none;background:none;border:0;color:var(--muted);font-size:20px;line-height:1;padding:0 4px;cursor:pointer;border-radius:6px}
 .toast-x:hover{color:var(--ink)}.toast-x:focus-visible{outline:2px solid var(--c-teal);outline-offset:2px}
 @media print{.toasts{display:none}}
+/* UPD-01: release notes as text */
+pre.notes{white-space:pre-wrap;word-break:break-word;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;margin:8px 0 0;padding:12px;border-radius:12px;background:var(--field);max-height:360px;overflow:auto}

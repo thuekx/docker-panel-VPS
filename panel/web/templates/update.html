@@ -1,0 +1,65 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$v := $d.V}}{{$csrf := .CSRF}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+<section class="card wide profile-head" data-anim="card">
+  <div class="avatar" aria-hidden="true">{{template "ico-cloud"}}</div>
+  <div>
+    <div class="stat-big small">{{t $l "upd.current" $v.Current}}</div>
+    <div class="row">{{if $d.Newer}}<span class="pill s-info">{{t $l "upd.available" (len $d.Newer)}}</span>{{else if not $v.Error}}<span class="pill s-ok">{{t $l "upd.latest"}}</span>{{end}}
+      <a class="ghost btn" href="/settings/update?fresh=1">{{t $l "upd.check"}}</a></div>
+  </div>
+</section>
+{{if $d.Err}}<p class="banner warn">{{t $l "upd.err.agent"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
+{{if $v.Error}}<p class="banner warn">{{t $l "upd.err.list"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$v.Error}}</pre></details>{{end}}
+{{if or $v.Status $v.Job}}{{$st := $v.Status}}
+<section class="card wide job" data-anim="card" id="run" data-update="/settings/update/status" data-busy-run="{{if $d.Busy}}1{{end}}"
+  data-restarting="{{t $l "upd.restarting"}}">
+  <div class="stat-head"><span><b class="ink">{{if $st}}{{t $l "upd.run" $st.From $st.Tag}}{{else}}{{t $l "upd.run.backup"}}{{end}}</b>{{if $d.Started}} <span class="muted">· {{$d.Started}}{{if $d.Ended}}–{{$d.Ended}}{{end}}</span>{{end}}</span>
+  <span class="job-pill" data-upd-pill>{{if $d.Busy}}<span class="pill s-run">{{t $l "upd.phase.RUNNING"}}</span>{{else if $st}}{{if eq $st.Phase "DONE"}}<span class="pill s-ok" data-anim="pop">{{t $l "upd.phase.DONE"}}</span>{{else if eq $st.Phase "ROLLED_BACK"}}<span class="pill s-warn">{{t $l "upd.phase.ROLLED_BACK"}}</span>{{else}}<span class="pill s-bad">{{t $l "upd.phase.FAILED"}}</span>{{end}}{{else}}<span class="pill s-bad">{{t $l "upd.phase.FAILED"}}</span>{{end}}</span></div>
+  {{with $v.Job}}{{if eq .State "running"}}<p class="muted" data-upd-job>{{t $l "upd.job.backup"}}{{if .Progress}} · {{.Progress}}{{end}}</p>{{else if .Error}}<p class="banner warn">{{.Error}}</p>{{end}}{{end}}
+  {{if $d.Busy}}<p class="muted job-wait">{{t $l "upd.wait"}} <span data-upd-note></span></p>{{end}}
+  {{if $st}}{{if and (not $d.Busy) $st.Result}}<p class="banner {{if eq $st.Phase "DONE"}}ok{{else}}warn{{end}}">{{$st.Result}}</p>{{end}}
+  <details class="tech"{{if $d.Busy}} open{{end}}><summary>{{t $l "upd.lines"}}</summary><pre class="logs" data-upd-lines>{{range $st.Lines}}{{.}}
+{{end}}</pre></details>{{end}}
+</section>
+{{end}}
+{{if $v.Ready}}<p class="banner warn">{{t $l "upd.notready"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$v.Ready}}</pre></details>{{end}}
+{{if $d.Newer}}
+<section class="grid pair">
+<article class="card tone c-teal" data-anim="card" id="start">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-cloud"}}</span>{{t $l "upd.start"}}</h2>
+  <p class="muted">{{t $l "upd.help"}}</p>
+  <form method="post" action="/settings/update" class="form" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{$csrf}}">
+    <fieldset class="choice"><legend>{{t $l "upd.to"}}</legend>
+      {{range $i, $r := $d.Newer}}<label class="tile"><input type="radio" name="tag" value="{{$r.Tag}}"{{if eq $i 0}} checked{{end}}><span>{{$r.Tag}}</span></label>{{end}}
+    </fieldset>
+    <label class="check"><input type="checkbox" name="backup" value="1" checked data-reveal="#upd-pass"> {{t $l "upd.backup"}}</label>
+    <div id="upd-pass">
+      <label>{{t $l "sbk.passphrase"}}<input type="password" name="passphrase" minlength="{{$d.Min}}" maxlength="1024" autocomplete="new-password"></label>
+      <label>{{t $l "sbk.passphrase2"}}<input type="password" name="passphrase2" minlength="{{$d.Min}}" maxlength="1024" autocomplete="new-password"></label>
+      <p class="muted">{{t $l "upd.backup.help" $d.Min}}</p>
+    </div>
+    <label>{{t $l "sbk.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit" data-busy="{{t $l "upd.busy"}}" data-confirm="{{t $l "upd.ask"}}"{{if or $d.Busy $v.Ready}} disabled{{end}}>{{t $l "upd.go"}}</button>
+  </form>
+</article>
+<article class="card tone c-blue" data-anim="card" id="how">
+  <h2>{{t $l "upd.how"}}</h2>
+  <ol class="muted">
+    <li>{{t $l "upd.how.1"}}</li>
+    <li>{{t $l "upd.how.2"}}</li>
+    <li>{{t $l "upd.how.3"}}</li>
+    <li>{{t $l "upd.how.4"}}</li>
+  </ol>
+</article>
+</section>
+{{end}}
+<section class="card wide tone c-violet" data-anim="card" id="notes">
+  <h2>{{t $l "upd.notes"}}</h2>
+  {{if not (or $d.Newer $d.Older)}}<p class="muted">{{t $l "upd.none"}}</p>{{end}}
+  {{range $d.Newer}}<details class="tech" open><summary><b>{{.Name}}</b>{{if .When}} <span class="muted">· {{.When}}</span>{{end}} <span class="pill s-info">{{t $l "upd.new"}}</span></summary><pre class="notes">{{.Notes}}</pre></details>{{end}}
+  {{range $d.Older}}<details class="tech"><summary><b>{{.Name}}</b>{{if .When}} <span class="muted">· {{.When}}</span>{{end}}</summary><pre class="notes">{{.Notes}}</pre></details>{{end}}
+</section>
+<p><a href="/settings">{{t $l "sbk.back"}}</a></p>
+{{end}}

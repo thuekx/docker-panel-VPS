@@ -440,5 +440,44 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); busy(); go(); passkeys(); toasts(); });
+  // UPD-01: a checkbox with data-reveal shows its fields (and makes them required) only while it is ticked.
+  function reveal() {
+    all("[data-reveal]").forEach(function (box) {
+      var part = document.querySelector(box.getAttribute("data-reveal"));
+      if (!part) return;
+      function set() {
+        part.hidden = !box.checked;
+        part.querySelectorAll("input").forEach(function (i) { i.required = box.checked; });
+      }
+      box.addEventListener("change", set); set();
+    });
+  }
+
+  // UPD-01: the update card polls the run's status. While the panel restarts the answer fails for a while; the
+  // card says so and keeps asking, then reloads once the run has ended.
+  function updater() {
+    var card = document.querySelector("[data-update]");
+    if (!card || !card.getAttribute("data-busy-run")) return;
+    var url = card.getAttribute("data-update"), lines = card.querySelector("[data-upd-lines]"), note = card.querySelector("[data-upd-note]");
+    var fails = 0;
+    function poll() {
+      fetch(url, { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" } })
+        .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then(function (d) {
+          fails = 0;
+          if (note) note.textContent = "";
+          if (lines && d.lines) { lines.textContent = d.lines.join("\n") + "\n"; lines.scrollTop = lines.scrollHeight; }
+          if (!d.busy) { location.reload(); return; }
+          setTimeout(poll, 3000);
+        })
+        .catch(function () {
+          fails++;
+          if (note) note.textContent = card.getAttribute("data-restarting");
+          setTimeout(poll, Math.min(10000, 3000 + fails * 1000));
+        });
+    }
+    setTimeout(poll, 2000);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); busy(); go(); passkeys(); reveal(); updater(); toasts(); });
 })();
