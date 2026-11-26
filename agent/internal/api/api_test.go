@@ -118,6 +118,22 @@ func TestOnlyFixedRoutes(t *testing.T) {
 	if code, _ := do(t, c, "GET", "/v1/sites/voltix-id/metrics?x=1", ""); code != 400 {
 		t.Errorf("metrics with another parameter answered %d", code)
 	}
+	// OPS-01 wave 2: watchdog events take since, usage takes nothing
+	if code, body := do(t, c, "GET", "/v1/watchdog?since=0", ""); code != 200 || body["events"] == nil {
+		t.Errorf("watchdog answered %d %s", code, body)
+	}
+	if code, _ := do(t, c, "GET", "/v1/watchdog?x=1", ""); code != 400 {
+		t.Errorf("watchdog with another parameter answered %d", code)
+	}
+	if code, _ := do(t, c, "GET", "/v1/usage?x=1", ""); code != 400 {
+		t.Errorf("usage with a parameter answered %d", code)
+	}
+	if code, _ := do(t, c, "GET", "/v1/sites/voltix-id/usage", ""); code != 404 {
+		t.Errorf("usage of an unknown website answered %d", code)
+	}
+	if code, body := do(t, c, "GET", "/v1/usage", ""); code != 200 || body["recent"] == nil {
+		t.Errorf("server usage answered %d %s", code, body)
+	}
 }
 
 func TestCreateStrictBodyAndSecretOnce(t *testing.T) {

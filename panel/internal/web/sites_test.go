@@ -66,6 +66,9 @@ type fakeAgent struct {
 	metrics   agent.Metrics // OPS-01
 	cron      agent.Cron
 	cronCalls []string
+	watch     agent.WatchView // OPS-01 wave 2
+	watchAsk  []string
+	usage     agent.Usage
 }
 
 func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -124,6 +127,15 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		write(200, f.sftp)
+		return
+	}
+	if r.URL.Path == "/v1/watchdog" {
+		f.watchAsk = append(f.watchAsk, r.URL.RawQuery)
+		write(200, f.watch)
+		return
+	}
+	if r.URL.Path == "/v1/usage" || r.URL.Path == "/v1/sites/voltix-id/usage" {
+		write(200, f.usage)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/metrics") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/cron") {

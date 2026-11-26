@@ -105,6 +105,10 @@ type Manager struct {
 	statOnce  sync.Once
 	crons     *cronState // OPS-01
 	cronOnce  sync.Once
+	watchSt   *watchState // OPS-01 wave 2
+	watchOnce sync.Once
+	usage     *usageState
+	usageOnce sync.Once
 	// NATIVE-01: the native engine (nil native = not installed on this server)
 	native     *NativeConfig
 	host       HostRunner

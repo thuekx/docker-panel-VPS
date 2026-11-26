@@ -41,6 +41,13 @@ type profileData struct {
 	CodesLeft int
 	Accents   []string
 	Accent    string
+	Logins    []signinRow
+}
+
+// signinRow is one line of the login history (OPS-01 wave 2).
+type signinRow struct {
+	At, IP, Browser, Result string
+	OK, NewIP               bool
 }
 
 func (s *Server) profile(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +58,7 @@ func (s *Server) renderProfile(w http.ResponseWriter, r *http.Request, code int,
 	u := userOf(r)
 	n, _ := s.st.RecoveryCodesLeft(u.ID)
 	p := page{Title: s.tr.T(s.lang(r), "nav.profile"), Active: "profile", Flash: r.URL.Query().Get("saved"),
-		Data: profileData{Email: u.Email, TOTP: u.TOTPEnabled, CodesLeft: n, Accents: accents, Accent: s.accent(r)}}
+		Data: profileData{Email: u.Email, TOTP: u.TOTPEnabled, CodesLeft: n, Accents: accents, Accent: s.accent(r), Logins: s.loginRows(u.ID)}}
 	if errKey != "" {
 		p.Error = s.tr.T(s.lang(r), errKey)
 		p.Flash = ""
@@ -118,4 +125,14 @@ func (s *Server) profilePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit1(u, r, "account.password_changed", "other sessions signed out")
 	http.Redirect(w, r, "/profile?saved=pw", http.StatusSeeOther)
+}
+
+func (s *Server) loginRows(userID int64) []signinRow {
+	list, _ := s.st.Logins(userID, 30)
+	out := make([]signinRow, 0, len(list))
+	for _, l := range list {
+		out = append(out, signinRow{At: l.At.In(s.loc()).Format("02 Jan 2006 15:04"), IP: l.IP, Browser: browser(l.Agent), Result: l.Result,
+			OK: l.Result == "ok" || l.Result == "recovery", NewIP: l.NewIP})
+	}
+	return out
 }

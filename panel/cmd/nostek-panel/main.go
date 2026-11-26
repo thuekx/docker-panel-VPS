@@ -15,12 +15,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 	_ "time/tzdata"
 
 	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
+	"github.com/thuekx/docker-panel-VPS/panel/internal/alert"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/store"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/sysinfo"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/web"
@@ -120,6 +122,15 @@ func serve(st *store.Store) {
 		log.Fatalf("FAIL init: %v", err)
 	}
 	srv.SetAgent(agent.New(env("NP_AGENT_SOCKET", "")))
+	// OPS-01 wave 2: the alert secrets are sealed with a key file next to the database
+	if k, err := alert.LoadKey(env("NP_ALERT_KEY", filepath.Join(filepath.Dir(env("NP_DB", "/data/panel.db")), "alerts.key"))); err != nil {
+		log.Printf("WARN alerts: no key file (%v); alerts cannot be set up", err)
+	} else {
+		srv.SetAlertKey(k)
+	}
+	actx, astop := context.WithCancel(context.Background())
+	defer astop()
+	go srv.AlertLoop(actx)
 	hs := &http.Server{Addr: env("NP_LISTEN", ":8080"), Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second, MaxHeaderBytes: 64 << 10}
 	go func() {

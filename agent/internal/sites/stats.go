@@ -276,6 +276,7 @@ func (m *Manager) dropStats(id string) {
 	delete(st.sites, id)
 	st.mu.Unlock()
 	_ = os.Remove(m.statsFile(id))
+	m.dropUsage(id)
 	cs := m.cronDB() // the cron runs go with it
 	cs.mu.Lock()
 	delete(cs.runs, id)

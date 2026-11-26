@@ -3,6 +3,22 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.30.0] — 2026-11-23
+
+### Added
+- **Service watchdog** (OPS-01 wave 2): once a minute the agent checks every website's containers (native: its PHP
+  service), the core services (edge, panel, WAF, SFTP) and the host's Nginx and MariaDB. A service that is unhealthy
+  or not running three checks in a row is restarted, at most three times an hour, then reported once and left alone.
+- **Alerts by Telegram and e-mail** on the Settings page: a sign-in from a new address, watchdog restarts and
+  recoveries, the data disk or memory at its red level, a nightly backup that failed or is late. Each kind can be
+  switched off, a condition is sent once when it starts and once when it ends, and a test button shows the result
+  per channel. The bot token and SMTP password are stored encrypted and never shown again; e-mail is never sent
+  without TLS.
+- **Login history** on the Profile page: the last 30 sign-in attempts with address, browser and result, kept 90 days,
+  with new addresses marked.
+- **CPU and memory over time**: per website on the Statistics tab and for the server on the Dashboard, sampled every
+  five minutes and kept 31 days.
+
 ## [1.29.0] — 2026-11-22
 
 Live on the production server since 2026-11-23 16:19 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
