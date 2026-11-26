@@ -513,7 +513,7 @@ func (s *Server) renderDB(w http.ResponseWriter, r *http.Request, site agent.Sit
 	}
 	d.DB = db
 	d.Size = size(db.Size)
-	if !site.IsNative() {
+	if !site.IsNative() && !site.IsMySQL() { // Ghost's MySQL stays private (APP-03 wave 2)
 		if rv, err := s.ag.RemoteDB(ctx, site.ID); err == nil {
 			d.Remote = &rv
 			d.AllowText = strings.Join(rv.Allow, "\n")

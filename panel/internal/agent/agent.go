@@ -183,16 +183,25 @@ func (s Site) IsNative() bool { return s.Engine == "native" }
 
 // HasDB is true when the site has its own database.
 func (s Site) HasDB() bool {
+	if s.App == "ghost" { // APP-03 wave 2: the only ready app with a database (its own MySQL 8)
+		return true
+	}
 	return s.IsWP() || s.IsLaravel() || ((s.App == "php" || s.IsNode()) && s.Database)
 }
 
 // IsPostgres is true when the site database is PostgreSQL instead of MariaDB.
 func (s Site) IsPostgres() bool { return s.HasDB() && s.DBEngine == "postgres" }
 
-// DBEngineName is mariadb or postgres: the engine of the site database, for locale keys.
+// IsMySQL is true when the site database is the MySQL 8 of a ready app (Ghost).
+func (s Site) IsMySQL() bool { return s.HasDB() && s.DBEngine == "mysql" }
+
+// DBEngineName is mariadb, postgres or mysql: the engine of the site database, for locale keys.
 func (s Site) DBEngineName() string {
 	if s.IsPostgres() {
 		return "postgres"
+	}
+	if s.IsMySQL() || (s.App == "ghost" && s.DBEngine == "") {
+		return "mysql"
 	}
 	return "mariadb"
 }
@@ -202,11 +211,14 @@ func (s Site) DBName() string {
 	if s.IsPostgres() {
 		return "PostgreSQL"
 	}
+	if s.DBEngineName() == "mysql" {
+		return "MySQL"
+	}
 	return "MariaDB"
 }
 
 // ReadyApps are the apps of the agent's ready-app catalogue (APP-03); the catalogue names their image versions.
-var ReadyApps = []string{"uptime-kuma", "n8n"}
+var ReadyApps = []string{"uptime-kuma", "n8n", "ghost"}
 
 // IsReady is true for an app of the ready-app catalogue: an upstream image that runs as it is.
 func (s Site) IsReady() bool { return slices.Contains(ReadyApps, s.App) }

@@ -59,6 +59,9 @@ var php = []PHPVersion{
 const (
 	CLI     = "wordpress:cli-php8.4@sha256:37b7e3ed9b537788756f9b5c6dd8ec7c3f3053ee707abc67c776e453ba8f9e55"
 	MariaDB = "mariadb:11.8@sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd"
+	// MySQL is the MySQL 8 (LTS) of an app that supports only MySQL, such as Ghost (APP-03 wave 2); not offered to
+	// other websites.
+	MySQL = "mysql:8.4.13@sha256:8c233bad33d520a7aae1c1e619c3a9775f4a1ba2d463d692fada04ec7f40be00"
 	// Postgres is the PostgreSQL a PHP, Laravel, Node.js, Go or Python website may choose instead of MariaDB.
 	Postgres = "postgres:18-trixie@sha256:b9f6b8ff03b62f3cfd9d9ba3fe56226a9991c79d3fb46fd46536263bf02be553"
 	Nginx    = "nginx:1.30-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
@@ -283,6 +286,7 @@ type ReadyApp struct {
 	Data  string   // the folder inside the container that holds all its data (the website folder is mounted there)
 	Env   []string // fixed environment, KEY=value; {host} is the website's address
 	Home  string   // home page of the project, for the panel
+	DB    string   // "" = no database (its data folder holds everything) | mysql: its own MySQL 8 container (APP-03 wave 2)
 }
 
 var ready = []ReadyApp{
@@ -295,6 +299,12 @@ var ready = []ReadyApp{
 			"N8N_EDITOR_BASE_URL=https://{host}/", "N8N_PROXY_HOPS=1", "N8N_USER_FOLDER=/data", "HOME=/data",
 			"GENERIC_TIMEZONE=Asia/Jakarta", "TZ=Asia/Jakarta", "N8N_DIAGNOSTICS_ENABLED=false",
 			"N8N_VERSION_NOTIFICATIONS_ENABLED=false", "N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true"}},
+	// Ghost supports only MySQL 8 in production; its password is read from the secret file when the app starts.
+	{ID: "ghost", Name: "Ghost", Port: 2368, Data: "/var/lib/ghost/content", Home: "https://ghost.org", DB: "mysql",
+		Image: "ghost:6.79.0-alpine@sha256:3a052ac4c0a74566700ec30283f7f702b81e65ae179e46ce18cca159c8b98702",
+		Env: []string{"NODE_ENV=production", "url=https://{host}", "database__client=mysql",
+			"database__connection__host=db", "database__connection__user=app", "database__connection__database=app",
+			"privacy__useUpdateCheck=false", "TZ=Asia/Jakarta"}},
 }
 
 // Ready returns the entry of a ready app.

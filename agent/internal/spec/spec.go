@@ -101,6 +101,7 @@ const (
 	// Ready apps (APP-03): an upstream image from the catalogue, see catalog.ReadyAll.
 	AppUptimeKuma = "uptime-kuma"
 	AppN8N        = "n8n"
+	AppGhost      = "ghost" // with its own MySQL 8 (APP-03 wave 2)
 )
 
 // IsReadyApp is true for an app of the ready-app catalogue.
@@ -222,6 +223,7 @@ const EngineNative = "native"
 const (
 	DBMariaDB  = "mariadb"
 	DBPostgres = "postgres"
+	DBMySQL    = "mysql" // only for a ready app that needs it (Ghost); never chosen on the form
 )
 
 // Default commands of a Node.js app. Install uses the lock file when there is one.
@@ -358,12 +360,12 @@ func (c Create) Check(reserved map[string]bool) error {
 				return err
 			}
 		}
-	case AppUptimeKuma, AppN8N:
+	case AppUptimeKuma, AppN8N, AppGhost:
 		if c.PHP != "" || c.Server != "" || c.Version != "" {
 			return errors.New("a ready app runs its own server: no web server, PHP or version to choose")
 		}
 	default:
-		return errors.New("app must be wordpress, php, laravel, static, node, go, python, uptime-kuma or n8n")
+		return errors.New("app must be wordpress, php, laravel, static, node, go, python, uptime-kuma, n8n or ghost")
 	}
 	if c.Version != "" && app != AppLaravel && !IsRuntimeApp(app) {
 		return errors.New("only Laravel, Node.js, Go and Python take a version")

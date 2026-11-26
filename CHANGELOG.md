@@ -3,6 +3,17 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.48.0] — 2026-11-27
+
+### Added
+- **Ghost as a ready app** (APP-03 wave 2): Websites → New → Ready apps → Ghost, for a blog, magazine or newsletter.
+  - Each Ghost website gets its own MySQL 8 database, because Ghost supports only MySQL. MySQL is not offered to other
+    websites.
+  - The database password stays in a file and is never in the settings.
+  - The Database page, export and import, and backups work the same as with MariaDB. Access from outside is not
+    offered for this database.
+  - Open `/ghost` right after it is made and create the admin account: the first visitor sets it.
+
 ## [1.47.0] — 2026-11-27
 
 ### Added

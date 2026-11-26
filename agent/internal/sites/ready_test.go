@@ -20,17 +20,17 @@ func TestReadyApps(t *testing.T) {
 			t.Fatalf("%s job %+v", a.ID, v)
 		}
 		got, _ := m.Get(s.ID)
-		if got.Phase != "ready" || !got.IsReady() || !got.OneApp() || got.HasDB() {
+		if got.Phase != "ready" || !got.IsReady() || !got.OneApp() || got.HasDB() != (a.DB != "") {
 			t.Fatalf("%s site %+v", a.ID, got)
 		}
 		comp := mustRead(t, m.composePath(s.ID))
 		for _, want := range []string{"  app:\n", "image: " + a.Image + "\n", `user: "33:33"`, "- ./wp:" + a.Data + "\n",
-			`loadbalancer.server.port: "` + itoa(a.Port) + `"`, "networks: [nostek-edge, out]", "Host(`voltix.id`)"} {
+			`loadbalancer.server.port: "` + itoa(a.Port) + `"`, "Host(`voltix.id`)"} {
 			if !strings.Contains(comp, want) {
 				t.Errorf("%s compose lacks %q:\n%s", a.ID, want, comp)
 			}
 		}
-		if strings.Contains(comp, "  web:") || strings.Contains(comp, "  db:") || strings.Contains(comp, "ports:") {
+		if strings.Contains(comp, "  web:") || strings.Contains(comp, "  db:") != (a.DB != "") || strings.Contains(comp, "ports:") {
 			t.Errorf("%s: extra service or published port:\n%s", a.ID, comp)
 		}
 		for _, f := range []string{"php.ini", "nginx.conf", filepath.Join("wp", "index.php"), filepath.Join("wp", "index.html")} {
@@ -65,6 +65,42 @@ func TestReadyApps(t *testing.T) {
 
 func itoa(n int) string { return strconv.Itoa(n) }
 
+// Ghost (APP-03 wave 2) gets its own MySQL 8; its password comes from the secret file, never the compose file.
+func TestReadyGhost(t *testing.T) {
+	m, _, s, _ := appSite(t, spec.Create{App: "ghost", Domain: "voltix.id", Primary: "domain"})
+	got, _ := m.Get(s.ID)
+	if !got.IsMySQL() || got.IsPostgres() || got.DBEngine != spec.DBMySQL || got.DBName() != "app" {
+		t.Fatalf("ghost site %+v", got)
+	}
+	comp := mustRead(t, m.composePath(s.ID))
+	for _, want := range []string{"  db:\n", "image: " + catalog.MySQL + "\n", "MYSQL_PASSWORD_FILE: /run/secrets/db_password",
+		"MYSQL_USER: app", "MARIADB_USER: app", "- ./db:/var/lib/mysql", "mysqladmin ping",
+		`url: "https://voltix.id"`, `database__client: "mysql"`, `database__connection__host: "db"`,
+		`export database__connection__password=\"$$(cat /run/secrets/db_password)\"`, "exec docker-entrypoint.sh",
+		`command: ["node", "current/index.js"]`, "db: { condition: service_healthy }",
+		"networks: [back, nostek-edge, out]", "- ./wp:/var/lib/ghost/content\n"} {
+		if !strings.Contains(comp, want) {
+			t.Errorf("ghost compose lacks %q:\n%s", want, comp)
+		}
+	}
+	pw := strings.TrimSpace(mustRead(t, filepath.Join(m.dir(s.ID), "secrets", "db_password")))
+	if pw == "" || strings.Contains(comp, pw) {
+		t.Errorf("password missing or in the compose file")
+	}
+	// the database tools reach MySQL with its own client names
+	if !strings.Contains(client, "mariadb-dump) p=mysqldump") || !strings.Contains(client, "mariadb) p=mysql ") {
+		t.Errorf("client %q", client)
+	}
+	for _, a := range catalog.ReadyAll() {
+		if a.ID != "ghost" {
+			m, _, s, _ := appSite(t, spec.Create{App: a.ID, Domain: "voltix.id", Primary: "domain"})
+			if c := mustRead(t, m.composePath(s.ID)); !strings.Contains(c, "networks: [nostek-edge, out]") || strings.Contains(c, "secrets:") {
+				t.Errorf("%s compose:\n%s", a.ID, c)
+			}
+		}
+	}
+}
+
 func TestReadyAppRefusals(t *testing.T) {
 	base := spec.Create{App: "uptime-kuma", Domain: "voltix.id", Primary: "domain"}
 	for name, c := range map[string]spec.Create{
@@ -75,7 +111,9 @@ func TestReadyAppRefusals(t *testing.T) {
 		"engine":   {App: "n8n", Domain: "voltix.id", Primary: "domain", DBEngine: spec.DBPostgres},
 		"repo":     {App: "n8n", Domain: "voltix.id", Primary: "domain", Repo: "https://github.com/a/b.git"},
 		"email":    {App: "uptime-kuma", Domain: "voltix.id", Primary: "domain", AdminEmail: "a@b.c"},
-		"unknown":  {App: "ghost", Domain: "voltix.id", Primary: "domain"},
+		"unknown":  {App: "ghost-blog", Domain: "voltix.id", Primary: "domain"},
+		"ghost db": {App: "ghost", Domain: "voltix.id", Primary: "domain", Database: true},
+		"mysql":    {App: "php", Domain: "voltix.id", Primary: "domain", Database: true, DBEngine: spec.DBMySQL},
 	} {
 		if err := c.Check(nil); err == nil {
 			t.Errorf("%s accepted", name)

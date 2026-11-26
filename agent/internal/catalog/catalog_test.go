@@ -9,7 +9,7 @@ import (
 var pinned = regexp.MustCompile(`^[a-z0-9./-]+:[a-z0-9._-]+@sha256:[0-9a-f]{64}$`)
 
 func TestEveryImagePinned(t *testing.T) {
-	imgs := []string{CLI, MariaDB, Nginx, Composer, ClamAV, ClamAVDebian}
+	imgs := []string{CLI, MariaDB, MySQL, Nginx, Composer, ClamAV, ClamAVDebian}
 	for _, p := range All() {
 		imgs = append(imgs, p.Apache, p.FPM, p.CLI)
 	}

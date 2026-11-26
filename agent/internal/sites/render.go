@@ -138,8 +138,15 @@ func (s Site) IsLaravel() bool { return s.AppName() == spec.AppLaravel }
 // IsPostgres is true when the site's own database is PostgreSQL instead of MariaDB.
 func (s Site) IsPostgres() bool { return s.HasDB() && s.DBEngine == spec.DBPostgres }
 
-// HasDB is true when the site has its own database (MariaDB, or PostgreSQL for an app built from source).
+// IsMySQL is true when the site's own database is MySQL 8 (a ready app that needs it: Ghost).
+func (s Site) IsMySQL() bool { return s.HasDB() && s.DBEngine == spec.DBMySQL }
+
+// HasDB is true when the site has its own database (MariaDB, or PostgreSQL for an app built from source, or the
+// MySQL 8 of a ready app that needs one).
 func (s Site) HasDB() bool {
+	if r, ok := catalog.Ready(s.AppName()); ok {
+		return r.DB != ""
+	}
 	return s.IsWP() || s.IsLaravel() || ((s.AppName() == spec.AppPHP || s.IsRuntime()) && s.Database)
 }
 
@@ -266,7 +273,7 @@ func (s Site) Compose() (string, error) {
 		if s.Release < 1 {
 			return "", fmt.Errorf("site %s has no release yet", s.ID)
 		}
-	case spec.AppUptimeKuma, spec.AppN8N:
+	case spec.AppUptimeKuma, spec.AppN8N, spec.AppGhost:
 		if _, ok := catalog.Ready(s.AppName()); !ok {
 			return "", fmt.Errorf("unknown app %s", s.App)
 		}
@@ -318,6 +325,30 @@ x-site: &site
     networks: [back]
 
 `, catalog.Postgres, s.DBName(), s.DBName(), s.pgTLSCommand(), s.pgTLSVolume(), s.DBName(), s.DBName())
+	} else if s.IsMySQL() {
+		// MARIADB_USER is read by the database tools of this package (they run the same for MariaDB and MySQL)
+		fmt.Fprintf(&b, `  db:
+    <<: *site
+    image: %s
+    mem_limit: 768m
+    environment:
+      MYSQL_DATABASE: %s
+      MYSQL_USER: %s
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+      MYSQL_RANDOM_ROOT_PASSWORD: "1"
+      MARIADB_USER: %s
+    secrets: [db_password]
+    volumes:
+      - ./db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$(cat /run/secrets/db_password)\" mysqladmin ping -h 127.0.0.1 -u %s --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks: [back]
+
+`, catalog.MySQL, s.DBName(), s.DBName(), s.DBName(), s.DBName())
 	} else if s.HasDB() {
 		fmt.Fprintf(&b, `  db:
     <<: *site
@@ -351,7 +382,7 @@ x-site: &site
 		s.laravelServices(&b, p)
 	case spec.AppNode, spec.AppGo, spec.AppPython:
 		s.nodeServices(&b)
-	case spec.AppUptimeKuma, spec.AppN8N:
+	case spec.AppUptimeKuma, spec.AppN8N, spec.AppGhost:
 		s.readyServices(&b)
 	case spec.AppStatic:
 		fmt.Fprintf(&b, `  web:
@@ -824,12 +855,24 @@ func (s Site) readyServices(b *strings.Builder) {
 		env = append(env, k+": "+yamlQuote(v))
 	}
 	health := fmt.Sprintf(`["CMD", "node", "-e", "require('http').get('http://127.0.0.1:%d/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]`, r.Port)
+	db, nets := "", "nostek-edge, out"
+	if s.HasDB() {
+		// the app reads its database password from the secret file as it starts: it is in no compose file and no
+		// docker inspect output; the image's own entry point then runs as before
+		db = `    entrypoint: ["sh", "-c", "export database__connection__password=\"$$(cat /run/secrets/db_password)\"; exec docker-entrypoint.sh \"$$@\"", "--"]
+    command: ["node", "current/index.js"]
+    secrets: [db_password]
+    depends_on:
+      db: { condition: service_healthy }
+`
+		nets = "back, nostek-edge, out"
+	}
 	fmt.Fprintf(b, `  app:
     <<: *site
     image: %s
     user: "%d:%d"
     mem_limit: 768m
-    environment:
+%s    environment:
 %s
     volumes:
       - ./wp:%s
@@ -841,8 +884,8 @@ func (s Site) readyServices(b *strings.Builder) {
       start_period: 120s
     labels:
 %s
-    networks: [nostek-edge, out]
-`, r.Image, wwwData, wwwData, indent(env, 6), r.Data, health, indent(s.labels(), 6))
+    networks: [%s]
+`, r.Image, wwwData, wwwData, db, indent(env, 6), r.Data, health, indent(s.labels(), 6), nets)
 }
 
 // wildcardCovers says whether the website's wildcard certificate covers a name (the zone itself, or one label

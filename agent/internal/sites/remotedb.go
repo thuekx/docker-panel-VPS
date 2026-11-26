@@ -450,6 +450,9 @@ func (m *Manager) SetRemoteDB(ctx context.Context, id string, allow []string) (s
 	if s.IsNative() {
 		return "", fmt.Errorf("%w: access from outside is for Docker websites only (the host MariaDB is shared)", ErrBadInput)
 	}
+	if s.IsMySQL() && len(allow) > 0 {
+		return "", fmt.Errorf("%w: access from outside is not offered for the MySQL database of a ready app", ErrBadInput)
+	}
 	list, _, err := parseAllow(allow)
 	if err != nil {
 		return "", err
