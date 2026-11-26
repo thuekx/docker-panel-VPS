@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+echo "Filesystem 1048576-blocks Used Available Capacity Mounted on"
+echo "/dev/fake 100000 1000 ${FAKE_DISK:-40000} 2% /"

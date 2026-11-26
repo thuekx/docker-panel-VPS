@@ -3,6 +3,21 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.32.0] — 2026-11-26
+
+### Added
+- **One-command installer** (INST-01) for a fresh Ubuntu 22.04/24.04 server: `nostek-install.sh PREFLIGHT` checks
+  the server (Ubuntu, memory, disk, host name, public address, the panel name's DNS, the preview wildcard, free
+  ports, the download sources) without changing anything; `INSTALL` sets the base (time zone, updates, swap, Docker
+  Engine with its signing key checked, fail2ban, a firewall that keeps every SSH port open) and installs the panel
+  and its agent from the newest release, then prints a one-time link for the first admin. The release is fetched
+  by its commit and its install scripts must match the sha256 in their lock files. Guide:
+  [docs/guides/install.md](docs/guides/install.md).
+
+### Changed
+- PANEL-01 also accepts a server prepared by the installer (backups are set up afterwards) in place of a finished
+  HOST-02.
+
 ## [1.31.0] — 2026-11-23
 
 ### Added

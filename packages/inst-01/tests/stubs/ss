@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" "$0" "$@"
+case "$*" in
+  *"sport = :80 or"*) [ -f "$FAKE/busy80" ] && echo "LISTEN 0 511 0.0.0.0:80 0.0.0.0:*" ;;
+esac
+exit 0

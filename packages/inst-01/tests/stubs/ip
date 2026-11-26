@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+echo "2: eth0    inet ${FAKE_LOCAL_IP:-10.0.0.5}/24 brd 10.0.0.255 scope global eth0"

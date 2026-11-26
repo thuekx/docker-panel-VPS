@@ -32,7 +32,7 @@ network, read-only allow-list), `panel` (non-root, read-only root filesystem, no
 
 ```bash
 shellcheck -S warning packages/panel-01/panel-01-core.sh packages/panel-01/tests/*.sh packages/panel-01/tests/stubs/*
-sudo bash packages/panel-01/tests/harness.sh   # RESULT PANEL-01 HARNESS PASS tests=30 sisa_uji=0  (real Docker, ports 80/443)
+sudo bash packages/panel-01/tests/harness.sh   # RESULT PANEL-01 HARNESS PASS tests=37 sisa_uji=0  (real Docker, ports 80/443)
 sudo bash packages/panel-01/tests/mutants.sh   # RESULT PANEL-01 MUTANTS PASS killed=7/7 sisa_uji=0
 (cd packages/panel-01 && sha256sum -c panel-01.lock)
 ```

@@ -19,7 +19,7 @@
 
 ---
 
-> **Status:** design phase. Nothing is installable yet. Follow the [roadmap](docs/governance/master-roadmap.md).
+> **Status:** installable with one command on a fresh Ubuntu 22.04/24.04 server ([install guide](docs/guides/install.md)). Follow the [roadmap](docs/governance/master-roadmap.md).
 
 ## Why Nostek Panel
 
@@ -68,7 +68,16 @@ pulled as official container images and keeps its own licence. Details: [archite
 
 ## Quick start
 
-Not available yet. The installer will be a single command on a fresh Ubuntu server. Until then:
+On a fresh Ubuntu 22.04 or 24.04 server, with an A record from your panel name to the server
+([full guide](docs/guides/install.md)):
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.32.0/packages/inst-01/nostek-install.sh
+echo "ddac324da913564c38ee1ff919c07214dc67f830da4dd714ed397dec37957b42  nostek-install.sh" | sha256sum -c -
+sudo bash nostek-install.sh INSTALL --domain panel.example.com --timezone Asia/Jakarta
+```
+
+The last lines print a one-time link to create the first admin. Set up backups afterwards.
 
 - [Change the default login user of a new VPS](docs/guides/change-default-user.md) (safe, step by step)
 - [Roadmap](docs/governance/master-roadmap.md) · [Decisions](docs/governance/decisions-and-findings-register.md) · [Status](docs/governance/project-status-tree.md)

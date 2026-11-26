@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+[ "$1" = -T ] && for p in ${FAKE_SSH_PORTS:-22}; do echo "port $p"; done
+exit 0
