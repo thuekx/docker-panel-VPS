@@ -1,0 +1,55 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "api.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if $d.NewKey}}<section class="card wide tone c-green" data-anim="card" id="newkey">
+  <p data-toast class="banner ok">{{t $l "api.done.created" $d.NewName}}</p>
+  <h2>{{t $l "api.new.title"}}</h2>
+  <p class="muted">{{t $l "api.new.once"}}</p>
+  <div class="reveal" data-anim="pop"><code id="apikey">{{$d.NewKey}}</code><button class="secondary" type="button" data-copy="apikey">{{t $l "reveal.copy"}}</button></div>
+</section>{{end}}
+<section class="card wide" data-anim="card" id="keys">
+  <h2><span class="h-ico c-blue" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "api.title"}}</h2>
+  <p class="muted">{{t $l "api.help"}}</p>
+  {{if $d.Keys}}<div class="table-wrap"><table><thead><tr><th>{{t $l "api.col.name"}}</th><th>{{t $l "api.col.rights"}}</th><th>{{t $l "api.col.scope"}}</th><th>{{t $l "api.col.used"}}</th><th>{{t $l "api.col.expires"}}</th><th></th></tr></thead><tbody>{{range $d.Keys}}
+    <tr><td><strong>{{.Name}}</strong><div class="muted"><code>{{.Prefix}}…</code> · {{.CreatedAt}}</div></td>
+      <td>{{range .Rights}}<span class="pill s-info">{{t $l (printf "api.right.%s" .)}}</span> {{end}}</td>
+      <td>{{if .Site}}<code>{{.Site}}</code>{{else}}{{t $l "api.all.sites"}}{{end}}{{if .AllowIPs}}<div class="muted">{{range $i, $a := .AllowIPs}}{{if $i}}, {{end}}<code>{{$a}}</code>{{end}}</div>{{end}}</td>
+      <td>{{if .At}}{{.At}}<div class="muted"><code>{{.LastIP}}</code></div>{{else}}—{{end}}</td>
+      <td>{{if eq .State "active"}}{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}{{t $l "api.never"}}{{end}}{{else if eq .State "expired"}}<span class="pill s-warn">{{t $l "api.state.expired"}}</span>{{else}}<span class="pill s-bad">{{t $l "api.state.revoked"}}</span>{{end}}</td>
+      <td>{{if eq .State "active"}}<form method="post" action="/settings/api#keys" data-confirm="{{t $l "api.revoke.confirm" .Name}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="op" value="revoke"><input type="hidden" name="id" value="{{.ID}}"><button class="ghost" type="submit">{{t $l "api.revoke"}}</button></form>{{end}}</td></tr>{{end}}
+  </tbody></table></div>{{else}}<p class="muted">{{t $l "api.none"}}</p>{{end}}
+</section>
+<section class="grid pair">
+<article class="card" data-anim="card" id="create">
+  <h2>{{t $l "api.create"}}</h2>
+  <p class="muted">{{t $l "api.create.help" $d.Active $d.Max}}</p>
+  <form method="post" action="/settings/api" class="form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="op" value="create">
+    <label>{{t $l "api.name"}}<input name="name" maxlength="40" placeholder="ci-deploy" required></label>
+    <fieldset><legend>{{t $l "api.col.rights"}}</legend>
+      <label class="check"><input type="checkbox" checked disabled> {{t $l "api.right.read"}}</label>
+      {{range $d.Rights}}<label class="check"><input type="checkbox" name="right_{{.}}"> {{t $l (printf "api.right.%s" .)}} <span class="muted">{{t $l (printf "api.right.%s.help" .)}}</span></label>{{end}}
+    </fieldset>
+    <label>{{t $l "api.site"}}<select name="site"><option value="">{{t $l "api.all.sites"}}</option>{{range $d.Sites}}<option value="{{.ID}}">{{.Domain}} ({{.ID}})</option>{{end}}</select></label>
+    <label>{{t $l "api.allow"}}<input name="allow" placeholder="203.0.113.10, 198.51.100.0/24" autocomplete="off"><span class="muted">{{t $l "api.allow.help"}}</span></label>
+    <label>{{t $l "api.expires"}}<select name="expires">{{range $d.Expiry}}<option value="{{.}}"{{if eq . 90}} selected{{end}}>{{if eq . 0}}{{t $l "api.never"}}{{else}}{{t $l "api.days" .}}{{end}}</option>{{end}}</select></label>
+    <label>{{t $l "api.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit">{{t $l "api.create.go"}}</button>
+  </form>
+</article>
+<article class="card" data-anim="card" id="howto">
+  <h2>{{t $l "api.howto"}}</h2>
+  <p class="muted">{{t $l "api.howto.help"}}</p>
+  <pre class="logs"><code>curl -H "Authorization: Bearer npk_…" {{$d.Base}}/sites
+
+curl -X POST -H "Authorization: Bearer npk_…" \
+  {{$d.Base}}/sites/SITE-ID/restart
+
+curl -X PUT -H "Authorization: Bearer npk_…" \
+  --data-binary @dist.zip \
+  "{{$d.Base}}/sites/SITE-ID/release?name=dist.zip"</code></pre>
+  <p class="muted">{{t $l "api.howto.more"}}</p>
+</article>
+</section>
+{{end}}
