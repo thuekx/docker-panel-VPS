@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/pkg/sftp"
+	"github.com/thuekx/docker-panel-VPS/panel/internal/authlog"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/ssh"
 )
@@ -45,13 +46,14 @@ func put(t *testing.T, dir string, s Site) {
 }
 
 type env struct {
-	srv   *Server
-	addr  string
-	root  string // the website folder
-	cfg   string
-	log   *logBuf
-	key   ssh.Signer
-	close func()
+	srv     *Server
+	authLog string
+	addr    string
+	root    string // the website folder
+	cfg     string
+	log     *logBuf
+	key     ssh.Signer
+	close   func()
 }
 
 func start(t *testing.T) *env {
@@ -78,6 +80,8 @@ func start(t *testing.T) *env {
 		{Name: "upl", Hash: hash(t, "pass-upl-1"), Keys: []string{pub}, Dir: "/wp-content/uploads"},
 	}})
 	e.srv = New(e.cfg, e.log)
+	e.authLog = filepath.Join(base, "auth-fail.log")
+	e.srv.AuthFail = authlog.Open(e.authLog, "sftp")
 	if err := e.srv.Load(); err != nil {
 		t.Fatal(err)
 	}
@@ -267,6 +271,9 @@ func TestLoginsAndReload(t *testing.T) {
 	e := start(t)
 	if _, err := e.dial("ana", ssh.Password("wrong")); err == nil {
 		t.Fatal("wrong password accepted")
+	}
+	if b, _ := os.ReadFile(e.authLog); !strings.Contains(string(b), " nostek-auth fail ip=127.0.0.1 service=sftp\n") {
+		t.Fatalf("fail2ban log: %q", b)
 	}
 	if _, err := e.dial("nobody", ssh.Password("x")); err == nil {
 		t.Fatal("unknown account accepted")

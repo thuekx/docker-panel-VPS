@@ -303,6 +303,7 @@ func (s *Server) loginPasskeyFinish(w http.ResponseWriter, r *http.Request) {
 	n, err := auth.Verify(rp, auth.Credential{ID: p.CredID, PublicKey: p.PublicKey, Alg: p.Alg, SignCount: p.SignCount},
 		ch.b, unb64(f.Get("client")), unb64(f.Get("auth")), unb64(f.Get("sig")))
 	if err != nil {
+		s.authFail.Fail(s.clientIP(r))
 		_ = s.st.RecordLoginFailure(u.ID, maxFails, s.now().Add(lockFor))
 		s.audit1(u, r, "login.passkey_failed", p.Name+": "+err.Error())
 		s.recordLogin(u, r, "passkey_failed")

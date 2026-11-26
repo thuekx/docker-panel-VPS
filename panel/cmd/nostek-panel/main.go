@@ -111,6 +111,7 @@ func serve(st *store.Store) {
 		TrustProxy:    env("NP_TRUST_PROXY", "1") == "1",
 		DefaultLang:   env("NP_LANG", "id"),
 		Version:       version,
+		AuthFailLog:   env("NP_AUTH_FAIL_LOG", filepath.Join(filepath.Dir(env("NP_DB", "/data/panel.db")), "auth-fail.log")),
 	}, st, webassets.FS, sysinfo.Reader{
 		ProcDir:    env("NP_PROC", "/host/proc"),
 		DiskPath:   env("NP_DISK", "/data"),

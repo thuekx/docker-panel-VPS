@@ -39,6 +39,8 @@ type fakeAgent struct {
 	upd       agent.UpdateView // UPD-01
 	updCalls  []string         // POST bodies
 	updGets   []string
+	srv       agent.ServerSecurity // SRV-01
+	srvCalls  []string
 	cert      agent.CertInfo // CERT-01
 	certCalls []string
 	dns       agent.DNSConfig // CERT-01 wildcard: the ClouDNS sub-user
@@ -138,6 +140,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			f.cert = agent.CertInfo{}
 			write(200, map[string]bool{"ok": true})
 		}
+		return
+	}
+	if r.URL.Path == "/v1/server-security" || strings.HasPrefix(r.URL.Path, "/v1/firewall") || strings.HasPrefix(r.URL.Path, "/v1/fail2ban") {
+		f.serverSec(w, r, write)
 		return
 	}
 	if r.URL.Path == "/v1/update" {

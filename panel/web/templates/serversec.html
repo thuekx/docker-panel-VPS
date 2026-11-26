@@ -1,0 +1,81 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$v := $d.V}}{{$csrf := .CSRF}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "srv.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if $d.Err}}<p class="banner warn">{{t $l "upd.err.agent"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
+{{with $v.Trial}}
+<section class="card wide tone c-amber" data-anim="card" id="trial">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "srv.trial"}}</h2>
+  <p><b>{{.What}}</b></p>
+  <p class="banner warn">{{t $l "srv.trial.help" $d.Deadline}}</p>
+  {{if not $d.CanConfirm}}<p class="muted">{{t $l "srv.trial.new"}}</p>{{end}}
+  <div class="row">
+    <form method="post" action="/settings/server"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="confirm">
+      <button class="primary" type="submit"{{if not $d.CanConfirm}} disabled{{end}}>{{t $l "srv.confirm"}}</button></form>
+    <form method="post" action="/settings/server"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="undo">
+      <button class="secondary" type="submit">{{t $l "srv.undo"}}</button></form>
+  </div>
+</section>
+{{end}}
+<section class="card wide tone c-blue" data-anim="card" id="firewall">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "srv.fw"}}
+    {{if $v.Active}}<span class="pill s-ok">{{t $l "srv.fw.on"}}</span>{{else if not $v.FWError}}<span class="pill s-bad">{{t $l "srv.fw.off"}}</span>{{end}}</h2>
+  <p class="muted">{{t $l "srv.fw.help"}}</p>
+  {{if $v.FWError}}<p class="banner warn">{{t $l "srv.fw.err"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$v.FWError}}</pre></details>
+  {{else}}
+  <p class="muted">{{t $l "srv.ssh" (printf "%v" $v.SSHPorts)}}</p>
+  <div class="table-wrap"><table><thead><tr><th>#</th><th>{{t $l "srv.port"}}</th><th>{{t $l "srv.action"}}</th><th>{{t $l "srv.from"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Rules}}<tr><td>{{.N}}</td><td><code>{{.To}}</code>{{if .V6}} <span class="muted">IPv6</span>{{end}}{{if .Comment}}<div class="muted">{{.Comment}}</div>{{end}}</td>
+    <td>{{if eq .Action "ALLOW"}}<span class="pill s-ok">{{t $l "srv.allow"}}</span>{{else}}<span class="pill s-bad">{{t $l "srv.deny"}}</span>{{end}}</td>
+    <td>{{if eq .From "Anywhere"}}{{t $l "srv.anywhere"}}{{else}}<code>{{.From}}</code>{{end}}</td>
+    <td>{{if .Locked}}<span class="pill s-info" title="{{t $l (printf "srv.lock.%s.help" .Locked)}}">{{t $l (printf "srv.lock.%s" .Locked)}}</span>{{else if not $v.Trial}}
+      <details class="menu"><summary class="ghost btn danger-text">{{t $l "srv.remove"}}</summary>
+      <form method="post" action="/settings/server" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="delete">
+        <input type="hidden" name="rule" value="{{.N}}"><input type="hidden" name="match" value="{{.To}}|{{.Action}}|{{.From}}">
+        <label>{{t $l "sbk.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="danger" type="submit">{{t $l "srv.remove.go"}}</button></form></details>{{end}}</td></tr>{{end}}
+  </tbody></table></div>
+  {{if not $v.Trial}}
+  <form method="post" action="/settings/server" class="form" autocomplete="off" id="add">
+    <input type="hidden" name="csrf" value="{{$csrf}}">
+    <div class="row">
+      <label>{{t $l "srv.port"}}<input name="port" placeholder="8080 / 8000:8100" maxlength="11" required></label>
+      <label>{{t $l "srv.proto"}}<select name="proto"><option value="tcp">TCP</option><option value="udp">UDP</option><option value="both">TCP + UDP</option></select></label>
+      <label>{{t $l "srv.from"}}<input name="from" placeholder="{{t $l "srv.anywhere"}}" maxlength="64"></label>
+    </div>
+    <fieldset class="choice"><legend>{{t $l "srv.action"}}</legend>
+      <label class="tile"><input type="radio" name="op" value="allow" checked><span>{{t $l "srv.allow"}}</span></label>
+      <label class="tile"><input type="radio" name="op" value="deny"><span>{{t $l "srv.deny"}}</span></label>
+    </fieldset>
+    <label>{{t $l "sbk.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit">{{t $l "srv.add"}}</button>
+    <p class="muted">{{t $l "srv.docker"}}</p>
+  </form>{{end}}
+  {{end}}
+</section>
+<section class="grid pair">
+<article class="card tone c-violet" data-anim="card" id="bans">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "srv.f2b"}}</h2>
+  <p class="muted">{{t $l "srv.f2b.help"}}</p>
+  {{if $v.F2BError}}<p class="banner warn">{{t $l "srv.f2b.err"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$v.F2BError}}</pre></details>
+  {{else}}{{range $v.Jails}}{{$j := .}}
+  <h3>{{$k := jailKey .Name}}{{if eq $k "other"}}{{.Name}}{{else}}{{t $l (printf "srv.jail.%s" $k)}}{{end}} <span class="muted">· {{t $l "srv.jail.stats" .Failed .Total}}</span></h3>
+  {{if .Banned}}<ul class="plain">{{range .Banned}}<li><code>{{.}}</code>
+    <form method="post" action="/settings/server" class="inline"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="unban">
+      <input type="hidden" name="jail" value="{{$j.Name}}"><input type="hidden" name="ip" value="{{.}}"><button class="ghost" type="submit">{{t $l "srv.unban"}}</button></form></li>{{end}}</ul>
+  {{else}}<p class="muted">{{t $l "srv.nobans"}}</p>{{end}}
+  {{end}}{{end}}
+</article>
+<article class="card tone c-teal" data-anim="card" id="allow">
+  <h2>{{t $l "srv.allowlist"}}</h2>
+  <p class="muted">{{t $l "srv.allowlist.help" $d.IP}}</p>
+  <form method="post" action="/settings/server" class="form" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="allowlist">
+    <label>{{t $l "srv.allowlist.list"}}<textarea name="allow" rows="5" placeholder="203.0.113.9&#10;198.51.100.0/24">{{$d.AllowText}}</textarea></label>
+    <label>{{t $l "sbk.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit"{{if $v.F2BError}} disabled{{end}}>{{t $l "settings.save"}}</button>
+  </form>
+</article>
+</section>
+<p><a href="/settings">{{t $l "sbk.back"}}</a></p>
+{{end}}

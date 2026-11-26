@@ -23,6 +23,7 @@ import (
 	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/alert"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/auth"
+	"github.com/thuekx/docker-panel-VPS/panel/internal/authlog"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/i18n"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/store"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/sysinfo"
@@ -44,6 +45,7 @@ type Config struct {
 	DefaultLang   string
 	Issuer        string
 	Version       string
+	AuthFailLog   string // SRV-01: one line per failed sign-in for fail2ban ("" = none)
 }
 
 type Server struct {
@@ -65,8 +67,9 @@ type Server struct {
 	plugin           []byte     // the Nostek Migrate plugin zip (MIG-01)
 	akey             *alert.Key // seals the alert secrets (OPS-01 wave 2)
 	alerts           alertState
-	alertSync        bool       // tests: send alerts before returning
-	pkCh             challenges // AUTH-02: passkey ceremonies in progress
+	alertSync        bool         // tests: send alerts before returning
+	pkCh             challenges   // AUTH-02: passkey ceremonies in progress
+	authFail         *authlog.Log // SRV-01
 }
 
 func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server, error) {
@@ -81,7 +84,8 @@ func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server
 		return nil, err
 	}
 	s := &Server{cfg: cfg, st: st, tr: tr, sys: sys, ipLimit: auth.NewLimiter(20, time.Minute), hookLimit: auth.NewLimiter(60, time.Minute),
-		apiLimit: auth.NewLimiter(apiPerMinute, time.Minute), apiBad: auth.NewLimiter(apiBadPerMin, time.Minute), now: time.Now, ag: agent.New("")}
+		apiLimit: auth.NewLimiter(apiPerMinute, time.Minute), apiBad: auth.NewLimiter(apiBadPerMin, time.Minute), now: time.Now, ag: agent.New(""),
+		authFail: authlog.Open(cfg.AuthFailLog, "panel")}
 	if err := s.parseTemplates(assets); err != nil {
 		return nil, err
 	}
@@ -101,7 +105,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings", "update"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings", "update", "serversec"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -121,6 +125,17 @@ func (s *Server) parseTemplates(assets fs.FS) error {
 			"mb":    mb,
 			"clock": clock,
 			"list3": func(a, b, c string) []string { return []string{a, b, c} },
+			"jailKey": func(n string) string { // SRV-01: the jails the page names in words
+				switch n {
+				case "sshd":
+					return "sshd"
+				case "nostek-panel":
+					return "panel"
+				case "nostek-sftp":
+					return "sftp"
+				}
+				return "other"
+			},
 			"list4": func(a, b, c, d string) []string { return []string{a, b, c, d} },
 			"list":  func(a ...string) []string { return a },
 			"join":  strings.Join,
@@ -246,6 +261,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /settings/api", s.need(true, s.apiKeysAction))
 	mux.HandleFunc("GET /settings/certs", s.need(true, s.certSettingsPage))
 	mux.HandleFunc("POST /settings/certs", s.need(true, s.certSettingsAction))
+	mux.HandleFunc("GET /settings/server", s.need(true, s.serverSecPage))
+	mux.HandleFunc("POST /settings/server", s.need(true, s.serverSecAction))
 	mux.HandleFunc("GET /settings/update", s.need(true, s.updatePage))
 	mux.HandleFunc("POST /settings/update", s.need(true, s.updateAction))
 	mux.HandleFunc("GET /settings/update/status", s.need(true, s.updateStatus))
@@ -610,6 +627,7 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	u, err := s.st.UserByEmail(email)
 	if err != nil {
 		auth.DummyCheck(pw)
+		s.authFail.Fail(s.clientIP(r))
 		fail(http.StatusUnauthorized, "err.login")
 		return
 	}
@@ -621,6 +639,7 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !auth.CheckPassword(u.PwHash, pw) {
+		s.authFail.Fail(s.clientIP(r))
 		_ = s.st.RecordLoginFailure(u.ID, maxFails, s.now().Add(lockFor))
 		s.audit1(u, r, "login.failed", "wrong password")
 		s.recordLogin(u, r, "password")
@@ -678,6 +697,7 @@ func (s *Server) login2faSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !ok {
+		s.authFail.Fail(s.clientIP(r))
 		_ = s.st.RecordLoginFailure(u.ID, maxFails, s.now().Add(lockFor))
 		s.audit1(u, r, "login.2fa_failed", "")
 		s.recordLogin(u, r, "code")
