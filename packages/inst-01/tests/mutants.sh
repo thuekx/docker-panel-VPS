@@ -13,6 +13,10 @@ MUTANTS=(
   's/printf .%s\\n. $a | grep -qxF "$IP"; then pass "$DOMAIN points/true; then pass "$DOMAIN points/'  # DNS not checked
   's/if \[ "$(state_get phase)" = DONE \]; then fail "already installed/if false; then fail "already installed/'  # installs twice
   's/chmod 600 "$LOG"/chmod 644 "$LOG"/'                                                # log readable by all
+  's/    check_backup || die/    true || die/'                                           # server backup not checked first
+  's/ver_ge "$v" "$MIN_RESTORE" ||/true ||/'                                               # old release restores
+  's/  core stop panel >\/dev\/null 2>\&1 || die/  true || die/'                             # panel database replaced while it runs
+  's/\[ "$n" -ge 12 \]; then pass "passphrase file/true; then pass "passphrase file/'       # short passphrase accepted
 )
 killed=0; n=0
 for m in "${MUTANTS[@]}"; do

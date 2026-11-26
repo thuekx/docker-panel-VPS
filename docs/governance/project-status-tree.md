@@ -36,7 +36,7 @@ Nostek Panel
     ├── INST-01 public installer (+ preflight, RAYX-1) .... ✓ BUILT v1.32.0 2026-11-26
     └── after INST-01 (RAYX-1 = A, 2026-11-18)
         ├── API-01 open API with API keys ................ ✓ BUILT v1.33.0 2026-11-26
-        ├── BAK-02 panel backup + restore to new VPS ..... ○
+        ├── BAK-02 panel backup + restore to new VPS ..... ✓ BUILT v1.34.0 2026-11-26
         ├── CERT-01 wildcard + own certificate ........... ○
         ├── DB-02 remote DB access per IP, table repair .. ○
         └── AUTH-02 passkey login ........................ ○

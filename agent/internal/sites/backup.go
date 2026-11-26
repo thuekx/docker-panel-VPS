@@ -437,6 +437,12 @@ func (m *Manager) tarFiles(ctx context.Context, id string, tw *tar.Writer) error
 		return err
 	}
 	defer r.Close()
+	return tarTree(ctx, r, "wp", func(p string) bool { return strings.HasPrefix(path.Base(p), ".np-upload-") }, tw)
+}
+
+// tarTree adds everything under root as top/..., with uid/gid, permissions and times; skip leaves a path (and, for a
+// folder, all of it) out. Links are stored as links, never followed; sockets, devices and pipes are left out.
+func tarTree(ctx context.Context, r *os.Root, top string, skip func(p string) bool, tw *tar.Writer) error {
 	return fs.WalkDir(r.FS(), ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -444,16 +450,19 @@ func (m *Manager) tarFiles(ctx context.Context, id string, tw *tar.Writer) error
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if strings.HasPrefix(path.Base(p), ".np-upload-") {
+		if p != "." && skip != nil && skip(p) {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
 			return nil
 		}
 		fi, err := r.Lstat(p)
 		if err != nil {
 			return err
 		}
-		name := "wp"
+		name := top
 		if p != "." {
-			name = "wp/" + p
+			name = top + "/" + p
 		}
 		h := &tar.Header{Name: name, Mode: int64(fi.Mode().Perm()), ModTime: fi.ModTime(), Format: tar.FormatPAX}
 		if sys, ok := fi.Sys().(*syscall.Stat_t); ok {

@@ -30,6 +30,10 @@ type fakeAgent struct {
 	bakCalls  []string // "method path body" of every backup call
 	bakDown   bool
 	bakJob    agent.Job
+	sbkCalls  []string // BAK-02: "method path body" of every server backup call
+	sbkCopy   string   // BAK-02: where the panel writes its database copy
+	sbkSeen   []byte   // BAK-02: the start of that copy when the backup was asked
+	sbkJob    agent.Job
 	app       string // APP-01: app of the fake site (empty = WordPress)
 	appDB     bool
 	trash     []agent.Trashed
@@ -101,6 +105,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	write := func(code int, v any) { w.WriteHeader(code); json.NewEncoder(w).Encode(v) }
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/files") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/db") {
 		f.filesDB(w, r, write)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/server-backups") || strings.HasPrefix(r.URL.Path, "/v1/jobs/j5bc") {
+		f.serverBackups(w, r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/backups") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jbac") {
