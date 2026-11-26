@@ -478,6 +478,8 @@ type dbData struct {
 	Size     string
 	Backups  []dumpRow
 	Tables   []tableRow
+	TableRun *agent.TableAnswer // DB-02: the last check, repair or optimize
+	TableErr string
 }
 
 type tableRow struct {
@@ -547,6 +549,38 @@ func (s *Server) dbAction(w http.ResponseWriter, r *http.Request) {
 		} else {
 			d.Answer = &a
 			s.audit1(userOf(r), r, "db.query", fmt.Sprintf("%s %s (%d chars)", site.ID, kind, len(sql)))
+		}
+		s.renderDB(w, r, site, d, code)
+	case "check", "repair", "optimize":
+		// DB-02: the whole database, or the tables ticked in the list
+		op := r.PostForm.Get("op")
+		tables := r.PostForm["table"]
+		if len(tables) > 1000 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		ctx, cancel := s.agentCtx(r, 6*time.Minute)
+		defer cancel()
+		long(w, 7*time.Minute)
+		a, err := s.ag.Tables(ctx, site.ID, op, tables)
+		what := "all tables"
+		if len(tables) > 0 {
+			what = fmt.Sprintf("%d tables", len(tables))
+		}
+		d := dbData{}
+		code := http.StatusOK
+		switch {
+		case err != nil:
+			d.TableErr = err.Error()
+			code = http.StatusUnprocessableEntity
+			s.audit1(userOf(r), r, "db.tables", fmt.Sprintf("%s %s %s failed: %s", site.ID, op, what, err.Error()))
+		default:
+			d.TableRun = &a
+			res := "ok"
+			if !a.OK {
+				res = "errors reported"
+			}
+			s.audit1(userOf(r), r, "db.tables", fmt.Sprintf("%s %s %s: %s", site.ID, op, what, res))
 		}
 		s.renderDB(w, r, site, d, code)
 	case "export":

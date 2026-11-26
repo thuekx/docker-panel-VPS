@@ -1448,5 +1448,22 @@
   "alert.kind.certificate": "Own certificate ending",
   "alert.kind.certificate.help": "a certificate uploaded for a website ends within 14 days (Let's Encrypt renews by itself)",
   "alert.cert": "The own certificate of %s ends %s (%d days left). Upload a new one on the Domains page, or remove it to go back to Let's Encrypt.",
-  "alert.cert.ended": "The own certificate of %s ended %s. Upload a new one on the Domains page, or remove it to go back to Let's Encrypt."
+  "alert.cert.ended": "The own certificate of %s ended %s. Upload a new one on the Domains page, or remove it to go back to Let's Encrypt.",
+  "tbl.help": "Tick tables in the list to choose some; with none ticked, every table is done. Check only reads; repair and optimize lock a table for a moment.",
+  "tbl.help.pg": "PostgreSQL has no table check or repair. Optimize runs VACUUM (ANALYZE) on the whole database.",
+  "tbl.check": "Check tables",
+  "tbl.repair": "Repair tables",
+  "tbl.optimize": "Optimize",
+  "tbl.repair.ask": "Repair the chosen tables (or all)? Each table is locked for a moment while it is repaired.",
+  "tbl.optimize.ask": "Optimize the chosen tables (or all)? Large tables can be locked for a while.",
+  "tbl.busy": "Running…",
+  "tbl.pick": "Choose",
+  "tbl.failed": "Did not work",
+  "tbl.done.check": "Table check result",
+  "tbl.done.repair": "Table repair result",
+  "tbl.done.optimize": "Optimize result",
+  "tbl.errors": "A table reported an error. Make a backup first, then try Repair tables on that table.",
+  "tbl.type": "Status",
+  "tbl.text": "Database message",
+  "tbl.ms": "Done in %d ms."
 }

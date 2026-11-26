@@ -1448,5 +1448,22 @@
   "alert.kind.certificate": "Sertifikat sendiri hampir habis",
   "alert.kind.certificate.help": "sertifikat yang diunggah untuk sebuah website berakhir dalam 14 hari (Let's Encrypt diperpanjang otomatis)",
   "alert.cert": "Sertifikat sendiri %s berakhir %s (sisa %d hari). Unggah yang baru di halaman Domain, atau hapus agar kembali ke Let's Encrypt.",
-  "alert.cert.ended": "Sertifikat sendiri %s sudah berakhir %s. Unggah yang baru di halaman Domain, atau hapus agar kembali ke Let's Encrypt."
+  "alert.cert.ended": "Sertifikat sendiri %s sudah berakhir %s. Unggah yang baru di halaman Domain, atau hapus agar kembali ke Let's Encrypt.",
+  "tbl.help": "Centang tabel di daftar untuk memilih sebagian; tanpa centang, semua tabel diproses. Periksa hanya membaca; perbaiki dan optimalkan mengunci tabel sebentar.",
+  "tbl.help.pg": "PostgreSQL tidak punya periksa atau perbaiki tabel. Optimalkan menjalankan VACUUM (ANALYZE) untuk seluruh database.",
+  "tbl.check": "Periksa tabel",
+  "tbl.repair": "Perbaiki tabel",
+  "tbl.optimize": "Optimalkan",
+  "tbl.repair.ask": "Perbaiki tabel yang dipilih (atau semua)? Tabel terkunci sebentar selama perbaikan.",
+  "tbl.optimize.ask": "Optimalkan tabel yang dipilih (atau semua)? Tabel besar bisa terkunci beberapa saat.",
+  "tbl.busy": "Berjalan…",
+  "tbl.pick": "Pilih",
+  "tbl.failed": "Tidak berhasil",
+  "tbl.done.check": "Hasil pemeriksaan tabel",
+  "tbl.done.repair": "Hasil perbaikan tabel",
+  "tbl.done.optimize": "Hasil optimalisasi",
+  "tbl.errors": "Ada tabel yang melaporkan kesalahan. Buat backup dulu, lalu coba Perbaiki tabel untuk tabel itu.",
+  "tbl.type": "Status",
+  "tbl.text": "Pesan database",
+  "tbl.ms": "Selesai dalam %d ms."
 }

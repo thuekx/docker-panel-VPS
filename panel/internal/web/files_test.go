@@ -78,6 +78,19 @@ func (f *fakeAgent) filesDB(w http.ResponseWriter, r *http.Request, write func(i
 		}
 		v, nul := "<script>alert(1)</script>", (*string)(nil)
 		write(200, agent.QueryAnswer{Millis: 7, Results: []agent.Result{{Statement: "SELECT 1", Columns: []string{"option_name", "option_value"}, Rows: [][]*string{{&v, nul}}}}})
+	case p == "/db/tables":
+		var body struct {
+			Op     string
+			Tables []string
+		}
+		json.NewDecoder(r.Body).Decode(&body)
+		f.sqls = append(f.sqls, body.Op+" "+strings.Join(body.Tables, ","))
+		if body.Op == "repair" {
+			write(409, map[string]string{"error": "another change runs on this server, try again in a moment"})
+			return
+		}
+		write(200, agent.TableAnswer{Op: body.Op, OK: false, Millis: 12, Results: []agent.TableResult{
+			{Table: "wp_options", Type: "status", Text: "OK"}, {Table: "wp_posts", Type: "error", Text: "<b>Table is marked as crashed</b>"}}})
 	case p == "/db/export":
 		w.Header().Set("Content-Type", "application/gzip")
 		w.Header().Set("Content-Disposition", `attachment; filename="voltix-id-20261112-140000.sql.gz"`)
@@ -275,6 +288,25 @@ func TestDatabasePage(t *testing.T) {
 	if code != 422 || !strings.Contains(body, "ERROR 1064") || !strings.Contains(body, "SELEC x") {
 		t.Fatalf("query error: %d", code)
 	}
+	// DB-02: check and repair tables
+	code, body, _ = e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"check"}, "table": {"wp_options", "wp_posts"}}, page)
+	if code != 200 || !strings.Contains(body, "Table check result") || !strings.Contains(body, "&lt;b&gt;Table is marked as crashed") || !strings.Contains(body, "A table reported an error") {
+		t.Fatalf("check: %d", code)
+	}
+	if last := f.sqls[len(f.sqls)-1]; last != "check wp_options,wp_posts" {
+		t.Fatalf("check call %q", last)
+	}
+	if code, body, _ = e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"repair"}}, page); code != 422 || !strings.Contains(body, "another change runs") {
+		t.Fatalf("repair refused: %d", code)
+	}
+	for _, lang := range []string{"id", "en"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		_, pg, _ := e.get(e.c, "/db/voltix-id")
+		if code, body, _ := e.postWith(e.c, "/db/voltix-id", url.Values{"op": {"optimize"}}, pg); code != 200 || missingKey.MatchString(body) || strings.Contains(body, "%!") || missingKey.MatchString(pg) {
+			t.Errorf("optimize (%s): %d %v", lang, code, missingKey.FindString(body+pg))
+		}
+	}
+	e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {"en"}})
 	resp, err := e.c.PostForm(e.ts.URL+"/db/voltix-id", url.Values{"op": {"export"}, "csrf": {csrfRe.FindStringSubmatch(page)[1]}})
 	if err != nil {
 		t.Fatal(err)

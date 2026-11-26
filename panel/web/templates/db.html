@@ -49,10 +49,25 @@
     </tbody></table></div>{{end}}</div>{{end}}
   {{end}}
 </section>
-{{if $d.Tables}}<section class="card wide tone c-green" data-anim="card">
+{{if or $d.TableRun $d.TableErr}}<section class="card wide tone {{if $d.TableErr}}c-red{{else if $d.TableRun.OK}}c-green{{else}}c-amber{{end}}" data-anim="card" id="tablerun">
+  <h2>{{if $d.TableErr}}{{t $l "tbl.failed"}}{{else}}{{t $l (printf "tbl.done.%s" $d.TableRun.Op)}}{{end}}</h2>
+  {{if $d.TableErr}}<p class="err" role="alert">{{$d.TableErr}}</p>
+  {{else}}{{if not $d.TableRun.OK}}<p class="banner warn">{{t $l "tbl.errors"}}</p>{{end}}
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "db.table"}}</th><th>{{t $l "tbl.type"}}</th><th>{{t $l "tbl.text"}}</th></tr></thead><tbody>
+  {{range $d.TableRun.Results}}<tr><td><code>{{.Table}}</code></td><td><span class="pill {{if eq .Type "error"}}s-bad{{else if eq .Type "warning"}}s-warn{{else}}s-ok{{end}}">{{.Type}}</span></td><td>{{.Text}}</td></tr>{{end}}
+  </tbody></table></div>
+  <p class="muted">{{t $l "tbl.ms" $d.TableRun.Millis}}</p>{{end}}
+</section>{{end}}
+{{if $d.Tables}}<section class="card wide tone c-green" data-anim="card" id="tables">
   <h2>{{t $l "db.tables"}}</h2>
-  <div class="table-wrap"><table><thead><tr><th>{{t $l "db.table"}}</th><th class="num">{{t $l "db.rows"}}</th><th class="num">{{t $l "db.data"}}</th><th class="num">{{t $l "db.index"}}</th><th>{{t $l "db.engine"}}</th><th></th></tr></thead><tbody>
-  {{range $d.Tables}}<tr><td><code>{{.Name}}</code></td><td class="num">{{.Rows}}</td><td class="num">{{.Data}}</td><td class="num">{{.Index}}</td><td class="muted">{{.Engine}}{{if .Collation}} · {{.Collation}}{{end}}</td>
+  <form method="post" action="/db/{{$s.ID}}#tablerun" id="tblform"><input type="hidden" name="csrf" value="{{$csrf}}">
+  <p class="muted">{{if $s.IsPostgres}}{{t $l "tbl.help.pg"}}{{else}}{{t $l "tbl.help"}}{{end}}</p>
+  <div class="row">{{if not $s.IsPostgres}}<button class="secondary" type="submit" name="op" value="check" data-busy="{{t $l "tbl.busy"}}">{{t $l "tbl.check"}}</button>
+  <button class="secondary" type="submit" name="op" value="repair" data-busy="{{t $l "tbl.busy"}}" data-confirm="{{t $l "tbl.repair.ask"}}">{{t $l "tbl.repair"}}</button>{{end}}
+  <button class="secondary" type="submit" name="op" value="optimize" data-busy="{{t $l "tbl.busy"}}" data-confirm="{{t $l "tbl.optimize.ask"}}">{{t $l "tbl.optimize"}}</button></div>
+  </form>
+  <div class="table-wrap"><table><thead><tr>{{if not $s.IsPostgres}}<th><span class="sr-only">{{t $l "tbl.pick"}}</span></th>{{end}}<th>{{t $l "db.table"}}</th><th class="num">{{t $l "db.rows"}}</th><th class="num">{{t $l "db.data"}}</th><th class="num">{{t $l "db.index"}}</th><th>{{t $l "db.engine"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Tables}}<tr>{{if not $s.IsPostgres}}<td><input type="checkbox" name="table" value="{{.Name}}" form="tblform" aria-label="{{.Name}}"></td>{{end}}<td><code>{{.Name}}</code></td><td class="num">{{.Rows}}</td><td class="num">{{.Data}}</td><td class="num">{{.Index}}</td><td class="muted">{{.Engine}}{{if .Collation}} · {{.Collation}}{{end}}</td>
     <td><a class="ghost btn" href="/db/{{$s.ID}}?sql=SELECT+*+FROM+{{if $s.IsPostgres}}%22{{.Name}}%22{{else}}%60{{.Name}}%60{{end}}+LIMIT+50%3B#sql">{{t $l "db.browse"}}</a></td></tr>{{end}}
   </tbody></table></div>
   <p class="muted">{{if $s.IsPostgres}}{{t $l "db.rows.help.pg"}}{{else}}{{t $l "db.rows.help"}}{{end}}</p>

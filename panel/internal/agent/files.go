@@ -210,3 +210,24 @@ func (c *Client) Import(ctx context.Context, id string, body io.Reader) (string,
 	}
 	return v.Backup, json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&v)
 }
+
+// TableResult is the database's answer for one table (DB-02).
+type TableResult struct {
+	Table string `json:"table"`
+	Type  string `json:"type"`
+	Text  string `json:"text"`
+}
+
+// TableAnswer is one check, repair or optimize run.
+type TableAnswer struct {
+	Op      string        `json:"op"`
+	OK      bool          `json:"ok"`
+	Results []TableResult `json:"results"`
+	Millis  int64         `json:"ms"`
+}
+
+// Tables runs check, repair or optimize on tables of the website's database (none = all).
+func (c *Client) Tables(ctx context.Context, id, op string, tables []string) (TableAnswer, error) {
+	var v TableAnswer
+	return v, c.call(ctx, "POST", site(id)+"/db/tables", map[string]any{"op": op, "tables": tables}, &v)
+}
