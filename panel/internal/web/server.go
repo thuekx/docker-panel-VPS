@@ -214,6 +214,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /migrate-plugin/nostek-migrate.zip", s.need(true, s.migratePluginZip))
 	mux.HandleFunc("GET /domains/{id}", s.need(true, s.domainsPage))
 	mux.HandleFunc("POST /domains/{id}", s.need(true, s.domainsAction))
+	mux.HandleFunc("POST /domains/{id}/cert", s.need(true, s.certAction))
 	mux.HandleFunc("GET /security/{id}", s.need(true, s.securityPage))
 	mux.HandleFunc("POST /security/{id}", s.need(true, s.securityAction))
 	mux.HandleFunc("GET /sftp/{id}", s.need(true, s.sftpPage))

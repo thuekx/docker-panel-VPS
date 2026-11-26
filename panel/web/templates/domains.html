@@ -73,6 +73,27 @@
   </form>
 </article>
 </section>
+<section class="card wide tone c-green" data-anim="card" id="cert">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "cert.title"}}</h2>
+  {{with $d.Cert}}{{if .Own}}
+  <p><span class="pill {{if .Trusted}}s-ok{{else}}s-warn{{end}}">{{if .Trusted}}{{t $l "cert.trusted"}}{{else}}{{t $l "cert.private"}}{{end}}</span>
+    {{t $l "cert.own" .Issuer}}</p>
+  <p class="muted">{{t $l "cert.names"}} {{range $i, $n := .Names}}{{if $i}}, {{end}}<code>{{$n}}</code>{{end}}</p>
+  {{if $d.CertEnd}}<p class="{{if lt $d.CertDays 14}}banner warn{{else}}muted{{end}}">{{t $l "cert.until" $d.CertEnd $d.CertDays}}</p>{{end}}
+  {{if .Uncovered}}<p class="muted">{{t $l "cert.uncovered"}} {{range $i, $n := .Uncovered}}{{if $i}}, {{end}}<code>{{$n}}</code>{{end}}</p>{{end}}
+  {{if not .Trusted}}<p class="muted">{{t $l "cert.private.help"}}</p>{{end}}
+  <form method="post" action="/domains/{{$s.ID}}/cert"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="remove">
+    <button class="ghost danger-text" type="submit" data-confirm="{{t $l "cert.remove.ask"}}">{{t $l "cert.remove"}}</button></form>
+  {{else}}<p class="muted">{{t $l "cert.auto"}}</p>{{end}}{{end}}
+  <details{{if not $d.Cert.Own}} open{{end}}><summary>{{if $d.Cert.Own}}{{t $l "cert.replace"}}{{else}}{{t $l "cert.upload"}}{{end}}</summary>
+  <form method="post" action="/domains/{{$s.ID}}/cert" class="form" autocomplete="off"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="set">
+    <p class="muted">{{t $l "cert.help"}}</p>
+    <label>{{t $l "cert.cert"}}<textarea name="cert" rows="6" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----" required></textarea></label>
+    <label>{{t $l "cert.key"}}<textarea name="key" rows="4" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----" required></textarea></label>
+    <p class="muted small">{{t $l "cert.key.help"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if $d.Err}} disabled{{end}}>{{t $l "cert.go"}}</button>
+  </form></details>
+</section>
 {{if $d.Err}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>{{end}}
 <p><a href="/sites/{{$s.ID}}">{{t $l "files.back"}}</a></p>
 {{end}}
