@@ -69,6 +69,8 @@ type Site struct {
 	Wildcard string `json:"wildcard,omitempty"`
 	// DB-02: the database's access from outside (nil = off)
 	Remote *RemoteDB `json:"remote_db,omitempty"`
+	// SEC-02: scheduled malware scans of the website's files
+	ScanEvery *ScanSchedule `json:"scan_schedule,omitempty"`
 	// PHP-01: the PHP version before the last change (the way back)
 	PrevPHP string `json:"prev_php,omitempty"`
 	// PHP-01: compression and browser cache at the edge (nil = off)
