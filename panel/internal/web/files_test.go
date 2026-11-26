@@ -340,7 +340,7 @@ func TestDatabasePage(t *testing.T) {
 	}
 	for _, lang := range []string{"id", "en"} {
 		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
-		if code, pg, _ := e.get(e.c, "/db/voltix-id"); code != 200 || missingKey.MatchString(pg) || strings.Contains(pg, "%!") || !strings.Contains(pg, "mariadb -h 203.0.113.10 -P 33061 -u wordpress -p --ssl wordpress") {
+		if code, pg, _ := e.get(e.c, "/db/voltix-id"); code != 200 || missingKey.MatchString(pg) || strings.Contains(pg, "%!") || !strings.Contains(pg, "mariadb -h 203.0.113.10 -P 33061 -u wordpress -p wordpress") {
 			t.Errorf("remote on (%s): %d %v", lang, code, missingKey.FindString(pg))
 		}
 	}

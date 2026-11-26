@@ -45,7 +45,7 @@
     <tr><th>{{t $l "db.name"}}</th><td><code>{{$r.DB}}</code></td></tr>
     <tr><th>TLS</th><td>{{if eq $r.Engine "postgres"}}{{t $l "rdb.tls.pg"}}{{else}}{{t $l "rdb.tls.maria"}}{{end}}</td></tr>
   </tbody></table></div>
-  <pre class="logs">{{if eq $r.Engine "postgres"}}psql "host={{$r.Host}} port={{$r.Port}} user={{$r.User}} dbname={{$r.DB}} sslmode=require"{{else}}mariadb -h {{$r.Host}} -P {{$r.Port}} -u {{$r.User}} -p --ssl {{$r.DB}}{{end}}</pre>
+  <pre class="logs">{{if eq $r.Engine "postgres"}}psql "host={{$r.Host}} port={{$r.Port}} user={{$r.User}} dbname={{$r.DB}} sslmode=require"{{else}}mariadb -h {{$r.Host}} -P {{$r.Port}} -u {{$r.User}} -p {{$r.DB}}{{end}}</pre>
   {{if or $r.Refused $r.Plain}}<p class="muted">{{t $l "rdb.counts" $r.Refused $r.Plain}}</p>{{end}}
   <p class="banner warn">{{t $l "rdb.provider" $r.Port}}</p>
   {{end}}

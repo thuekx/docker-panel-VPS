@@ -1476,7 +1476,7 @@
   "rdb.port": "Port",
   "rdb.closed": "Port not open yet",
   "rdb.user.help": "its password is the website's database password (see the .env file or wp-config.php)",
-  "rdb.tls.maria": "Required: turn SSL/TLS on in your tool. The server makes its own certificate, so do not ask it to verify a CA.",
+  "rdb.tls.maria": "Required and automatic: MariaDB clients 11.4 and newer check the server's certificate by themselves. In other tools, turn SSL/TLS on; the server makes its own certificate, so do not ask for CA verification.",
   "rdb.tls.pg": "Required: sslmode=require. The panel makes its own certificate.",
   "rdb.counts": "Since the agent last started: %d connections from addresses not on the list refused, %d connections without TLS closed.",
   "rdb.provider": "Also open TCP port %d in the VPS provider's firewall or security group, for the same addresses only.",

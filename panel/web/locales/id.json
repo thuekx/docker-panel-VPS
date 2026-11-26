@@ -1476,7 +1476,7 @@
   "rdb.port": "Port",
   "rdb.closed": "Port belum terbuka",
   "rdb.user.help": "password-nya sama dengan password database website (lihat file .env atau wp-config.php)",
-  "rdb.tls.maria": "Wajib: aktifkan SSL/TLS di aplikasi Anda. Sertifikatnya dibuat sendiri oleh server, jadi jangan pilih verifikasi CA.",
+  "rdb.tls.maria": "Wajib dan otomatis: klien MariaDB 11.4 ke atas memeriksa sertifikat server sendiri. Di aplikasi lain, aktifkan SSL/TLS; sertifikatnya dibuat oleh server, jadi jangan minta verifikasi CA.",
   "rdb.tls.pg": "Wajib: sslmode=require. Sertifikatnya dibuat sendiri oleh panel.",
   "rdb.counts": "Sejak agent terakhir dimulai: %d koneksi dari alamat di luar daftar ditolak, %d koneksi tanpa TLS ditutup.",
   "rdb.provider": "Buka juga port TCP %d di firewall atau security group provider VPS, hanya untuk alamat yang sama.",
