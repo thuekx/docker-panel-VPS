@@ -41,3 +41,19 @@ Nostek Panel
         ├── DB-02 remote DB access per IP, table repair .. ○
         └── AUTH-02 passkey login ........................ ○
 ```
+
+Parked after AUTH-02 (RAYX-2, 2026-11-26):
+
+```text
+after AUTH-02
+├── UPD-01 ○
+├── SRV-01 ○
+├── SEC-02 ○
+├── BAK-03 ○
+├── OPS-02 ○
+├── REDIS-01 ○
+├── CERT-02 ○
+├── PHP-02 ○
+├── TERM-01 ○
+└── INST-02 ○
+```
