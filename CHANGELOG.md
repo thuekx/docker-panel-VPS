@@ -3,6 +3,15 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.33.0] — 2026-11-26
+
+### Added
+- **Panel API with API keys** (API-01): Settings → API keys makes keys for scripts and CI (shown once, kept only as
+  a hash), each with its rights (read; operate: start/stop/restart; deploy: Git deploy and static release), optionally
+  one website and a list of addresses, and an expiry; revoke stops a key at once. The JSON API at `/api/v1` reads the
+  server and the websites, starts/stops/restarts, deploys from Git and publishes a static release from a .zip. Every
+  change is in the audit log with the key's name. Guide: [docs/guides/api.md](docs/guides/api.md).
+
 ## [1.32.0] — 2026-11-26
 
 ### Added
@@ -19,6 +28,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   HOST-02.
 
 ## [1.31.0] — 2026-11-23
+
+Live on the production server since 2026-11-26 16:23 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Releases of a static website** (SITE-03): publish from a .zip of the built output (up to 512 MB, an index.html at
@@ -44,6 +55,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   applies it). Without the option nothing changes: no header is believed.
 
 ## [1.30.0] — 2026-11-23
+
+Live on the production server since 2026-11-26 16:23 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Service watchdog** (OPS-01 wave 2): once a minute the agent checks every website's containers (native: its PHP

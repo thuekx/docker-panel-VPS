@@ -37,3 +37,16 @@ func (l *Limiter) Allow(key string) bool {
 	l.hits[key] = append(h, now)
 	return true
 }
+
+// Blocked reports whether key has reached the limit, without recording an attempt.
+func (l *Limiter) Blocked(key string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	cut, n := l.now().Add(-l.window), 0
+	for _, t := range l.hits[key] {
+		if t.After(cut) {
+			n++
+		}
+	}
+	return n >= l.max
+}

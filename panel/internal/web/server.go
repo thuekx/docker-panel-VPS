@@ -56,13 +56,16 @@ type Server struct {
 	ipLimit *auth.Limiter
 	// hookLimit bounds webhook deliveries per address (APP-02c)
 	hookLimit *auth.Limiter
-	now       func() time.Time
-	ag        *agent.Client
-	owners    jobOwners
-	plugin    []byte     // the Nostek Migrate plugin zip (MIG-01)
-	akey      *alert.Key // seals the alert secrets (OPS-01 wave 2)
-	alerts    alertState
-	alertSync bool // tests: send alerts before returning
+	// apiLimit bounds calls per API key, apiBad calls without a valid key per address (API-01)
+	apiLimit, apiBad *auth.Limiter
+	freshKeys        freshKeys // API keys waiting to be shown once
+	now              func() time.Time
+	ag               *agent.Client
+	owners           jobOwners
+	plugin           []byte     // the Nostek Migrate plugin zip (MIG-01)
+	akey             *alert.Key // seals the alert secrets (OPS-01 wave 2)
+	alerts           alertState
+	alertSync        bool // tests: send alerts before returning
 }
 
 func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server, error) {
@@ -76,7 +79,8 @@ func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{cfg: cfg, st: st, tr: tr, sys: sys, ipLimit: auth.NewLimiter(20, time.Minute), hookLimit: auth.NewLimiter(60, time.Minute), now: time.Now, ag: agent.New("")}
+	s := &Server{cfg: cfg, st: st, tr: tr, sys: sys, ipLimit: auth.NewLimiter(20, time.Minute), hookLimit: auth.NewLimiter(60, time.Minute),
+		apiLimit: auth.NewLimiter(apiPerMinute, time.Minute), apiBad: auth.NewLimiter(apiBadPerMin, time.Minute), now: time.Now, ag: agent.New("")}
 	if err := s.parseTemplates(assets); err != nil {
 		return nil, err
 	}
@@ -96,7 +100,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -231,6 +235,19 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /settings", s.need(true, s.settingsSubmit))
 	mux.HandleFunc("POST /settings/recovery", s.need(true, s.newRecoveryCodes))
 	mux.HandleFunc("POST /settings/alerts", s.need(true, s.alertsSubmit))
+	mux.HandleFunc("GET /settings/api", s.need(true, s.apiKeysPage))
+	mux.HandleFunc("POST /settings/api", s.need(true, s.apiKeysAction))
+	// API-01: signed in with an API key, never with the session cookie (no CSRF, no CORS)
+	mux.HandleFunc("GET /api/v1/server", s.api("read", s.apiServer))
+	mux.HandleFunc("GET /api/v1/sites", s.api("read", s.apiSites))
+	mux.HandleFunc("GET /api/v1/sites/{id}", s.api("read", s.apiSiteShow))
+	mux.HandleFunc("POST /api/v1/sites/{id}/start", s.api("operate", s.apiSiteAction("start")))
+	mux.HandleFunc("POST /api/v1/sites/{id}/stop", s.api("operate", s.apiSiteAction("stop")))
+	mux.HandleFunc("POST /api/v1/sites/{id}/restart", s.api("operate", s.apiSiteAction("restart")))
+	mux.HandleFunc("POST /api/v1/sites/{id}/deploy", s.api("deploy", s.apiDeploy))
+	mux.HandleFunc("PUT /api/v1/sites/{id}/release", s.api("deploy", s.apiRelease))
+	mux.HandleFunc("GET /api/v1/jobs/{job}", s.api("read", s.apiJob))
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) { apiErr(w, http.StatusNotFound, "no such API call") })
 	return s.headers(mux)
 }
 

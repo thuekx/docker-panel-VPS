@@ -1,6 +1,6 @@
 # One-command installer (INST-01)
 
-Status: BUILT v1.32.0, 2026-11-26. Roadmap slot 14 (RAYX-1 = A: preflight of host name, DNS and ports, and a
+Status: BUILT v1.32.0, 2026-11-26. Decision INST-1 = A (short installer, backups afterwards). Roadmap slot 14 (RAYX-1 = A: preflight of host name, DNS and ports, and a
 sha256-checked release). Guide for users: [docs/guides/install.md](../guides/install.md).
 
 ## Goal

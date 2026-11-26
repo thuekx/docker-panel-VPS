@@ -77,7 +77,7 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema); err != nil {
+	if _, err := db.Exec(schema + apiKeySchema); err != nil {
 		return nil, fmt.Errorf("schema: %w", err)
 	}
 	return &Store{DB: db}, nil
