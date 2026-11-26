@@ -27,7 +27,7 @@ MySQL 8. Roadmap order (2026-11-12): every stack first
 ## Wave 2: Ghost with its own MySQL 8 (v1.48.0)
 
 Ghost supports only MySQL 8 in production (not MariaDB, not SQLite). Each Ghost website brings its own MySQL 8
-container in its stack, like the MariaDB of a WordPress website. MySQL is not offered to any other website.
+container in its stack, like the MariaDB of a WordPress website. MySQL is not offered to any other website. Decision GHOST-1 = A (2026-11-27).
 
 | App | Image | Port | Data folder | Database |
 |---|---|---|---|---|
