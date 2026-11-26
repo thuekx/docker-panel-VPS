@@ -1,0 +1,24 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$csrf := .CSRF}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "qr.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+<section class="card wide tone c-amber" data-anim="card" id="quarantine">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-shield"}}</span>{{t $l "qr.title"}}</h2>
+  <p class="muted">{{t $l "qr.help"}}</p>
+  {{if $d.Err}}<p class="banner warn">{{t $l "upd.err.agent"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>
+  {{else if not $d.Rows}}<p class="muted">{{t $l "qr.none"}}</p>
+  {{else}}<div class="table-wrap"><table><thead><tr><th>{{t $l "qr.file"}}</th><th>{{t $l "sec.scan.c.sig"}}</th><th>{{t $l "qr.when"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Rows}}<tr>
+    <td><b>{{.Domain}}</b><div><code>{{.Path}}</code></div><div class="muted small">{{.Human}} · sha256 <code>{{slice .SHA256 0 16}}…</code></div></td>
+    <td><code class="small">{{.Signature}}</code></td>
+    <td class="nowrap">{{.When}}{{if .Auto}}<div class="muted small">{{t $l "qr.auto"}}</div>{{end}}</td>
+    <td class="bak-acts">
+      <form method="post" action="/settings/quarantine"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="restore"><input type="hidden" name="id" value="{{.ID}}">
+        <button class="ghost" type="submit" data-confirm="{{t $l "qr.restore.ask" .Path}}">{{t $l "qr.restore"}}</button></form>
+      <form method="post" action="/settings/quarantine"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="delete"><input type="hidden" name="id" value="{{.ID}}">
+        <button class="ghost danger-text" type="submit" data-confirm="{{t $l "qr.delete.ask" .Path}}">{{t $l "qr.delete"}}</button></form>
+    </td></tr>{{end}}
+  </tbody></table></div>{{end}}
+</section>
+<p><a href="/settings">{{t $l "sbk.back"}}</a></p>
+{{end}}

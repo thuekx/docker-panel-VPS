@@ -41,6 +41,8 @@ type fakeAgent struct {
 	updGets   []string
 	srv       agent.ServerSecurity // SRV-01
 	srvCalls  []string
+	qFiles    []agent.QFile // SEC-02
+	qCalls    []string
 	cert      agent.CertInfo // CERT-01
 	certCalls []string
 	dns       agent.DNSConfig // CERT-01 wildcard: the ClouDNS sub-user
@@ -195,6 +197,10 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/perf") || strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/php") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jfeed") {
 		f.perfAPI(r, write)
+		return
+	}
+	if r.URL.Path == "/v1/sites/voltix-id/quarantine" || strings.HasPrefix(r.URL.Path, "/v1/quarantine") {
+		f.quarantine(w, r, write)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/security") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jsec") {

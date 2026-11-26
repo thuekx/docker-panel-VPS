@@ -97,6 +97,8 @@ type ScanFound struct {
 	Path      string `json:"path"`
 	Signature string `json:"signature"`
 	Gone      bool   `json:"gone"`
+	// SEC-02: moved to the quarantine by a scheduled scan
+	Quarantined bool `json:"quarantined"`
 }
 
 // ScanResult is the last malware scan of a website.
@@ -109,6 +111,7 @@ type ScanResult struct {
 	Signatures string      `json:"signatures"`
 	Warning    string      `json:"warning"`
 	Error      string      `json:"error"`
+	Scheduled  bool        `json:"scheduled"`
 }
 
 // Scan is the malware card: the last result and the scan that runs now.

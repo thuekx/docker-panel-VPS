@@ -140,6 +140,8 @@ type Site struct {
 	Build      string `json:"build"`     // node: build command ("" = default)
 	Start      string `json:"start"`     // node: start command ("" = default)
 	Release    int    `json:"release"`   // node: live release
+	// SEC-02: scheduled malware scans
+	ScanEvery *ScanSchedule `json:"scan_schedule"`
 }
 
 // FromFiles is true when a Node.js app is built from the website's source/ folder.
