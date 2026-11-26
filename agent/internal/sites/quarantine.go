@@ -9,7 +9,7 @@ package sites
 // the panel turns into an alert.
 //
 // Quarantine. A found file is moved aside, never deleted: copied into <data>/quarantine/<id>/file (root only)
-// with what is known about it (website, path, signature, size, sha256, mode, owner, when), then removed from the
+// with what is known about it (website, path, signature, size, sha256, mode, uid/gid, when), then removed from the
 // website. It can be put back to the same path (refused when a file is there again) or removed for good. Files of a
 // website that is deleted stay in the quarantine until removed.
 
@@ -279,7 +279,7 @@ func (m *Manager) qRead(qid string) (QFile, error) {
 	return q, nil
 }
 
-// QuarantineRestore puts a file back where it was, with its mode and owner.
+// QuarantineRestore puts a file back where it was, with its mode and uid/gid.
 func (m *Manager) QuarantineRestore(qid string) (QFile, error) {
 	q, err := m.qRead(qid)
 	if err != nil {

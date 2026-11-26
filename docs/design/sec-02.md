@@ -17,10 +17,10 @@ Status: BUILT v1.40.0, 2026-11-26. Roadmap slot 15b (RAYX-2). Builds on the Clam
 ## Quarantine
 - A found file can be moved to the quarantine with a press next to it, or by itself when the schedule says so.
 - The agent copies it to `<data>/quarantine/q<16 hex>/file` (directory 0700, file 0600, root only) with
-  `meta.json`: website, path, signature, size, sha256, mode, owner, time, and whether a scheduled scan moved it.
+  `meta.json`: website, path, signature, size, sha256, mode, uid/gid, time, and whether a scheduled scan moved it.
   Then it removes the file from the website. Files over 256 MB are not moved.
 - Only regular files inside the website's own folder; symlinks and paths outside are refused.
-- **Put back**: to the same path with its mode and owner; refused when a file is there again.
+- **Put back**: to the same path with its mode and uid/gid; refused when a file is there again.
 - **Remove for good**: deletes the copy.
 - Files of a website that is deleted stay in the quarantine until removed.
 - Settings → Quarantine (administrators) lists every file, newest first. Every move, restore and removal is in the
