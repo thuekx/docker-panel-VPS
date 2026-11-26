@@ -34,4 +34,4 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 | 14b | BAK-02 | Backup of the panel itself (settings, website list, keys) and restore onto a new VPS (RAYX-1) ([bak-02.md](../design/bak-02.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.34.0 2026-11-26 |
 | 14c | CERT-01 | Wildcard certificates (DNS challenge, ClouDNS) and upload of an own certificate (RAYX-1) ([cert-01.md](../design/cert-01.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.35.0 2026-11-26 |
 | 14d | DB-02 | Database access from outside per IP (off by default), check and repair tables (RAYX-1) ([db-02.md](../design/db-02.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.36.0 2026-11-26 |
-| 14e | AUTH-02 | Passkey login next to 2FA (RAYX-1) | Rancang panel Docker untuk VPS fresh | ○ |
+| 14e | AUTH-02 | Passkey login next to 2FA (RAYX-1) ([auth-02.md](../design/auth-02.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.37.0 2026-11-26 |
