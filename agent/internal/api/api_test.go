@@ -38,7 +38,7 @@ const ip = "203.0.113.10"
 func serve(t *testing.T, allowed map[int]bool) (*http.Client, string) {
 	t.Helper()
 	dir := t.TempDir()
-	m := sites.New(sites.Config{Data: dir, PublicIPv4: ip, PanelDomain: "panel.nostek.dev", PreviewZone: "preview.nostek.dev", FileUID: os.Getuid()},
+	m := sites.New(sites.Config{Data: dir, PublicIPv4: ip, PanelDomain: "panel.nostek.dev", PreviewZone: "preview.nostek.dev", FileUID: os.Getuid(), PanelUID: os.Getuid()},
 		nopRunner{}, func(ctx context.Context, h string) ([]string, error) {
 			if strings.HasSuffix(h, ".preview.nostek.dev") {
 				return []string{ip}, nil

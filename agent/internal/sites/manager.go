@@ -95,6 +95,8 @@ type Manager struct {
 	// tlsAddr and tlsRoots let tests point the certificate check at their own server (default: the local edge).
 	tlsAddr  string
 	tlsRoots *x509.CertPool
+	// certRoots decides whether an own certificate is publicly trusted (nil = the system roots; tests set theirs)
+	certRoots *x509.CertPool
 	// APP-02c: deploys asked by a webhook while another job runs wait here, one per website
 	hookMu    sync.Mutex
 	hookWait  map[string]bool
@@ -728,6 +730,7 @@ func (m *Manager) Delete(ctx context.Context, id string) (string, error) {
 		return "", err
 	}
 	m.sftpToTrash(id, filepath.Join(m.trashDir(), entry)) // SFTP-01: the accounts go (and come back) with the website
+	m.dropEdgeCert(id)                                    // CERT-01: its own certificate stays in the trash entry
 	return entry, nil
 }
 
@@ -763,6 +766,9 @@ func (m *Manager) Restore(ctx context.Context, entry string) (string, error) {
 		return "", err
 	}
 	m.sftpFromTrash(id)
+	if _, err := os.Stat(filepath.Join(m.certDir(id), "cert.pem")); err == nil {
+		_ = m.writeEdgeCert(id) // CERT-01
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 	if ts.IsNative() {
