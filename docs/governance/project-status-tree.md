@@ -30,8 +30,8 @@ Nostek Panel
 │   ├── EDITOR-1 code editor in the File Manager (CodeMirror 6) ● LIVE v1.24.0 2026-11-21
 │   ├── SFTP-01 SFTP per website ● LIVE v1.27.0 2026-11-22 (port 2222)
 │   ├── PHP-01 change PHP version, optimize website ● LIVE v1.28.0 2026-11-22
-│   ├── OPS-01 logs, usage, cron, alerts, visitor stats .. ✓ wave 1 LIVE v1.29.0 2026-11-23 (statistics + cron); wave 2 MERGED v1.30.0 2026-11-26 (watchdog, alerts, login history, usage)
-│   └── SITE-03 static releases, headers, visitor address from a proxy ✓ MERGED v1.31.0 2026-11-26 (+ result toasts)
+│   ├── OPS-01 logs, usage, cron, alerts, visitor stats .. ✓ wave 1 LIVE v1.29.0 2026-11-23 (statistics + cron); wave 2 LIVE v1.30.0 2026-11-26 (watchdog, alerts, login history, usage)
+│   └── SITE-03 static releases, headers, visitor address from a proxy ● LIVE v1.31.0 2026-11-26 (+ result toasts)
 └── Distribution
     ├── INST-01 public installer (+ preflight, RAYX-1) .... ✓ BUILT v1.32.0 2026-11-26
     └── after INST-01 (RAYX-1 = A, 2026-11-18)

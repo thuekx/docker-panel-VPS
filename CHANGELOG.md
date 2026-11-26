@@ -20,6 +20,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
 
 ## [1.31.0] — 2026-11-23
 
+Live on the production server since 2026-11-26 16:23 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
+
 ### Added
 - **Releases of a static website** (SITE-03): publish from a .zip of the built output (up to 512 MB, an index.html at
   its top or inside its one top folder) on the Overview. The new files go live in one step, the live release and the
@@ -44,6 +46,8 @@ MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixe
   applies it). Without the option nothing changes: no header is believed.
 
 ## [1.30.0] — 2026-11-23
+
+Live on the production server since 2026-11-26 16:23 WIB (`site-01` APPLY + VERIFY PASS, `panel-01 UPDATE` + VERIFY PASS).
 
 ### Added
 - **Service watchdog** (OPS-01 wave 2): once a minute the agent checks every website's containers (native: its PHP
