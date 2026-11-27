@@ -46,7 +46,7 @@ func TestReadyApps(t *testing.T) {
 			t.Fatalf("approve card (%s) %d %v", lang, code, missingKey.FindString(plan))
 		}
 	}
-	for _, app := range []string{"uptime-kuma", "n8n"} {
+	for _, app := range []string{"uptime-kuma", "n8n", "ghost"} {
 		f.app = app
 		for _, lang := range []string{"en", "id"} {
 			e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
@@ -63,6 +63,23 @@ func TestReadyApps(t *testing.T) {
 				t.Errorf("%s list (%s)", app, lang)
 			}
 		}
+	}
+	// Ghost (APP-03 wave 2): its own MySQL 8 is named on the approve card, nothing to choose
+	f.app = ""
+	for _, lang := range []string{"en", "id"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		_, page, _ := e.get(e.c, "/sites/new")
+		if !strings.Contains(page, `value="ghost" data-ready`) || !strings.Contains(page, "6.79.0-alpine") {
+			t.Fatalf("form (%s) lacks Ghost", lang)
+		}
+		_, plan, _ := e.postWith(e.c, "/sites/new", url.Values{"step": {"plan"}, "app": {"ghost"}, "domain": {"blog.nostek.dev"}, "primary": {"domain"}, "db_engine": {"postgres"}}, page)
+		if !strings.Contains(plan, "MySQL 8") || missingKey.MatchString(plan) || strings.Contains(plan, "[sites.") {
+			t.Errorf("ghost approve card (%s) %v", lang, missingKey.FindString(plan))
+		}
+	}
+	r.PostForm = url.Values{"app": {"ghost"}, "domain": {"blog.nostek.dev"}, "primary": {"domain"}, "db_engine": {"mariadb"}}
+	if c, _ := formCreate(r); c.App != "ghost" || c.Database || c.DBEngine != "" {
+		t.Errorf("ghost create %+v", c)
 	}
 	_, page, _ := e.get(e.c, "/sites/new")
 	e.postWith(e.c, "/sites/new", url.Values{"step": {"create"}, "app": {"n8n"}, "domain": {"voltix.id"}, "primary": {"domain"}, "server": {"apache"}, "php": {"8.4"}}, page)

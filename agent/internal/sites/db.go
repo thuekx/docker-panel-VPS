@@ -54,7 +54,8 @@ func (r ExecRunner) DockerTo(ctx context.Context, dir string, stdin io.Reader, w
 
 // client is the shell snippet run inside the db container; "$@" are fixed arguments from this file only. The user is
 // the site's own database user (MARIADB_USER of the db service: "wordpress" or "app"), set at create time.
-const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -u"$MARIADB_USER" "$@"`
+// The MySQL 8 image (Ghost) has the mysql* names of the same tools; they take the same options used here.
+const client = `p="$0"; if ! command -v "$p" >/dev/null 2>&1; then case "$p" in mariadb) p=mysql ;; mariadb-dump) p=mysqldump ;; mariadb-check) p=mysqlcheck ;; esac; fi; MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$p" -u"$MARIADB_USER" "$@"`
 
 func (m *Manager) dbArgs(prog string, args ...string) []string {
 	return append([]string{"exec", "-T", "db", "sh", "-c", client, prog}, args...)
@@ -158,6 +159,9 @@ func (m *Manager) Database(ctx context.Context, id string) (DB, error) {
 		f := strings.Split(line, "\t")
 		if i == 0 {
 			d.Version = strings.TrimSpace(line)
+			if site.IsMySQL() {
+				d.Version = "MySQL " + d.Version
+			}
 			continue
 		}
 		if len(f) != 6 {

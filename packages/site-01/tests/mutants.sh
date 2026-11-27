@@ -25,7 +25,7 @@ GO_MUTANTS=(
   'internal/sites/files.go|	if rel == "." {
 		return FileTrash{}|	if false {
 		return FileTrash{}'                                                                                                   # the website folder itself can be deleted
-  'internal/sites/db.go|const client = `MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$0" -u"$MARIADB_USER" "$@"`|const client = `exec "$0" -u"$MARIADB_USER" -p"$(cat /run/secrets/db_password)" "$@"`'  # database password in process arguments
+  'internal/sites/db.go|MYSQL_PWD="$(cat /run/secrets/db_password)" exec "$p" -u"$MARIADB_USER" "$@"`|exec "$p" -u"$MARIADB_USER" -p"$(cat /run/secrets/db_password)" "$@"`'  # database password in process arguments
   'internal/sites/db.go|	backup, err := m.dump(ctx, id, "before-import")
 	if err != nil {|	backup, err := m.dump(ctx, id, "before-import")
 	if false {'                                                                                                               # import runs without a safety copy
@@ -88,7 +88,9 @@ GO_MUTANTS=(
   'internal/sites/images.go|return putBack("the website did not start on the new images: " + tail(out))|return fmt.Errorf("start failed: %s", tail(out))'   # IMG-01: a failed update is not put back
   'internal/sites/images.go|return fmt.Errorf("pull %s failed, nothing was changed: %s", u.Wanted, tail(out))|_ = out'   # IMG-01: a failed pull still changes the website
   'internal/spec/spec.go|return errors.New("a ready app runs its own server: no web server, PHP or version to choose")|return nil'   # APP-03: a ready app takes a web server, PHP or version
-  'internal/sites/render.go|`, r.Image, wwwData, wwwData, indent(env, 6)|`, r.Image, 0, 0, indent(env, 6)'   # APP-03: a ready app runs as root
+  'internal/sites/render.go|`, r.Image, wwwData, wwwData, db, indent(env, 6)|`, r.Image, 0, 0, db, indent(env, 6)'   # APP-03: a ready app runs as root
+  'internal/sites/render.go|		nets = "back, nostek-edge, out"|		nets = "nostek-edge, out"'   # APP-03 wave 2: Ghost cannot reach its own database
+  'internal/sites/render.go|exec docker-entrypoint.sh|exec env database__connection__password= docker-entrypoint.sh'   # APP-03 wave 2: Ghost starts without its database password
   'internal/sites/limits.go|			if n := ramFor(php.Memory, mem); n > mem {|			if n := ramFor(php.Memory, mem); false && n > mem {'   # RES-01: memory_limit raised past its container's memory
   'internal/sites/limits.go|		case v > cur.Standard && allowed(v, RAMChoices):|		case v > 0:'   # RES-01: memory set below the standard
   'internal/sites/limits.go|if v, ok := ram[svc]; ok && v > std {|if v, ok := ram[svc]; false && ok && v > std {'   # RES-01: raised memory never reaches the containers

@@ -485,7 +485,7 @@ fi
 
 # --- APP-03 ready apps: the pinned upstream image as www-data, data in the website folder, behind the edge only
 ready_code() { docker run --rm --network nostek-edge "$CURL_IMG" -s -o /dev/null -w '%{http_code}' --max-time 20 -H "Host: $2" -H 'X-Forwarded-Proto: https' "http://np-site-$1-app-1:$3$4"; }
-printf '%s u-example-test.%s n-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
+printf '%s u-example-test.%s n-example-test.%s gh-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
 sleep 6
 api POST /v1/sites '{"app":"uptime-kuma","domain":"u.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":""}'; JK="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
 SK="$SITE01_TEST_ROOT/srv/nostek/sites/u-example-test"
@@ -501,8 +501,19 @@ ok "n8n created and healthy" '[ "$CODE" = 202 ] && [ "$(wait_job "$JN" 200)" = d
 ok "n8n answers /healthz, runs as www-data, keeps its data and key in the website folder" '[ "$(ready_code n-example-test n-example-test.$ZONE 5678 /healthz)" = 200 ] && [ "$(docker exec np-site-n-example-test-app-1 id -u)" = 33 ] && [ -e "$SN/wp/.n8n/config" ] && [ -e "$SN/wp/.n8n/database.sqlite" ]'
 api POST /v1/sites '{"app":"n8n","domain":"n2.example.test","aliases":[],"primary":"domain","server":"nginx","php":"8.4","admin_email":"","title":""}'
 ok "a ready app with a web server or PHP is refused" '[ "$CODE" = 422 ] || [ "$CODE" = 400 ]'
-api GET /v1/catalog; ok "the catalogue lists the ready apps with their versions" 'grep -q "\"id\":\"uptime-kuma\"" <<<"$BODY" && grep -q "\"version\":\"2.47.7\"" <<<"$BODY"'
-KEPT=$((KEPT+2))
+api GET /v1/catalog; ok "the catalogue lists the ready apps with their versions" 'grep -q "\"id\":\"uptime-kuma\"" <<<"$BODY" && grep -q "\"version\":\"2.47.7\"" <<<"$BODY" && grep -q "\"id\":\"ghost\"" <<<"$BODY"'
+# APP-03 wave 2: Ghost with its own MySQL 8; the password is read from the secret file, never in the container settings
+api POST /v1/sites '{"app":"ghost","domain":"gh.example.test","aliases":[],"primary":"domain","server":"","php":"","admin_email":"","title":""}'; JG="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+SG="$SITE01_TEST_ROOT/srv/nostek/sites/gh-example-test"
+ok "Ghost created with its own MySQL 8, both healthy" '[ "$CODE" = 202 ] && [ "$(wait_job "$JG" 300)" = done ] && [ "$(docker inspect -f "{{.State.Health.Status}}" np-site-gh-example-test-db-1)" = healthy ] && docker inspect -f "{{.Config.Image}}" np-site-gh-example-test-db-1 | grep -q "^mysql:8.4"'
+GC="$(ready_code gh-example-test gh-example-test.$ZONE 2368 /ghost/api/admin/site/)"
+ok "Ghost answers, runs as www-data, keeps its content in the website folder" '[ "$GC" -ge 200 ] && [ "$GC" -lt 400 ] && [ "$(docker exec np-site-gh-example-test-app-1 id -u)" = 33 ] && [ -d "$SG/wp/themes" ] && [ "$(stat -c %u "$SG/wp")" = 33 ]'
+ok "the database password is in no compose file and no container settings" 'PW="$(cat "$SG/secrets/db_password")"; [ -n "$PW" ] && ! grep -qF "$PW" "$SG/compose.yml" && ! docker inspect np-site-gh-example-test-app-1 np-site-gh-example-test-db-1 | grep -qF "$PW"'
+api GET /v1/sites/gh-example-test/db; ok "Database tab shows Ghost's MySQL tables" '[ "$CODE" = 200 ] && grep -q "\"version\":\"MySQL 8.4" <<<"$BODY" && grep -q "\"name\":\"posts\"" <<<"$BODY"'
+api POST /v1/sites/gh-example-test/backups; JGB="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ok "Ghost backup holds a mysqldump of its database" '[ "$(wait_job "$JGB")" = done ] && f="$(ls "$SG/backups/"manual-*)" && tar -xzOf "$f" database.sql > "$T/g.sql" 2>/dev/null; grep -q "MySQL dump" "$T/g.sql" && grep -q "CREATE TABLE \`posts\`" "$T/g.sql"'
+api POST /v1/sites/gh-example-test/db/remote '{"allow":["203.0.113.5"]}'; ok "access from outside is refused for Ghost's MySQL" '[ "$CODE" = 400 ] || [ "$CODE" = 422 ]'
+KEPT=$((KEPT+3))
 
 # --- update in place keeps sites running; delete to trash and restore
 CIDS="$(docker ps -q --filter name=np-site- | sort | tr '\n' ' ')"

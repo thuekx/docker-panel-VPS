@@ -122,8 +122,11 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if f.app == "go" || f.app == "python" {
 		site.PHP, site.Server, site.AdminUser, site.Version, site.Source, site.Release = "", "", "", "1.27", "files", 1
 	}
-	if f.app == "n8n" || f.app == "uptime-kuma" {
+	if f.app == "n8n" || f.app == "uptime-kuma" || f.app == "ghost" {
 		site.PHP, site.Server, site.AdminUser = "", "", ""
+	}
+	if f.app == "ghost" {
+		site.DBEngine = "mysql"
 	}
 	if f.app == "node" {
 		site.PHP, site.Server, site.AdminUser, site.Version = "", "", "", "24"
@@ -276,7 +279,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Node:    []agent.Node{{Version: "26", SecurityUntil: "2029-04-30"}, {Version: "24", SecurityUntil: "2028-04-30", Default: true}},
 			Go:      []agent.Node{{Version: "1.27", SecurityUntil: "2027-08-31", Default: true}},
 			Python:  []agent.Node{{Version: "3.14", SecurityUntil: "2030-10-31", Default: true}},
-			Ready:   []agent.Ready{{ID: "uptime-kuma", Name: "Uptime Kuma", Version: "2.5.11-slim-rootless"}, {ID: "n8n", Name: "n8n", Version: "2.47.7"}},
+			Ready:   []agent.Ready{{ID: "uptime-kuma", Name: "Uptime Kuma", Version: "2.5.11-slim-rootless"}, {ID: "n8n", Name: "n8n", Version: "2.47.7"}, {ID: "ghost", Name: "Ghost", Version: "6.79.0-alpine"}},
 			Native:  map[bool]*agent.Native{true: {PHP: []string{"8.3", "8.4"}}}[f.native]})
 	case r.URL.Path == "/v1/sites" && r.Method == "GET":
 		write(200, map[string]any{"sites": []agent.Site{site}})
@@ -370,7 +373,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var c agent.Create
 		b, _ := io.ReadAll(r.Body)
 		json.Unmarshal(b, &c)
-		if c.Server != "apache" && c.Server != "nginx" && c.App != "node" && c.App != "go" && c.App != "python" && c.App != "n8n" && c.App != "uptime-kuma" {
+		if c.Server != "apache" && c.Server != "nginx" && c.App != "node" && c.App != "go" && c.App != "python" && c.App != "n8n" && c.App != "uptime-kuma" && c.App != "ghost" {
 			write(422, map[string]string{"error": "web server must be apache or nginx"})
 			return
 		}

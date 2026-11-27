@@ -27,4 +27,15 @@ func TestDumpCompose(t *testing.T) {
 		os.WriteFile(filepath.Join(d, "php.ini"), []byte(PHPIni), 0o644)
 		os.WriteFile(filepath.Join(d, "nginx.conf"), []byte(NginxConf), 0o644)
 	}
+	// Ghost with its own MySQL 8 (APP-03 wave 2)
+	g := Site{ID: "t-ghost", App: "ghost", DBEngine: "mysql", Hosts: []Host{{Name: "example.test", Role: "primary", Routed: true}}}
+	cf, err := g.Compose()
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := filepath.Join(out, "ghost")
+	os.MkdirAll(filepath.Join(d, "secrets"), 0o700)
+	os.MkdirAll(filepath.Join(d, "wp"), 0o755)
+	os.WriteFile(filepath.Join(d, "compose.yml"), []byte(cf), 0o644)
+	os.WriteFile(filepath.Join(d, "secrets", "db_password"), []byte("x"), 0o444)
 }

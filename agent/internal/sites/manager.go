@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/thuekx/docker-panel-VPS/agent/internal/catalog"
 	"github.com/thuekx/docker-panel-VPS/agent/internal/spec"
 )
 
@@ -1184,6 +1185,9 @@ func buildService(s Site) string {
 func dbEngine(c spec.Create) string {
 	if c.DBEngine == spec.DBPostgres && (c.Database || c.AppOf() == spec.AppLaravel) {
 		return spec.DBPostgres
+	}
+	if r, ok := catalog.Ready(c.AppOf()); ok && r.DB == spec.DBMySQL {
+		return spec.DBMySQL
 	}
 	return ""
 }
