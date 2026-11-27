@@ -523,6 +523,7 @@ type ItemAction struct {
 	Names    []string `json:"names"`    // plugin or theme names; for install, wordpress.org slugs
 	All      bool     `json:"all"`      // update, auto-on, auto-off: every item
 	Activate bool     `json:"activate"` // install: activate as well
+	Safe     bool     `json:"safe"`     // update: as a job with a backup first and a check after (WP-02)
 }
 
 // itemCmds builds the WP-CLI commands for an item action; kind is "plugin" or "theme".
@@ -635,13 +636,9 @@ func (m *Manager) Items(ctx context.Context, id, kind string, a ItemAction) (str
 
 // Core updates WordPress ("update") or WordPress, every plugin and every theme ("all").
 func (m *Manager) Core(ctx context.Context, id, do string) (string, error) {
-	cmds := [][]string{{"wp", "core", "update"}, {"wp", "core", "update-db"}}
-	switch do {
-	case "update":
-	case "all":
-		cmds = append(cmds, []string{"wp", "plugin", "update", "--all"}, []string{"wp", "theme", "update", "--all"})
-	default:
-		return "", fmt.Errorf("%w: unknown action %q", ErrBadInput, do)
+	cmds, err := coreCmds(do)
+	if err != nil {
+		return "", err
 	}
 	return m.runChange(ctx, id, 15*time.Minute, cmds...)
 }

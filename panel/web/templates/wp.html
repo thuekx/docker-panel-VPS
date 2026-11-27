@@ -7,6 +7,24 @@
 {{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
 {{if $d.OutputErr}}<p class="err" role="alert" data-anim="shake">{{$d.OutputErr}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "wp")}}
+{{with $d.Job}}{{$j := .}}
+{{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
+<section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
+  <div class="stat-head"><span><b class="ink">{{t $l "wp.safe.job"}}</b></span>
+  <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else if $d.PutBack}}<span class="pill s-warn">{{t $l "wp.safe.putback.pill"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l "wp.safe.job"}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <ol class="stepper">{{range $d.Steps}}
+    <li class="st-{{.State}}" data-step="{{.Key}}">
+      <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
+      <span class="txt"><span class="now">{{t $l (printf "wp.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "wp.step.%s" .Key)}}</span></span>
+    </li>{{end}}
+  </ol>
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "wp.safe.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l "wp.safe.done"}}{{if $d.Backup}} {{t $l "wp.safe.backup"}} <a href="/backup/{{$s.ID}}"><code>{{$d.Backup}}</code></a>{{end}}</p>{{end}}
+  {{if $j.Error}}<p class="banner warn">{{if $d.PutBack}}{{t $l "wp.safe.putback"}}{{else}}{{t $l "wp.safe.fail"}}{{end}}</p>
+  <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
+</section>
+{{end}}
 <section class="card wide tone c-teal wp-head" data-anim="card">
   <div class="wp-card">
     <a class="wp-shot" href="{{$s.URL}}" target="_blank" rel="noopener noreferrer" aria-label="{{t $l "wp.open"}}: {{$s.Domain}}">
@@ -45,6 +63,7 @@
 <section class="grid pair">
 <article class="card tone c-blue" data-anim="card">
   <h2><span class="h-ico" aria-hidden="true">{{template "ico-cloud"}}</span>{{t $l "wp.updates"}}</h2>
+  <p class="muted small">{{t $l "wp.safe.help"}}</p>
   <div class="table-wrap"><table class="upd-table"><tbody>
     <tr><th>WordPress</th><td><b>{{$w.Version}}</b> {{if $w.CoreUpdate}}<span class="pill s-warn">{{t $l "wp.update.to" $w.CoreUpdate}}</span>{{else}}<span class="pill s-ok">{{t $l "wp.uptodate"}}</span>{{end}}
       {{if $w.CoreUpdate}}<form method="post" action="/wp/{{$s.ID}}" class="upd"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="core"><input type="hidden" name="do" value="update"><button class="secondary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.update"}}</button></form>{{end}}</td></tr>
@@ -84,6 +103,7 @@
 <section class="card wide tone {{if eq $kind "plugin"}}c-blue{{else}}c-violet{{end}} fm" data-anim="card">
   <div class="stat-head"><span class="lbl"><span class="h-ico" aria-hidden="true">{{if eq $kind "plugin"}}{{template "ico-plug"}}{{else}}{{template "ico-palette"}}{{end}}</span>{{t $l (printf "wp.tab.%s" $d.Tab)}} <code class="proj">{{len $items}}</code></span>
     <span class="row">{{if $n}}<form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="{{$kind}}"><input type="hidden" name="do" value="update"><input type="hidden" name="all" value="1"><button class="primary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.update.alln" $n}}</button></form>{{end}}</span></div>
+  {{if $n}}<p class="muted small">{{t $l "wp.safe.help"}}</p>{{end}}
   <div class="table-wrap"><table class="fm-table wp-items">
     <thead><tr><th>{{t $l "wp.item.name"}}</th><th>{{t $l "wp.item.version"}}</th><th>{{t $l "wp.item.status"}}</th><th>{{t $l "wp.item.auto"}}</th><th><span class="sr">{{t $l "files.actions"}}</span></th></tr></thead>
     <tbody>{{range $items}}{{$fixed := or (eq .Status "must-use") (eq .Status "dropin")}}<tr data-anim="item">

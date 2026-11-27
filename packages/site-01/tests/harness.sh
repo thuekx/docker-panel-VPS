@@ -246,6 +246,31 @@ ok "db recreated on the pinned image, website answers, backup made first" '[ "$(
 api GET /v1/sites/b-example-test/images; ok "up to date afterwards; a second update is refused" '[ "$CODE" = 200 ] && imgcheck 0 && { api POST /v1/sites/b-example-test/images/update; [ "$CODE" = 400 ]; }'
 docker rmi np-old/mariadb:harness >/dev/null 2>&1
 
+# --- WP-02 safe update: backup first, real health check (wp eval) before and after, put back when it broke
+nbak() { api GET /v1/sites/b-example-test/backups; grep -o '"kind":"before-update"' <<<"$BODY" | wc -l; }
+jsteps() { grep -o '"steps":\[[^]]*\]' <<<"$BODY"; }
+N0="$(nbak)"
+MAXT=60 api POST /v1/sites/b-example-test/wp/plugins '{"do":"update","all":true,"safe":true}'; C1="$CODE"; JW="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ST="$(wait_job "$JW")"; api GET "/v1/jobs/$JW"
+ok "safe update runs as a job: checked before and after, done" '[ "$C1" = 202 ] && [ "$ST" = done ] && jsteps | grep -q "check before" && jsteps | grep -q "check after" && ! jsteps | grep -q "\"restore\""'
+ok "safe update made a before-update backup" '[ "$(nbak)" -gt "$N0" ]'
+# a plugin that breaks WordPress once any "wp plugin update" ran (a WP-CLI hook drops a flag file)
+mkdir -p "$WPB/wp-content/plugins/np-flip"
+cat > "$WPB/wp-content/plugins/np-flip/np-flip.php" <<'PHP'
+<?php
+/* Plugin Name: NP Flip (harness) */
+if ( file_exists( __DIR__ . '/broken' ) ) { np_flip_no_such_function(); }
+if ( defined( 'WP_CLI' ) && WP_CLI ) { WP_CLI::add_hook( 'after_invoke:plugin update', function () { touch( __DIR__ . '/broken' ); } ); }
+PHP
+chown -R 33:33 "$WPB/wp-content/plugins/np-flip"
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"activate","names":["np-flip"]}'
+MAXT=60 api POST /v1/sites/b-example-test/wp/plugins '{"do":"update","names":["akismet"],"safe":true}'; C1="$CODE"; JW="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ST="$(wait_job "$JW")"; api GET "/v1/jobs/$JW"
+ok "an update that breaks WordPress is put back by itself" '[ "$C1" = 202 ] && [ "$ST" = failed ] && jsteps | grep -q "\"restore\"" && grep -q "put back" <<<"$BODY" && [ ! -e "$WPB/wp-content/plugins/np-flip/broken" ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"deactivate","names":["np-flip"]}'
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"delete","names":["np-flip"]}'
+ok "harness plugin removed" '[ "$CODE" = 200 ] && [ ! -e "$WPB/wp-content/plugins/np-flip" ]'
+
 # --- APP-01 static and plain PHP websites (real images; WordPress must never be copied in)
 printf '%s c-example-test.%s d-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
 api POST /v1/sites '{"app":"static","domain":"c.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"Situs C"}'; JC="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
@@ -348,7 +373,7 @@ PHP
   ok "Laravel on PostgreSQL answers through Nginx" 'site_get q-example-test q-example-test.$ZONE / | grep -qi "laravel"'
   MAXT=330 api POST /v1/sites/q-example-test/laravel/artisan '{"op":"migrate"}'; ok "artisan migrate on PostgreSQL" '[ "$CODE" = 200 ] && grep -qi "nothing to migrate" <<<"$BODY"'
   api POST /v1/sites '{"app":"php","domain":"r.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"","title":"","database":true,"db_engine":"postgres"}'; JR2="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
-  ok "plain PHP (Apache) on PostgreSQL: image built, the starter connects with pdo_pgsql" '[ "$CODE" = 202 ] && [ "$(wait_job "$JR2" 400)" = done ] && site_get r-example-test r-example-test.$ZONE / | grep -q "Database: connected (PostgreSQL)" && docker exec np-site-r-example-test-web-1 php -m | grep -qx pdo_pgsql'
+  ok "plain PHP (Apache) on PostgreSQL: image built, the starter connects with pdo_pgsql" '[ "$CODE" = 202 ] && [ "$(wait_job "$JR2" 400)" = done ] && site_get r-example-test r-example-test.$ZONE / | grep -q "Database: connected (PostgreSQL)" && grep -qx pdo_pgsql <<<"$(docker exec np-site-r-example-test-web-1 php -m)"'
   api POST /v1/sites/r-example-test/db/query '{"sql":"CREATE TABLE np (id int); INSERT INTO np VALUES (7); SELECT id FROM np"}'
   ok "Database page console on the PHP site PostgreSQL" '[ "$CODE" = 200 ] && grep -qF "[[\"7\"]]" <<<"$BODY"'
   api POST /v1/sites '{"domain":"s.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"o@example.test","title":"S","db_engine":"postgres"}'

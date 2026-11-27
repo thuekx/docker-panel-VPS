@@ -29,7 +29,8 @@ type fakeAgent struct {
 	imported   string
 	wpCalls    []string // "path body" of every WordPress call
 	wpDown     bool
-	bakCalls   []string // "method path body" of every backup call
+	wpJob      agent.Job // WP-02: the safe update job
+	bakCalls   []string  // "method path body" of every backup call
 	bakDown    bool
 	bakJob     agent.Job
 	sbkCalls   []string // BAK-02: "method path body" of every server backup call
@@ -270,7 +271,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		f.security(w, r, write)
 		return
 	}
-	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/wp") {
+	if strings.HasPrefix(r.URL.Path, "/v1/sites/voltix-id/wp") || strings.HasPrefix(r.URL.Path, "/v1/jobs/jc0de") {
 		f.wordpress(w, r, write)
 		return
 	}

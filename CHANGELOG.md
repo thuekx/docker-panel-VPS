@@ -3,6 +3,17 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.51.0] — 2026-11-27
+
+### Added
+- **Safe WordPress updates** (WP-02 wave 1): every update on the WordPress page (WordPress itself, everything at
+  once, one plugin or theme, all plugins or all themes) now runs as a job with live steps:
+  - The website is checked, then backed up (database and files), then updated, then checked again.
+  - If the update breaks a website that worked (a PHP fatal error, or the front page answers an error 500), the
+    backup from just before is put back by itself and the page says what broke.
+  - The backup stays under Backups ("before update"; the last 3 are kept).
+  - Design: [docs/design/wp-02.md](docs/design/wp-02.md).
+
 ## [1.50.0] — 2026-11-27
 
 ### Added
