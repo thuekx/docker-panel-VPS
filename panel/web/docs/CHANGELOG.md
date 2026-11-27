@@ -3,6 +3,17 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.53.0] — 2026-11-28
+
+### Added
+- **Extension points** (EXT-01) for programs built on the panel: the `nostek-panel` command is now also a Go
+  library (`panel/app`) with optional hooks (`panel/ext`) that can let people other than the server's admins sign in
+  and use only the websites the program allows, and add pages of its own.
+  - The plain panel works exactly as before; nothing changes for admins.
+  - Users that are not admins are refused everything not allowed (deny by default): no server pages, no other
+    websites, no resource limits, firewall, wildcard certificates, staging copy, terminal or stack view.
+  - Design: [docs/design/ext-01.md](docs/design/ext-01.md).
+
 ## [1.52.0] — 2026-11-27
 
 ### Added
