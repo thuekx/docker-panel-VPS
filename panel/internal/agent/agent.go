@@ -142,7 +142,31 @@ type Site struct {
 	Release    int    `json:"release"`   // node: live release
 	// SEC-02: scheduled malware scans
 	ScanEvery *ScanSchedule `json:"scan_schedule"`
+	// SEC-01 protected folders (names only); APP-03 wave 3 reads the setup lock from them
+	Protected []ProtectedDir `json:"protected"`
 }
+
+// ProtectedDir is a folder of a website that asks for a login.
+type ProtectedDir struct {
+	Path  string   `json:"path"`
+	Users []string `json:"users"`
+}
+
+// SetupLocked is true while a ready app still asks for the setup login on the whole website (APP-03 wave 3).
+func (s Site) SetupLocked() bool {
+	if !s.IsReady() {
+		return false
+	}
+	for _, p := range s.Protected {
+		if p.Path == "/" && slices.Contains(p.Users, "setup") {
+			return true
+		}
+	}
+	return false
+}
+
+// IsReadyApp is true for an app id of the ready-app catalogue.
+func IsReadyApp(app string) bool { return slices.Contains(ReadyApps, app) }
 
 // FromFiles is true when a Node.js app is built from the website's source/ folder.
 func (s Site) FromFiles() bool { return s.Source == "files" }
@@ -378,25 +402,32 @@ type Laravel struct {
 
 // Create is a create-site request.
 type Create struct {
-	App        string   `json:"app,omitempty"` // empty = WordPress
-	Database   bool     `json:"database,omitempty"`
-	DBEngine   string   `json:"db_engine,omitempty"` // node, go, python: mariadb | postgres
-	Version    string   `json:"version,omitempty"`   // laravel: major version; node: Node.js version
-	Source     string   `json:"source,omitempty"`    // node: git | files
-	Dir        string   `json:"dir,omitempty"`       // node: app folder
-	Repo       string   `json:"repo,omitempty"`      // node
-	Branch     string   `json:"branch,omitempty"`    // node
-	Build      string   `json:"build,omitempty"`     // node ("" = default)
-	Start      string   `json:"start,omitempty"`     // node ("" = default)
-	KeyID      string   `json:"key_id,omitempty"`    // private repository: deploy key made before the website
-	Domain     string   `json:"domain"`
-	Aliases    []string `json:"aliases"`
-	Primary    string   `json:"primary"`
-	Server     string   `json:"server"`
-	PHP        string   `json:"php"`
-	AdminEmail string   `json:"admin_email"`
-	Title      string   `json:"title"`
-	Engine     string   `json:"engine,omitempty"` // "" = Docker | native (WordPress, PHP, static)
+	App        string     `json:"app,omitempty"` // empty = WordPress
+	Database   bool       `json:"database,omitempty"`
+	DBEngine   string     `json:"db_engine,omitempty"` // node, go, python: mariadb | postgres
+	Version    string     `json:"version,omitempty"`   // laravel: major version; node: Node.js version
+	Source     string     `json:"source,omitempty"`    // node: git | files
+	Dir        string     `json:"dir,omitempty"`       // node: app folder
+	Repo       string     `json:"repo,omitempty"`      // node
+	Branch     string     `json:"branch,omitempty"`    // node
+	Build      string     `json:"build,omitempty"`     // node ("" = default)
+	Start      string     `json:"start,omitempty"`     // node ("" = default)
+	KeyID      string     `json:"key_id,omitempty"`    // private repository: deploy key made before the website
+	Domain     string     `json:"domain"`
+	Aliases    []string   `json:"aliases"`
+	Primary    string     `json:"primary"`
+	Server     string     `json:"server"`
+	PHP        string     `json:"php"`
+	AdminEmail string     `json:"admin_email"`
+	Title      string     `json:"title"`
+	Engine     string     `json:"engine,omitempty"`     // "" = Docker | native (WordPress, PHP, static)
+	SetupLock  *SetupLock `json:"setup_lock,omitempty"` // ready app: login in front until its admin exists (APP-03 wave 3)
+}
+
+// SetupLock is the login the edge asks for on a new ready app; only the bcrypt hash goes to the agent.
+type SetupLock struct {
+	User string `json:"user"`
+	Hash string `json:"hash"`
 }
 
 // Job is a running or finished change.

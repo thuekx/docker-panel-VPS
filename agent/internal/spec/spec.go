@@ -195,26 +195,39 @@ func Command(c string) error {
 
 // Create is the body of a create-site request.
 type Create struct {
-	App        string   `json:"app,omitempty"` // wordpress (default) | php | laravel | static
-	Domain     string   `json:"domain"`
-	Aliases    []string `json:"aliases"`
-	Primary    string   `json:"primary"` // "domain" (bare) or "www"
-	Server     string   `json:"server"`  // apache | nginx (static: nginx)
-	PHP        string   `json:"php"`     // from catalog (static: empty)
-	AdminEmail string   `json:"admin_email"`
-	Title      string   `json:"title"`
-	Database   bool     `json:"database,omitempty"`  // php: give the app its own MariaDB
-	Version    string   `json:"version,omitempty"`   // laravel: major version ("" = newest); node: Node.js version
-	Source     string   `json:"source,omitempty"`    // node: git (default) | files
-	Dir        string   `json:"dir,omitempty"`       // node: app folder inside the repository or source folder
-	Repo       string   `json:"repo,omitempty"`      // node: public https Git repository
-	Branch     string   `json:"branch,omitempty"`    // node: branch to deploy
-	Build      string   `json:"build,omitempty"`     // node: build command ("" = default)
-	Start      string   `json:"start,omitempty"`     // node: start command ("" = default)
-	KeyID      string   `json:"key_id,omitempty"`    // SSH repository: the deploy key made for it (POST /v1/deploykeys)
-	DBEngine   string   `json:"db_engine,omitempty"` // mariadb (default) | postgres: PHP and runtime apps with database, Laravel
-	Engine     string   `json:"engine,omitempty"`    // "" = Docker stack (default) | native: host Nginx + PHP-FPM + MariaDB (NATIVE-01)
+	App        string     `json:"app,omitempty"` // wordpress (default) | php | laravel | static
+	Domain     string     `json:"domain"`
+	Aliases    []string   `json:"aliases"`
+	Primary    string     `json:"primary"` // "domain" (bare) or "www"
+	Server     string     `json:"server"`  // apache | nginx (static: nginx)
+	PHP        string     `json:"php"`     // from catalog (static: empty)
+	AdminEmail string     `json:"admin_email"`
+	Title      string     `json:"title"`
+	Database   bool       `json:"database,omitempty"`   // php: give the app its own MariaDB
+	Version    string     `json:"version,omitempty"`    // laravel: major version ("" = newest); node: Node.js version
+	Source     string     `json:"source,omitempty"`     // node: git (default) | files
+	Dir        string     `json:"dir,omitempty"`        // node: app folder inside the repository or source folder
+	Repo       string     `json:"repo,omitempty"`       // node: public https Git repository
+	Branch     string     `json:"branch,omitempty"`     // node: branch to deploy
+	Build      string     `json:"build,omitempty"`      // node: build command ("" = default)
+	Start      string     `json:"start,omitempty"`      // node: start command ("" = default)
+	KeyID      string     `json:"key_id,omitempty"`     // SSH repository: the deploy key made for it (POST /v1/deploykeys)
+	DBEngine   string     `json:"db_engine,omitempty"`  // mariadb (default) | postgres: PHP and runtime apps with database, Laravel
+	SetupLock  *SetupLock `json:"setup_lock,omitempty"` // ready app: a login in front of the app until its admin exists
+	Engine     string     `json:"engine,omitempty"`     // "" = Docker stack (default) | native: host Nginx + PHP-FPM + MariaDB (NATIVE-01)
 }
+
+// SetupLock is the login the edge asks for on a new ready app until its first account exists (APP-03 wave 3).
+// Hash is a bcrypt hash made by the panel; the password itself never reaches the agent.
+type SetupLock struct {
+	User string `json:"user"`
+	Hash string `json:"hash"`
+}
+
+var (
+	lockUserRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,32}$`)
+	lockHashRe = regexp.MustCompile(`^\$2[aby]\$(0[4-9]|[12][0-9]|3[01])\$[./A-Za-z0-9]{53}$`)
+)
 
 // EngineNative is the native engine (NATIVE-01): WordPress, plain PHP and static websites on the host's Nginx.
 const EngineNative = "native"
@@ -366,6 +379,14 @@ func (c Create) Check(reserved map[string]bool) error {
 		}
 	default:
 		return errors.New("app must be wordpress, php, laravel, static, node, go, python, uptime-kuma, n8n or ghost")
+	}
+	if c.SetupLock != nil {
+		if !IsReadyApp(app) {
+			return errors.New("only a ready app takes a setup lock")
+		}
+		if !lockUserRe.MatchString(c.SetupLock.User) || !lockHashRe.MatchString(c.SetupLock.Hash) {
+			return errors.New("the setup lock needs a user name and a bcrypt hash")
+		}
 	}
 	if c.Version != "" && app != AppLaravel && !IsRuntimeApp(app) {
 		return errors.New("only Laravel, Node.js, Go and Python take a version")

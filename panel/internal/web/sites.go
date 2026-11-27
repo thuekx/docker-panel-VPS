@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,12 +15,60 @@ import (
 	"time"
 
 	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
-// jobOwners remembers which user started a job, so only that user may see its one-time password.
+// jobOwners remembers which user started a job, so only that user may see its one-time password. It also holds
+// the setup-lock password of a new ready app (APP-03 wave 3) until that user has seen it once.
 type jobOwners struct {
-	mu sync.Mutex
-	m  map[string]int64
+	mu    sync.Mutex
+	m     map[string]int64
+	locks map[string]string
+}
+
+// SetupUser is the user name of a ready app's setup lock.
+const SetupUser = "setup"
+
+// randomPass is a password of n letters and digits from crypto/rand (no look-alike characters).
+func randomPass(n int) string {
+	const abc = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+	out := make([]byte, 0, n)
+	var b [1]byte
+	for len(out) < n {
+		if _, err := rand.Read(b[:]); err != nil {
+			panic(err)
+		}
+		if int(b[0]) < 256/len(abc)*len(abc) { // no modulo bias
+			out = append(out, abc[int(b[0])%len(abc)])
+		}
+	}
+	return string(out)
+}
+
+func (j *jobOwners) setLock(job, pass string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.locks == nil {
+		j.locks = map[string]string{}
+	}
+	j.locks[job] = pass
+}
+
+func (j *jobOwners) hasLock(job string) bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	_, ok := j.locks[job]
+	return ok
+}
+
+// takeLock returns the setup-lock password once and forgets it.
+func (j *jobOwners) takeLock(job string) (string, bool) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	p, ok := j.locks[job]
+	delete(j.locks, job)
+	return p, ok
 }
 
 func (j *jobOwners) set(job string, uid int64) {
@@ -188,12 +237,26 @@ func (s *Server) siteSubmit(w http.ResponseWriter, r *http.Request) {
 		d.Plan = &p
 		s.render(w, r, "sitenew", page{Title: s.tr.T(s.lang(r), "sites.approve"), Active: "sites", Data: d})
 	case "create":
+		lockPass := ""
+		if agent.IsReadyApp(c.App) && r.PostForm.Get("setup_lock") != "0" {
+			lockPass = randomPass(20)
+			h, err := bcrypt.GenerateFromPassword([]byte(lockPass), bcrypt.DefaultCost)
+			if err != nil {
+				fail(err)
+				return
+			}
+			c.SetupLock = &agent.SetupLock{User: SetupUser, Hash: string(h)}
+		}
 		job, site, err := s.ag.CreateSite(ctx, c)
 		if err != nil {
 			fail(err)
 			return
 		}
 		s.owners.set(job, userOf(r).ID)
+		if lockPass != "" {
+			s.owners.setLock(job, lockPass)
+			s.audit1(userOf(r), r, "site.setup_lock", site.ID+" login "+SetupUser+" until the admin account exists")
+		}
 		s.audit1(userOf(r), r, "site.create", site.ID+" "+c.Domain+" "+site.AppName()+" "+c.Server+" php "+c.PHP)
 		http.Redirect(w, r, "/sites/job/"+job, http.StatusSeeOther)
 	default:
@@ -205,6 +268,9 @@ type jobData struct {
 	Job      agent.Job
 	Site     agent.Site
 	Password string
+	Lock     string // the setup-lock password, shown once
+	HasLock  bool   // a setup-lock password waits to be shown
+	Locked   bool   // the website still asks for the setup login
 	Mine     bool
 	Steps    []stepRow
 	Percent  int
@@ -378,7 +444,35 @@ func (s *Server) siteJob(w http.ResponseWriter, r *http.Request) {
 	owner, ok := s.owners.owner(id)
 	steps, pct := jobProgress(j, site)
 	s.render(w, r, "sitejob", page{Title: s.tr.T(s.lang(r), "sites.job"), Active: "sites",
-		Data: jobData{Job: j, Site: site, Mine: ok && owner == userOf(r).ID, Steps: steps, Percent: pct}})
+		Data: jobData{Job: j, Site: site, Mine: ok && owner == userOf(r).ID, HasLock: ok && owner == userOf(r).ID && s.owners.hasLock(id),
+			Locked: site.SetupLocked(), Steps: steps, Percent: pct}})
+}
+
+// siteSetupLock shows the setup-lock password of a new ready app once (APP-03 wave 3); the panel forgets it.
+func (s *Server) siteSetupLock(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("job")
+	owner, ok := s.owners.owner(id)
+	if !jobRe.MatchString(id) || !ok || owner != userOf(r).ID {
+		s.notFound(w, r)
+		return
+	}
+	ctx, cancel := s.agentCtx(r, 10*time.Second)
+	defer cancel()
+	j, err := s.ag.Job(ctx, id)
+	if err != nil {
+		s.notFound(w, r)
+		return
+	}
+	pw, ok := s.owners.takeLock(id)
+	if !ok {
+		s.message(w, r, 410, "linkgone")
+		return
+	}
+	site, _ := s.ag.Site(ctx, j.Site)
+	s.audit1(userOf(r), r, "site.setup_lock_shown", j.Site+" setup login shown once")
+	steps, pct := jobProgress(j, site)
+	s.render(w, r, "sitejob", page{Title: s.tr.T(s.lang(r), "sites.job"), Active: "sites",
+		Data: jobData{Job: j, Site: site, Lock: pw, Locked: site.SetupLocked(), Mine: true, Steps: steps, Percent: pct}})
 }
 
 // siteSecret shows the new site's admin password once; the agent forgets it in the same step.

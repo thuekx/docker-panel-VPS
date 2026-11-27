@@ -454,6 +454,13 @@ func (m *Manager) Create(ctx context.Context, c spec.Create) (string, Site, erro
 		m.mu.Unlock()
 		return "", Site{}, err
 	}
+	if c.SetupLock != nil { // APP-03 wave 3: the edge asks for this login from the first render on
+		if err := writeAuth(m.authFile(s.ID, "/"), map[string]string{c.SetupLock.User: c.SetupLock.Hash}); err != nil {
+			m.mu.Unlock()
+			return "", Site{}, err
+		}
+		s.Protected = []Protected{{Path: "/", Users: []string{c.SetupLock.User}, Rev: 1}}
+	}
 	j := m.jobs.New("create", s.ID)
 	go func() {
 		defer m.mu.Unlock()

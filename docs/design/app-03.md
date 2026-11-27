@@ -60,3 +60,22 @@ Agent unit tests (compose per app, refusals, backup stops the app, logs), panel 
 Overview, job page, list, both languages), Ghost: compose (MySQL service, password from the secret file and never in the compose file, networks), refusals
 (database option, MySQL chosen for another app), approve card names MySQL 8; harness on real Docker (both apps healthy as uid 33 with their data in the
 website folder, no published port, backup with the app stopped and back, refusal, catalogue), 3 new mutants.
+
+## Wave 3 (in progress): setup lock until the first account exists
+
+Uptime Kuma, n8n and Ghost let the first visitor create the admin account. Between "created" and "admin made" anyone
+who finds the name can take the app. The setup lock closes that gap with the protected folders of SEC-01.
+
+- **On create** of a ready app the form has "Lock until the admin account is made", on by default. The panel makes a
+  random password (20 characters), sends only its bcrypt hash with the create request (`setup_lock: {user, hash}`),
+  and keeps the password in memory for that session's next page view, shown once (as API-01 keys).
+- **The agent** sets a protected folder `/` (user `setup`) on the new website before its first render, so the edge
+  asks for that login from the first second. `/.well-known` stays open for certificates (as with every protected
+  folder). The hash lives only in the edge's password file.
+- **The job page** shows the user and password once, and the next step: open the app, sign in with `setup`, create the
+  admin account, then press **Open to everyone**. That button removes the folder `/` (the same `protect-remove` as on
+  the Security page), so nothing new is kept.
+- **Later**: the Security page lists it as an ordinary protected folder; it can be kept (a second login in front of the
+  app) or removed there too.
+- **Not covered**: a webhook URL of n8n or the Ghost members API are locked too while the lock is on; that is wanted
+  until setup is done.
