@@ -136,6 +136,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/server-backups", s.serverBackupStart)
 	mux.HandleFunc("GET /v1/server-backups/{name}", s.serverBackupGet)
 	mux.HandleFunc("POST /v1/server-backups/{name}/delete", s.serverBackupDelete)
+	mux.HandleFunc("GET /v1/server-security", s.serverSecurity) // SRV-01
+	mux.HandleFunc("POST /v1/firewall", s.firewallChange)
+	mux.HandleFunc("POST /v1/firewall/confirm", s.firewallConfirm)
+	mux.HandleFunc("POST /v1/firewall/undo", s.firewallUndo)
+	mux.HandleFunc("POST /v1/fail2ban/unban", s.fail2banUnban)
+	mux.HandleFunc("POST /v1/fail2ban/allow", s.fail2banAllow)
 	mux.HandleFunc("GET /v1/update", s.update)
 	mux.HandleFunc("POST /v1/update", s.updateStart)
 	mux.HandleFunc("GET /v1/trash", s.trash)

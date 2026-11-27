@@ -83,6 +83,9 @@ var hostBins = map[string]string{
 	"mariadb-dump": "/usr/bin/mariadb-dump",
 	"ufw":          "/usr/sbin/ufw", // DB-02: the database ports (also without the native engine)
 	"git":          "/usr/bin/git",  // UPD-01: which commit a release tag names
+	// SRV-01: the SSH ports (never closed from the panel) and fail2ban
+	"sshd":            "/usr/sbin/sshd",
+	"fail2ban-client": "/usr/bin/fail2ban-client",
 }
 
 // HostStreamer is a HostRunner that can send a program's output to a writer (database dumps of any size).

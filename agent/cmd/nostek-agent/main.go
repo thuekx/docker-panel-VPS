@@ -212,6 +212,17 @@ func serve(cfg Config, m *sites.Manager) error {
 	if err := m.SyncRemoteDB(ctx); err != nil { // DB-02: database ports from outside
 		fmt.Fprintln(os.Stderr, "database ports:", err)
 	}
+	m.OnFirewallUndo(func(why string, err error) { // SRV-01: an undone firewall trial is in the audit log
+		res := "ok"
+		if err != nil {
+			res, why = "failed", why+": "+err.Error()
+		}
+		s.Audit.Write(audit.Entry{Action: "firewall-undo", Result: res, Detail: why})
+	})
+	m.ResumeFirewallTrial(ctx)
+	if err := m.SyncFail2ban(ctx); err != nil { // SRV-01: the panel's and SFTP's jails
+		fmt.Fprintln(os.Stderr, "fail2ban:", err)
+	}
 	if err := m.SyncSFTP(); err != nil { // SFTP-01: accounts follow the website's file user
 		fmt.Fprintln(os.Stderr, "sftp files:", err)
 	}

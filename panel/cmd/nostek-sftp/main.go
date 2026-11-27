@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/thuekx/docker-panel-VPS/panel/internal/authlog"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/sftpd"
 )
 
@@ -51,6 +52,7 @@ func main() {
 
 func run() error {
 	sv := sftpd.New(env("SFTP_CONFIG", "/config"), os.Stdout)
+	sv.AuthFail = authlog.Open(filepath.Join(env("SFTP_STATE", "/state"), "auth-fail.log"), "sftp") // SRV-01: fail2ban
 	if err := sv.Load(); err != nil {
 		log.Printf("sftp: %v", err)
 	}

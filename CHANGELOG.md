@@ -3,6 +3,21 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.39.0] — 2026-11-26
+
+### Added
+- **Server security** (SRV-01): Settings → Server security shows the server firewall (ufw) and fail2ban.
+  - Add a rule (allow or deny a port or a range, TCP/UDP, from anywhere or one address or network) or remove one.
+  - Every change is a 10-minute trial. The agent undoes it by itself unless you confirm it from a new sign-in (a new
+    private window). This also holds across an agent restart.
+  - SSH ports can never be closed or denied here. The rules for websites and for database access from outside are
+    shown but kept.
+  - fail2ban: every jail with its blocked addresses, a button to unblock, and a "never block" list.
+- **Brute-force bans for the panel and SFTP**: failed sign-ins are written to a file on the host. Two new jails
+  (`nostek-panel`, `nostek-sftp`, 10 failures in 10 minutes = 1 hour) block the address in the DOCKER-USER chain,
+  because both services are reached through Docker's ports, which pass by ufw. Guide:
+  [docs/guides/server-security.md](docs/guides/server-security.md).
+
 ## [1.38.0] — 2026-11-26
 
 ### Added

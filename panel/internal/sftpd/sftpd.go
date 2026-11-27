@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/pkg/sftp"
+	"github.com/thuekx/docker-panel-VPS/panel/internal/authlog"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/ssh"
 )
@@ -154,6 +155,9 @@ func (a account) stamp() string {
 
 // Server is the SFTP service.
 type Server struct {
+	// AuthFail gets one line per failed password for fail2ban (SRV-01); nil writes nothing
+	AuthFail *authlog.Log
+
 	dir    string
 	logger *log.Logger
 	now    func() time.Time
@@ -379,6 +383,7 @@ func (s *Server) Config(hostKey ssh.Signer) *ssh.ServerConfig {
 			}
 			if bcrypt.CompareHashAndPassword(h, pw) != nil || !ok || a.hash == nil {
 				s.failed(ip)
+				s.AuthFail.Fail(ip)
 				s.event("login-failed", ip, m.User(), a.site, "password")
 				return nil, errors.New("wrong name or password")
 			}
