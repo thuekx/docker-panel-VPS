@@ -1,6 +1,6 @@
 # System page: core services, processes, drift (OPS-02)
 
-Status: BUILT v1.42.0, 2026-11-27. Roadmap slot 15d (RAYX-2). Settings → System. User guide:
+Status: LIVE v1.42.0 2026-11-27 13:34 WIB (built 2026-11-27). Roadmap slot 15d (RAYX-2). Settings → System. User guide:
 [docs/guides/system.md](../guides/system.md).
 
 ## Core services

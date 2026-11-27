@@ -1,6 +1,6 @@
 # Server security page (SRV-01)
 
-Status: BUILT v1.39.0, 2026-11-26. Roadmap slot 15a (RAYX-2). Decision SRV-1 = A. User guide:
+Status: LIVE v1.39.0 2026-11-27 13:34 WIB (built 2026-11-26). Roadmap slot 15a (RAYX-2). Decision SRV-1 = A. User guide:
 [docs/guides/server-security.md](../guides/server-security.md).
 
 ## Firewall (ufw)

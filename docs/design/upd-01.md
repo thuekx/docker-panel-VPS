@@ -1,6 +1,6 @@
 # Update from the panel (UPD-01)
 
-Status: BUILT v1.38.0, 2026-11-26. Roadmap slot 15 (RAYX-2, CC-FIRST-1). User guide:
+Status: LIVE v1.38.0 2026-11-27 13:34 WIB (built 2026-11-26). Roadmap slot 15 (RAYX-2, CC-FIRST-1). User guide:
 [docs/guides/update.md](../guides/update.md).
 
 ## Goal

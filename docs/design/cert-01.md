@@ -1,6 +1,6 @@
 # Own and wildcard certificates (CERT-01)
 
-Status: BUILT v1.35.0, 2026-11-26. Roadmap slot 14c (RAYX-1 = A). Decision CERT-1 = ClouDNS (the DNS of the domains is kept
+Status: LIVE v1.35.0 2026-11-27 13:34 WIB (built 2026-11-26). Roadmap slot 14c (RAYX-1 = A). Decision CERT-1 = ClouDNS (the DNS of the domains is kept
 there).
 
 ## Goal

@@ -1,6 +1,6 @@
 # Scheduled malware scans and quarantine (SEC-02)
 
-Status: BUILT v1.40.0, 2026-11-26. Roadmap slot 15b (RAYX-2). Builds on the ClamAV scan of SEC-01
+Status: LIVE v1.40.0 2026-11-27 13:34 WIB (built 2026-11-26). Roadmap slot 15b (RAYX-2). Builds on the ClamAV scan of SEC-01
 ([sec-01.md](sec-01.md)). User guide: [docs/guides/malware-scan.md](../guides/malware-scan.md).
 
 ## Schedule per website

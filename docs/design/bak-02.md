@@ -1,6 +1,6 @@
 # Server backup and move to a new server (BAK-02)
 
-Status: BUILT v1.34.0, 2026-11-26. Roadmap slot 14b (RAYX-1 = A). Decision BAK-2 = A (one archive with the panel
+Status: LIVE v1.34.0 2026-11-27 13:34 WIB (built 2026-11-26). Roadmap slot 14b (RAYX-1 = A). Decision BAK-2 = A (one archive with the panel
 and every website). User guide: [docs/guides/server-backup.md](../guides/server-backup.md).
 
 ## Goal
