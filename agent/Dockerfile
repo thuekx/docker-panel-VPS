@@ -4,7 +4,8 @@
 FROM golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS build
 WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-trimpath GOTOOLCHAIN=local
-COPY go.mod ./
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
 COPY . .
 ARG VERSION=dev
 RUN go vet ./... && go build -ldflags "-s -w -X main.Version=${VERSION}" -o /out/nostek-agent ./cmd/nostek-agent

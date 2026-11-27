@@ -1,0 +1,31 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "term.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{template "sitetabs" (tabs $l $s "terminal")}}
+<section class="card wide tone c-teal" data-anim="card" id="terminal">
+  <div class="deploy-head"><h2><span class="h-ico" aria-hidden="true">{{template "ico-term"}}</span>{{t $l "term.title"}}</h2>{{if $v.On}}<span class="pill s-ok">{{t $l "alert.on"}}</span>{{else}}<span class="pill s-unknown">{{t $l "perf.opt.off"}}</span>{{end}}</div>
+  <p class="muted">{{t $l "term.help"}}</p>
+  {{if $d.Err}}<p class="err" role="alert">{{$d.Err}}</p>
+  {{else if not $v.Possible}}<p class="banner warn">{{t $l "term.none"}} <span class="muted">({{$v.Why}})</span></p>
+  {{else}}
+  {{with $v.Target}}<p class="facts"><span>{{t $l "term.where"}} <b>{{.Service}}</b></span><span>{{t $l "term.user"}} <b>{{.User}}</b></span><span>{{t $l "term.dir"}} <code>{{.Dir}}</code></span></p>{{end}}
+  <p class="muted small">{{t $l "term.limits" $v.Max $v.IdleMin $v.MaxMin}}</p>
+  <form method="post" action="/terminal/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}">
+  {{if $v.On}}<input type="hidden" name="op" value="off"><button class="ghost danger-text" type="submit" data-confirm="{{t $l "term.off.ask"}}">{{t $l "term.off"}}</button>
+  {{else}}<input type="hidden" name="op" value="on"><button class="primary" type="submit" data-confirm="{{t $l "term.on.ask"}}">{{t $l "term.on"}}</button>{{end}}
+  </form>
+  {{end}}
+</section>
+{{if and $v.On $v.Possible (not $d.Err)}}
+<link rel="stylesheet" href="/static/vendor/xterm.css">
+<section class="card wide term-card" data-anim="card">
+  <div class="stat-head"><span><b class="ink">{{$s.Domain}}</b></span><span class="pill s-unknown" id="term-state" data-on="{{t $l "term.state.on"}}" data-off="{{t $l "term.state.off"}}">{{t $l "term.state.wait"}}</span></div>
+  <div class="term-box" id="term" data-socket="/terminal/{{$s.ID}}/socket" data-csrf="{{$csrf}}" data-nonce="{{$.Nonce}}" data-ended="{{t $l "term.ended"}}" aria-label="{{t $l "term.title"}}"></div>
+  <p class="row"><button class="ghost" type="button" id="term-again" hidden>{{t $l "term.again"}}</button><span class="muted small">{{t $l "term.audit"}}</span></p>
+</section>
+<script src="/static/vendor/xterm.js" defer></script>
+<script src="/static/vendor/xterm-addon-fit.js" defer></script>
+<script src="/static/js/terminal.js" defer></script>
+{{end}}
+{{end}}

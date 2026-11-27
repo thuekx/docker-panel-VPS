@@ -138,6 +138,10 @@ type Manager struct {
 	ionURL  string
 	ionHTTP *http.Client
 	ionMu   sync.Mutex
+	// TERM-01: open terminal sessions per website, and how a shell command is made (tests: a local shell)
+	termMu  sync.Mutex
+	termN   map[string]int
+	termCmd func(ctx context.Context, dir string, args []string) *exec.Cmd
 	// NATIVE-01: the native engine (nil native = not installed on this server)
 	native     *NativeConfig
 	host       HostRunner

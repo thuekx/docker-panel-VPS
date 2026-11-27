@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/thuekx/docker-panel-VPS/agent/internal/audit"
 	"github.com/thuekx/docker-panel-VPS/agent/internal/catalog"
@@ -53,6 +54,8 @@ type Server struct {
 	Audit   *audit.Log
 	Allowed map[int]bool // peer uids allowed to call; nil = any (tests)
 	Version string
+	// TERM-01: idle end of a terminal session (0 = sites.TermIdle; tests set it short)
+	TermIdle time.Duration
 }
 
 // Handler returns the routed handler.
@@ -156,6 +159,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/redis/flush", s.redisFlush)
 	mux.HandleFunc("GET /v1/sites/{id}/ioncube", s.ionCube) // PHP-02
 	mux.HandleFunc("POST /v1/sites/{id}/ioncube", s.ionCubeSet)
+	mux.HandleFunc("GET /v1/sites/{id}/terminal", s.terminal) // TERM-01
+	mux.HandleFunc("POST /v1/sites/{id}/terminal", s.terminalSet)
+	mux.HandleFunc("GET /v1/sites/{id}/terminal/session", s.terminalSession)
 	mux.HandleFunc("GET /v1/backup-plan", s.backupPlan)
 	mux.HandleFunc("POST /v1/backup-plan/schedule", s.serverBackupSchedule)
 	mux.HandleFunc("POST /v1/backup-plan/run", s.backupRun)
