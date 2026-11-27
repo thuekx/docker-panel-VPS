@@ -26,6 +26,30 @@ type Job struct {
 	mu     sync.Mutex
 	v      JobView
 	secret string
+	hold   bool // WP-02: Done only marks the job held, more steps follow until Release
+	held   bool
+}
+
+// Hold makes the next Done keep the job running (more steps follow); Release then ends it.
+func (j *Job) Hold() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.hold = true
+}
+
+// Held is true when Done was called on a held job.
+func (j *Job) Held() bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return j.held
+}
+
+// Release ends a held job as done; its secret is dropped.
+func (j *Job) Release() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.hold = false
+	j.v.State, j.v.Ended = "done", time.Now()
 }
 
 // Step records progress.
@@ -54,6 +78,10 @@ func (j *Job) Fail(msg string) {
 func (j *Job) Done(secret string) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
+	if j.hold {
+		j.held = true
+		return
+	}
 	j.v.State, j.v.Ended, j.secret, j.v.HasSecret = "done", time.Now(), secret, secret != ""
 }
 

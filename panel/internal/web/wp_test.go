@@ -232,3 +232,70 @@ func TestWPSafeUpdate(t *testing.T) {
 		t.Errorf("status lacks the steps still to come: %s", body)
 	}
 }
+
+func TestWPStaging(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	for _, lang := range []string{"id", "en"} {
+		e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+		for _, setup := range []func(){func() { f.stgCopy, f.stgOf = false, "" }, func() { f.stgCopy = true }, func() { f.stgCopy, f.stgOf = false, "shop-id" }} {
+			setup()
+			if code, body, _ := e.get(e.c, "/wp/voltix-id"); code != 200 || missingKey.MatchString(body) {
+				t.Errorf("%s: %d, missing key %v", lang, code, missingKey.FindString(body))
+			}
+		}
+	}
+	f.stgCopy, f.stgOf = false, ""
+	_, page, _ := e.get(e.c, "/wp/voltix-id")
+	if !strings.Contains(page, `name="op" value="staging"`) || strings.Contains(page, `value="push"`) {
+		t.Fatal("no staging copy: the page should offer to make one, and no push")
+	}
+	code, _, h := e.postWith(e.c, "/wp/voltix-id", url.Values{"op": {"staging"}}, page)
+	if code != 303 || h.Get("Location") != "/sites/job/jc0de000000000002" {
+		t.Fatalf("make staging: %d %q", code, h.Get("Location"))
+	}
+	f.wpJob = agent.Job{ID: "jc0de000000000002", Kind: "staging", Site: "voltix-id", State: "running", Steps: []string{"files", "pull images", "start containers", "install WordPress", "copy files"}}
+	if _, body, _ := e.get(e.c, "/sites/job/jc0de000000000002"); !strings.Contains(body, `data-step="addresses"`) || missingKey.MatchString(body) {
+		t.Errorf("staging job page lacks the copy steps %v", missingKey.FindString(body))
+	}
+	f.wpJob.State = "done"
+	if _, body, _ := e.get(e.c, "/sites/job/jc0de000000000002"); !strings.Contains(body, "The staging copy is ready") || strings.Contains(body, "pwgone") {
+		t.Error("staging job done page")
+	}
+	// with a copy: open it, push it (confirmed), never from a name the form made up
+	f.stgCopy = true
+	_, page, _ = e.get(e.c, "/wp/voltix-id")
+	if !strings.Contains(page, `href="/wp/staging-voltix-id"`) || !strings.Contains(page, `name="from" value="staging-voltix-id"`) || strings.Contains(page, `value="staging">`) {
+		t.Fatal("copy not shown")
+	}
+	if code, _, _ := e.postWith(e.c, "/wp/voltix-id", url.Values{"op": {"push"}, "from": {"staging-voltix-id"}}, page); code != 400 {
+		t.Errorf("push without confirm answered %d", code)
+	}
+	if code, _, _ := e.postWith(e.c, "/wp/voltix-id", url.Values{"op": {"push"}, "from": {"../x"}, "confirm": {"1"}}, page); code != 400 {
+		t.Errorf("push from a bad name answered %d", code)
+	}
+	code, _, h = e.postWith(e.c, "/wp/voltix-id", url.Values{"op": {"push"}, "from": {"staging-voltix-id"}, "confirm": {"1"}}, page)
+	if code != 303 || h.Get("Location") != "/wp/voltix-id?job=jc0de000000000003#job" || f.wpCalls[len(f.wpCalls)-1] != `/v1/sites/voltix-id/staging/push {"from":"staging-voltix-id"}` {
+		t.Fatalf("push: %d %q %v", code, h.Get("Location"), f.wpCalls[len(f.wpCalls)-1])
+	}
+	// the push job on the live page uses its own words and steps
+	f.wpJob = agent.Job{ID: "jc0de000000000003", Kind: "push", Site: "voltix-id", State: "running", Steps: []string{"safety database", "safety files", "copy files"}}
+	_, body, _ := e.get(e.c, "/wp/voltix-id?job=jc0de000000000003")
+	if !strings.Contains(body, "Push staging to live") || !strings.Contains(body, "Copying the staging files") || !strings.Contains(body, `data-step="addresses"`) {
+		t.Error("push job card")
+	}
+	// on the staging copy itself: it says so and pushes to its live website without naming it in the form
+	f.stgCopy, f.stgOf = false, "shop-id"
+	_, page, _ = e.get(e.c, "/wp/voltix-id")
+	if !strings.Contains(page, "This is a staging copy") || !strings.Contains(page, `href="/wp/shop-id"`) || strings.Contains(page, `name="from"`) {
+		t.Fatal("staging page")
+	}
+	code, _, h = e.postWith(e.c, "/wp/voltix-id", url.Values{"op": {"push"}, "from": {"other-id"}, "confirm": {"1"}}, page)
+	if code != 303 || h.Get("Location") != "/wp/shop-id?job=jc0de000000000003#job" || f.wpCalls[len(f.wpCalls)-1] != `/v1/sites/shop-id/staging/push {"from":"voltix-id"}` {
+		t.Fatalf("push from the staging page: %d %q %v", code, h.Get("Location"), f.wpCalls[len(f.wpCalls)-1])
+	}
+	if code, _, _ := e.postWith(e.c, "/wp/voltix-id", url.Values{"op": {"staging"}}, page); code != 400 {
+		t.Errorf("staging of a staging copy answered %d", code)
+	}
+}

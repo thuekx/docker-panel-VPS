@@ -153,7 +153,7 @@ jobs:
     needs: select
     if: needs.select.outputs.site01 == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }

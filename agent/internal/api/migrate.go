@@ -92,3 +92,34 @@ func migrateDetail(a sites.MigrateRequest) string {
 	}
 	return a.Way
 }
+
+// stagingStart makes the staging copy of a WordPress website (WP-02 wave 2).
+func (s *Server) stagingStart(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	job, st, err := s.M.StartStaging(r.Context(), id)
+	if err != nil {
+		s.fail(w, r, "staging", id, err)
+		return
+	}
+	s.note(r, "staging", id, "ok", "copy to "+st.ID+" job "+job)
+	writeJSON(w, 202, map[string]any{"job": job, "site": st})
+}
+
+// stagingPush copies a staging website over its live website.
+func (s *Server) stagingPush(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var a struct {
+		From string `json:"from"`
+	}
+	if err := decode(r, &a); err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	job, err := s.M.StartPush(id, a.From)
+	if err != nil {
+		s.fail(w, r, "staging-push", id, err)
+		return
+	}
+	s.note(r, "staging-push", id, "ok", "from "+a.From+" job "+job)
+	writeJSON(w, 202, map[string]string{"job": job})
+}

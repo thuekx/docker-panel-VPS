@@ -1,6 +1,6 @@
 # HELP-01: changelog and guides in the panel (v1.50.0)
 
-Roadmap 15j, decision HELP-1 (2026-11-27). Status: BUILT 2026-11-27 (v1.50.0).
+Roadmap 15j, decision HELP-1 (2026-11-27). Status: LIVE 2026-11-27 16:49 WIB (v1.50.0, installed from Settings → Update).
 
 ## What it shows
 - A **Help** item in the menu (`/help`) with two parts:

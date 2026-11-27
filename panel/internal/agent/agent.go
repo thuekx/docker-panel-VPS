@@ -144,6 +144,8 @@ type Site struct {
 	ScanEvery *ScanSchedule `json:"scan_schedule"`
 	// SEC-01 protected folders (names only); APP-03 wave 3 reads the setup lock from them
 	Protected []ProtectedDir `json:"protected"`
+	// WP-02 wave 2: this website is the staging copy of that website
+	StagingOf string `json:"staging_of"`
 }
 
 // ProtectedDir is a folder of a website that asks for a login.

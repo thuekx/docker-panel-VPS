@@ -10,18 +10,18 @@
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
 <section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>
-  <div class="stat-head"><span><b class="ink">{{t $l "wp.safe.job"}}</b></span>
+  <div class="stat-head"><span><b class="ink">{{t $l (printf "%s.job" $d.JobKey)}}</b></span>
   <span class="job-pill">{{if eq $j.State "running"}}<span class="pill s-run">{{t $l "bak.job.running"}}</span>{{else if eq $j.State "done"}}<span class="pill s-ok" data-anim="pop">{{t $l "bak.job.done"}}</span>{{else if $d.PutBack}}<span class="pill s-warn">{{t $l "wp.safe.putback.pill"}}</span>{{else}}<span class="pill s-bad">{{t $l "bak.job.failed"}}</span>{{end}}</span></div>
-  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l "wp.safe.job"}}"><i data-pct="{{$d.Percent}}"></i></div>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{$d.Percent}}" aria-label="{{t $l (printf "%s.job" $d.JobKey)}}"><i data-pct="{{$d.Percent}}"></i></div>
   <ol class="stepper">{{range $d.Steps}}
     <li class="st-{{.State}}" data-step="{{.Key}}">
       <span class="dot" aria-hidden="true"><svg class="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg><svg class="x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg><i class="spin"></i></span>
-      <span class="txt"><span class="now">{{t $l (printf "wp.step.now.%s" .Key)}}</span><span class="past">{{t $l (printf "wp.step.%s" .Key)}}</span></span>
+      <span class="txt"><span class="now">{{t $l (printf "%s.now.%s" $d.StepKey .Key)}}</span><span class="past">{{t $l (printf "%s.%s" $d.StepKey .Key)}}</span></span>
     </li>{{end}}
   </ol>
-  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l "wp.safe.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l "wp.safe.done"}}{{if $d.Backup}} {{t $l "wp.safe.backup"}} <a href="/backup/{{$s.ID}}"><code>{{$d.Backup}}</code></a>{{end}}</p>{{end}}
-  {{if $j.Error}}<p class="banner warn">{{if $d.PutBack}}{{t $l "wp.safe.putback"}}{{else}}{{t $l "wp.safe.fail"}}{{end}}</p>
+  {{if eq $j.State "running"}}<p class="muted job-wait">{{t $l (printf "%s.wait" $d.JobKey)}} <span class="elapsed" data-elapsed></span></p>{{end}}
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l (printf "%s.done" $d.JobKey)}}{{if $d.Backup}} {{t $l "wp.safe.backup"}} <a href="/backup/{{$s.ID}}"><code>{{$d.Backup}}</code></a>{{end}}</p>{{end}}
+  {{if $j.Error}}<p class="banner warn">{{if $d.PutBack}}{{t $l "wp.safe.putback"}}{{else}}{{t $l (printf "%s.fail" $d.JobKey)}}{{end}}</p>
   <details class="tech" open><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
 </section>
 {{end}}
@@ -60,6 +60,28 @@
 {{$d.Check.Plugins}}</pre></details>
   <p class="muted">{{t $l "wp.check.help"}}</p>
 </section>{{end}}
+{{if $d.Live}}<section class="card wide tone c-amber" data-anim="card" id="staging">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-layers"}}</span>{{t $l "wp.stg.this"}}</h2>
+  <p>{{t $l "wp.stg.this.help"}} <a href="/wp/{{$d.Live.ID}}"><b>{{$d.Live.Domain}}</b></a></p>
+  <form method="post" action="/wp/{{$s.ID}}" class="row"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="push"><input type="hidden" name="confirm" value="1">
+    <button class="primary" type="submit" data-busy="{{t $l "wp.busy"}}" data-confirm="{{t $l "wp.stg.push.ask" $d.Live.Domain}}">{{t $l "wp.stg.push"}}</button></form>
+  <p class="muted small">{{t $l "wp.stg.push.help"}}</p>
+</section>
+{{else}}<section class="card wide tone c-amber" data-anim="card" id="staging">
+  <h2><span class="h-ico" aria-hidden="true">{{template "ico-layers"}}</span>{{t $l "wp.stg"}}</h2>
+  {{with $d.Staging}}
+  <p>{{t $l "wp.stg.has"}} <a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.URL}}</a> · <a href="/wp/{{.ID}}">{{t $l "wp.stg.open"}}</a></p>
+  <div class="row"><form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="push"><input type="hidden" name="from" value="{{.ID}}"><input type="hidden" name="confirm" value="1">
+    <button class="primary" type="submit" data-busy="{{t $l "wp.busy"}}" data-confirm="{{t $l "wp.stg.push.ask" $s.Domain}}">{{t $l "wp.stg.push"}}</button></form>
+    <a class="ghost btn" href="/sites/{{.ID}}">{{t $l "wp.stg.manage"}}</a></div>
+  <p class="muted small">{{t $l "wp.stg.push.help"}} {{t $l "wp.stg.remove"}}</p>
+  {{else}}
+  <p class="muted">{{t $l "wp.stg.help"}}</p>
+  <form method="post" action="/wp/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="staging">
+    <button class="secondary" type="submit" data-busy="{{t $l "wp.busy"}}">{{t $l "wp.stg.make"}}</button></form>
+  {{end}}
+</section>
+{{end}}
 <section class="grid pair">
 <article class="card tone c-blue" data-anim="card">
   <h2><span class="h-ico" aria-hidden="true">{{template "ico-cloud"}}</span>{{t $l "wp.updates"}}</h2>

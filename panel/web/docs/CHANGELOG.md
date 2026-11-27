@@ -3,6 +3,17 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.52.0] — 2026-11-27
+
+### Added
+- **Staging copy for WordPress** (WP-02 wave 2): WordPress page → **Make a staging copy**.
+  - A new website `staging.<domain>` gets a copy of the live files and database, with the addresses changed to its
+    own and search engines kept away. Try updates, plugins or a new design there.
+  - **Push staging to live** copies it back after a backup of the live website. The live website keeps its address
+    and search-engine setting.
+  - Delete the copy like any website to start over.
+  - Design: [docs/design/wp-02.md](docs/design/wp-02.md).
+
 ## [1.51.0] — 2026-11-27
 
 ### Added

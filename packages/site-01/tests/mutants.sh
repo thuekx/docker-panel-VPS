@@ -99,6 +99,10 @@ GO_MUTANTS=(
   'internal/sites/safeupdate.go|		if uerr != nil {
 			j.Fail|		if false {
 			j.Fail'   # WP-02: a failed update reported as done
+  'internal/sites/staging.go|		if rel == "wp-config.php" |		if rel == "-" '   # WP-02 wave 2: the live database login copied into the staging website
+  'internal/sites/staging.go|		_, _ = m.wp(ctx, s.ID, nil, []string{"wp", "option", "update", "blog_public", "0"})|		_ = s'   # WP-02 wave 2: search engines index the staging copy
+  'internal/sites/staging.go|"blog_public", public})|"blog_public", "0"})'   # WP-02 wave 2: a push leaves live hidden from search engines
+  'internal/sites/staging.go|	if src.StagingOf != live.ID {|	if false {'   # WP-02 wave 2: any website pushed over a live website
   'internal/sites/limits.go|			if n := ramFor(php.Memory, mem); n > mem {|			if n := ramFor(php.Memory, mem); false && n > mem {'   # RES-01: memory_limit raised past its container's memory
   'internal/sites/limits.go|		case v > cur.Standard && allowed(v, RAMChoices):|		case v > 0:'   # RES-01: memory set below the standard
   'internal/sites/limits.go|if v, ok := ram[svc]; ok && v > std {|if v, ok := ram[svc]; false && ok && v > std {'   # RES-01: raised memory never reaches the containers
