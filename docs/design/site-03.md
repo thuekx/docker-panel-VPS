@@ -1,6 +1,6 @@
 # Static releases, headers, folder redirects, allow-list, visitor address (SITE-03)
 
-Status: BUILT v1.31.0, 2026-11-23. Roadmap slot 13a, after OPS-01 wave 2 and before INST-01. Asked for in
+Status: LIVE v1.31.0 2026-11-26 16:23 WIB (built 2026-11-23). Roadmap slot 13a, after OPS-01 wave 2 and before INST-01. Asked for in
 CL-NOSTEK-20261123-02 and CL-NDEV-20261123-01 (status page, nostek.dev and kb.nostek.dev move to this server from
 December). Every part works for every app and both engines unless it says otherwise.
 
