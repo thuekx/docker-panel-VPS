@@ -108,6 +108,9 @@ type ServiceRAM struct {
 func serviceRAM(cf string) []ServiceRAM {
 	var out []ServiceRAM
 	eachService(cf, func(_ int, svc, l string) {
+		if svc == "redis" { // REDIS-01: its memory follows the size chosen for it
+			return
+		}
 		if m := memLine.FindStringSubmatch(l); m != nil {
 			n, _ := strconv.Atoi(m[1])
 			out = append(out, ServiceRAM{Service: svc, Standard: n, Current: n})

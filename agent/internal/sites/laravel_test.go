@@ -91,7 +91,7 @@ func TestLaravelSite(t *testing.T) {
 	}
 	ini, _ := os.ReadFile(filepath.Join(dir, "laravel.ini"))
 	pre, _ := os.ReadFile(filepath.Join(dir, "laravel-env.php"))
-	if !strings.Contains(string(ini), "auto_prepend_file") || !strings.Contains(string(pre), "DB_PASSWORD_FILE") {
+	if !strings.Contains(string(ini), "auto_prepend_file") || !strings.Contains(string(pre), "'DB_PASSWORD', 'REDIS_PASSWORD'") || !strings.Contains(string(pre), "_FILE')") {
 		t.Error("password hand-over files missing")
 	}
 	env, err := os.ReadFile(filepath.Join(m.wpDir(s.ID), ".env"))

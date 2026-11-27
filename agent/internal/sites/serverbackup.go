@@ -264,7 +264,7 @@ func tarBytes(tw *tar.Writer, name string, b []byte, at time.Time) error {
 func siteSkip(p string) bool {
 	top := strings.SplitN(p, "/", 2)[0]
 	switch top {
-	case "wp", "db", "backups", "db-backups", "static", "migrate", "files-trash", "tmp", "logs":
+	case "wp", "db", "backups", "db-backups", "static", "migrate", "files-trash", "tmp", "logs", "redis":
 		return true
 	}
 	for _, pre := range []string{"wp.restore-", "wp.old-", "upload-", "dump-", ".db-"} {

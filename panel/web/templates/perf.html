@@ -56,6 +56,28 @@
     <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if or $d.Err $d.Running}} disabled{{end}}>{{t $l "perf.opt.save"}}</button>
   </form>
 </article>
+{{with $d.Redis}}{{$rd := .}}<article class="card wide tone c-red" data-anim="card" id="redis">
+  <div class="deploy-head"><h2>{{t $l "perf.redis.title"}}</h2>{{if .Conf}}{{if .Running}}<span class="pill s-ok">{{t $l "perf.redis.running"}}</span>{{else}}<span class="pill s-bad">{{t $l "perf.redis.down"}}</span>{{end}}{{else}}<span class="pill s-unknown">{{t $l "perf.opt.off"}}</span>{{end}}</div>
+  <p class="muted">{{t $l "perf.redis.help"}}</p>
+  {{if not .Possible}}<p class="muted">{{t $l "perf.redis.none"}}</p>{{else}}
+  {{with .Conf}}<p class="facts"><span>{{t $l "perf.redis.mode"}} <b>{{t $l (printf "perf.redis.mode.%s" .Mode)}}</b></span><span>{{t $l "perf.redis.mem"}} <b>{{if $rd.Running}}{{$rd.UsedMB}} / {{end}}{{.MB}} MB</b></span>{{if $rd.Running}}<span>{{t $l "perf.redis.keys"}} <b>{{$rd.Keys}}</b></span><span>{{t $l "perf.redis.hits"}} <b>{{if lt $rd.HitRate 0}}{{t $l "perf.redis.hits.none"}}{{else}}{{$rd.HitRate}}%{{end}}</b></span>{{end}}</p>{{end}}
+  <p class="muted small">{{t $l (printf "perf.redis.kind.%s" .Kind)}}</p>
+  <form method="post" action="/perf/{{$s.ID}}" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redis-on">
+    <label>{{t $l "perf.redis.mode"}}
+      <select name="mode"><option value="cache"{{if or (not .Conf) (eq .Conf.Mode "cache")}} selected{{end}}>{{t $l "perf.redis.mode.cache"}}</option><option value="store"{{if and .Conf (eq .Conf.Mode "store")}} selected{{end}}>{{t $l "perf.redis.mode.store"}}</option></select></label>
+    <p class="muted small">{{t $l "perf.redis.mode.help"}}</p>
+    <label>{{t $l "perf.redis.mem"}}
+      <select name="mb">{{range .Sizes}}<option value="{{.}}"{{if $rd.Conf}}{{if eq . $rd.Conf.MB}} selected{{end}}{{else if eq . 128}} selected{{end}}>{{.}} MB</option>{{end}}</select></label>
+    <p class="muted small">{{t $l "perf.redis.mem.help"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if $d.Running}} disabled{{end}}>{{if .Conf}}{{t $l "perf.redis.save"}}{{else}}{{t $l "perf.redis.on"}}{{end}}</button>
+  </form>
+  {{if .Conf}}<div class="row">
+    <form method="post" action="/perf/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redis-flush">
+      <button class="ghost" type="submit" data-confirm="{{t $l "perf.redis.flush.ask"}}"{{if or $d.Running (not .Running)}} disabled{{end}}>{{t $l "perf.redis.flush"}}</button></form>
+    <form method="post" action="/perf/{{$s.ID}}"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="redis-off">
+      <button class="ghost danger-text" type="submit" data-confirm="{{t $l "perf.redis.off.ask"}}"{{if $d.Running}} disabled{{end}}>{{t $l "perf.redis.off"}}</button></form>
+  </div>{{end}}{{end}}
+</article>{{end}}
 <article class="card wide tone c-violet" data-anim="card" id="headers">
   <h2>{{t $l "hdr.title"}}</h2>
   <p class="muted">{{t $l "hdr.help"}}</p>

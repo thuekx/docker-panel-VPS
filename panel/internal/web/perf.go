@@ -26,7 +26,8 @@ type perfData struct {
 	Steps    []stepRow
 	Percent  int
 	Running  bool
-	Backup   string // the before-php backup a finished PHP change made
+	Backup   string           // the before-php backup a finished PHP change made
+	Redis    *agent.RedisView // REDIS-01; nil when the agent has no Redis routes
 }
 
 // phpSteps is the order of the steps of a PHP change of this website.
@@ -61,8 +62,14 @@ func (s *Server) perfPage(w http.ResponseWriter, r *http.Request) {
 		d.Err = err.Error()
 	}
 	d.V = v
+	if rv, err := s.ag.Redis(ctx, site.ID); err == nil {
+		d.Redis = &rv
+		if d.Job == nil && rv.Job != nil && rv.Job.State == "running" && (v.Job == nil || v.Job.State != "running") {
+			d.Job = rv.Job
+		}
+	}
 	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
-		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && (j.Kind == "php" || j.Kind == "optimize") {
+		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && (j.Kind == "php" || j.Kind == "optimize" || j.Kind == "redis") {
 			d.Job = &j
 		}
 	}
@@ -72,6 +79,9 @@ func (s *Server) perfPage(w http.ResponseWriter, r *http.Request) {
 	if d.Job != nil {
 		d.Running = d.Job.State == "running"
 		d.JobTitle = "perf.opt.job"
+		if d.Job.Kind == "redis" {
+			d.JobTitle = "perf.redis.job"
+		}
 		if d.Job.Kind == "php" {
 			d.JobTitle = "perf.php.job"
 			for _, st := range d.Job.Steps {
@@ -153,6 +163,35 @@ func (s *Server) perfAction(w http.ResponseWriter, r *http.Request) {
 		}
 		s.audit1(u, r, "site.headers", detail)
 		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
+	case "redis-on", "redis-off":
+		var c *agent.RedisConf
+		detail := site.ID + " off"
+		if f.Get("op") == "redis-on" {
+			mb, _ := strconv.Atoi(f.Get("mb"))
+			c = &agent.RedisConf{Mode: f.Get("mode"), MB: mb}
+			if (c.Mode != "cache" && c.Mode != "store") || mb < 1 {
+				back(s.tr.T(s.lang(r), "perf.redis.need"), "#redis")
+				return
+			}
+			detail = site.ID + " " + c.Mode + " " + strconv.Itoa(mb) + " MB"
+		}
+		job, err := s.ag.SetRedis(ctx, site.ID, c)
+		if err != nil {
+			s.audit1(u, r, "site.redis", detail+" failed: "+err.Error())
+			back(err.Error(), "#redis")
+			return
+		}
+		s.owners.set(job, u.ID)
+		s.audit1(u, r, "site.redis", detail)
+		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
+	case "redis-flush":
+		if err := s.ag.FlushRedis(ctx, site.ID); err != nil {
+			s.audit1(u, r, "site.redis-flush", site.ID+" failed: "+err.Error())
+			back(err.Error(), "#redis")
+			return
+		}
+		s.audit1(u, r, "site.redis-flush", site.ID)
+		http.Redirect(w, r, base+"?done=flush#redis", http.StatusSeeOther)
 	default:
 		back("unknown action", "")
 	}

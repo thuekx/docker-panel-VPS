@@ -925,10 +925,14 @@ func services(s Site) []string {
 		return []string{"web"}
 	}
 	if s.OneApp() {
+		l := []string{"app"}
 		if s.HasDB() {
-			return []string{"app", "db"}
+			l = append(l, "db")
 		}
-		return []string{"app"}
+		if s.Redis != nil {
+			l = append(l, "redis")
+		}
+		return l
 	}
 	l := []string{"web"}
 	if s.Server == "nginx" && s.AppName() != spec.AppStatic {
@@ -939,6 +943,9 @@ func services(s Site) []string {
 	}
 	if s.IsLaravel() {
 		l = append(l, "queue", "scheduler")
+	}
+	if s.Redis != nil {
+		l = append(l, "redis")
 	}
 	return l
 }

@@ -3,6 +3,18 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.43.0] — 2026-11-27
+
+### Added
+- **Redis per website** (REDIS-01): Website → Performance → Redis turns on a Redis of that website only. It has its
+  own container, password and memory, and only the website can reach it.
+  - **Cache** mode (memory only, the oldest keys go first) or **Store** mode (kept on disk, nothing thrown away),
+    with 64–512 MB of memory.
+  - **WordPress** gets the Redis Object Cache plugin installed and turned on. **Laravel**, **PHP**, **Node.js**,
+    **Go** and **Python** apps get the host, port and password in their environment.
+  - The card shows memory, keys and hit rate, with **Empty Redis** and **Turn Redis off**.
+  - When the website does not start with Redis, it runs as before. Guide: [docs/guides/redis.md](docs/guides/redis.md).
+
 ## [1.42.0] — 2026-11-27
 
 ### Added
