@@ -56,6 +56,6 @@ after AUTH-02
 ├── PHP-02 ● LIVE v1.45.0 2026-11-27 13:34 WIB
 ├── TERM-01 ● LIVE v1.46.0 2026-11-27 13:34 WIB
 ├── INST-02 ● LIVE v1.47.0 2026-11-27 13:34 WIB
-├── HELP-01 changelog + guides in the panel ✓ BUILT v1.50.0 2026-11-27
+├── HELP-01 changelog + guides in the panel ● LIVE v1.50.0 2026-11-27 16:49 WIB
 └── WP-02 WordPress: wave 1 safe update ✓ BUILT v1.51.0 2026-11-27; wave 2 staging copy + push to live ✓ BUILT v1.52.0 2026-11-27
 ```
