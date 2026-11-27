@@ -39,7 +39,7 @@ Nostek Panel
         ├── BAK-02 panel backup + restore to new VPS ..... ✓ BUILT v1.34.0 2026-11-26
         ├── CERT-01 wildcard + own certificate ........... ✓ BUILT v1.35.0 2026-11-26
         ├── DB-02 remote DB access per IP, table repair .. ✓ BUILT v1.36.0 2026-11-26
-        └── AUTH-02 passkey login ........................ ○
+        └── AUTH-02 passkey login ........................ ✓ BUILT v1.37.0 2026-11-26
 ```
 
 Parked after AUTH-02 (RAYX-2, 2026-11-26):

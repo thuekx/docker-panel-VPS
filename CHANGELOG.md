@@ -3,6 +3,15 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.37.0] — 2026-11-26
+
+### Added
+- **Passkey sign-in** (AUTH-02): Profile → Passkeys adds up to 10 passkeys (phone, security key, fingerprint reader),
+  each with the account password. The sign-in page then offers **Sign in with a passkey**: no e-mail, password or 2FA
+  code, because the device always asks for its own PIN, fingerprint or face. Only public keys are stored. The login
+  history and the audit log show passkey sign-ins. Password + 2FA keep working. Guide:
+  [docs/guides/passkeys.md](docs/guides/passkeys.md).
+
 ## [1.36.0] — 2026-11-26
 
 ### Added

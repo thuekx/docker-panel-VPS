@@ -379,5 +379,66 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); busy(); go(); toasts(); });
+
+  // passkeys (AUTH-02): add one on the profile page, sign in with one on the login page
+  function passkeys() {
+    var ok = !!(window.PublicKeyCredential && navigator.credentials);
+    all("[data-passkey-none]").forEach(function (x) { x.hidden = ok; });
+    if (!ok) return;
+    function b64(buf) {
+      var s = "", b = new Uint8Array(buf);
+      for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+      return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+    function unb64(s) {
+      s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "=";
+      var r = atob(s), b = new Uint8Array(r.length);
+      for (var i = 0; i < r.length; i++) b[i] = r.charCodeAt(i);
+      return b.buffer;
+    }
+    function post(url, fields) {
+      var body = new URLSearchParams();
+      Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); });
+      return fetch(url, { method: "POST", body: body, credentials: "same-origin", headers: { "Accept": "application/json" } })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+    }
+    function show(box, msg) { var m = box.querySelector("[data-pk-msg]"); if (m) { m.textContent = msg; m.hidden = !msg; } }
+    function done(btn, label) { btn.disabled = false; btn.classList.remove("busy"); btn.textContent = label; }
+    all("[data-passkey-add]").forEach(function (f) {
+      f.hidden = false;
+      var btn = f.querySelector("button"), label = btn.textContent;
+      f.addEventListener("submit", function (e) {
+        e.preventDefault(); show(f, "");
+        btn.disabled = true; btn.classList.add("busy"); btn.textContent = btn.getAttribute("data-busy");
+        var csrf = f.getAttribute("data-csrf");
+        post("/profile/passkeys/begin", { csrf: csrf, password: f.elements.password.value }).then(function (o) {
+          o.challenge = unb64(o.challenge); o.user.id = unb64(o.user.id);
+          o.excludeCredentials.forEach(function (c) { c.id = unb64(c.id); });
+          return navigator.credentials.create({ publicKey: o });
+        }).then(function (c) {
+          return post("/profile/passkeys/finish", { csrf: csrf, name: f.elements.name.value,
+            client: b64(c.response.clientDataJSON), att: b64(c.response.attestationObject) });
+        }).then(function (j) { window.location.assign(j.go); })
+          .catch(function (err) { done(btn, label); show(f, err && err.name === "NotAllowedError" ? "" : String(err.message || err)); });
+      });
+    });
+    all("[data-passkey-login]").forEach(function (box) {
+      box.hidden = false;
+      var btn = box.querySelector("button"), label = btn.textContent, csrf = box.getAttribute("data-csrf");
+      btn.addEventListener("click", function () {
+        show(box, ""); btn.disabled = true; btn.classList.add("busy"); btn.textContent = btn.getAttribute("data-busy");
+        post("/login/passkey/begin", { csrf: csrf }).then(function (o) {
+          o.challenge = unb64(o.challenge);
+          return navigator.credentials.get({ publicKey: o });
+        }).then(function (c) {
+          var r = c.response;
+          return post("/login/passkey/finish", { csrf: csrf, id: b64(c.rawId), client: b64(r.clientDataJSON),
+            auth: b64(r.authenticatorData), sig: b64(r.signature), user: r.userHandle ? b64(r.userHandle) : "" });
+        }).then(function (j) { window.location.assign(j.go); })
+          .catch(function (err) { done(btn, label); show(box, err && err.name === "NotAllowedError" ? "" : String(err.message || err)); });
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { logo(); entrances(); bars(); counters(); copy(); job(); stack(); confirms(); uploads(); editor(); menus(); busy(); go(); passkeys(); toasts(); });
 })();

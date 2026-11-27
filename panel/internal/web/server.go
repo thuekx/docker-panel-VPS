@@ -65,7 +65,8 @@ type Server struct {
 	plugin           []byte     // the Nostek Migrate plugin zip (MIG-01)
 	akey             *alert.Key // seals the alert secrets (OPS-01 wave 2)
 	alerts           alertState
-	alertSync        bool // tests: send alerts before returning
+	alertSync        bool       // tests: send alerts before returning
+	pkCh             challenges // AUTH-02: passkey ceremonies in progress
 }
 
 func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server, error) {
@@ -171,6 +172,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /reveal/{token}", s.revealSubmit)
 	mux.HandleFunc("GET /login", s.loginForm)
 	mux.HandleFunc("POST /login", s.loginSubmit)
+	mux.HandleFunc("POST /login/passkey/begin", s.loginPasskeyBegin)
+	mux.HandleFunc("POST /login/passkey/finish", s.loginPasskeyFinish)
 	mux.HandleFunc("GET /login/2fa", s.need(false, s.login2faForm))
 	mux.HandleFunc("POST /login/2fa", s.need(false, s.login2faSubmit))
 	mux.HandleFunc("GET /2fa/enrol", s.need(false, s.enrolForm))
@@ -232,6 +235,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /profile", s.need(true, s.profile))
 	mux.HandleFunc("POST /profile/appearance", s.need(true, s.profileAppearance))
 	mux.HandleFunc("POST /profile/password", s.need(true, s.profilePassword))
+	mux.HandleFunc("POST /profile/passkeys/begin", s.need(true, s.passkeyBegin))
+	mux.HandleFunc("POST /profile/passkeys/finish", s.need(true, s.passkeyFinish))
+	mux.HandleFunc("POST /profile/passkeys/delete", s.need(true, s.passkeyDelete))
 	mux.HandleFunc("GET /settings", s.need(true, s.settings))
 	mux.HandleFunc("POST /settings", s.need(true, s.settingsSubmit))
 	mux.HandleFunc("POST /settings/recovery", s.need(true, s.newRecoveryCodes))

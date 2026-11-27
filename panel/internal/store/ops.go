@@ -20,9 +20,9 @@ type Login struct {
 // came from an address this user has not signed in from in that time, while the user had signed in before.
 func (s *Store) RecordLogin(orgID, userID int64, ip, agent, result string, at time.Time) (newIP bool, err error) {
 	since := at.Add(-loginKeepDays * 24 * time.Hour).Unix()
-	if result == "ok" || result == "recovery" {
+	if result == "ok" || result == "recovery" || result == "passkey" {
 		var before, here int
-		_ = s.DB.QueryRow(`SELECT count(*), coalesce(sum(ip=?),0) FROM logins WHERE user_id=? AND result IN ('ok','recovery') AND at>=?`, ip, userID, since).Scan(&before, &here)
+		_ = s.DB.QueryRow(`SELECT count(*), coalesce(sum(ip=?),0) FROM logins WHERE user_id=? AND result IN ('ok','recovery','passkey') AND at>=?`, ip, userID, since).Scan(&before, &here)
 		newIP = before > 0 && here == 0
 	}
 	if len(agent) > 200 {
