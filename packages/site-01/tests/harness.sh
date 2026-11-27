@@ -373,7 +373,7 @@ PHP
   ok "Laravel on PostgreSQL answers through Nginx" 'site_get q-example-test q-example-test.$ZONE / | grep -qi "laravel"'
   MAXT=330 api POST /v1/sites/q-example-test/laravel/artisan '{"op":"migrate"}'; ok "artisan migrate on PostgreSQL" '[ "$CODE" = 200 ] && grep -qi "nothing to migrate" <<<"$BODY"'
   api POST /v1/sites '{"app":"php","domain":"r.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"","title":"","database":true,"db_engine":"postgres"}'; JR2="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
-  ok "plain PHP (Apache) on PostgreSQL: image built, the starter connects with pdo_pgsql" '[ "$CODE" = 202 ] && [ "$(wait_job "$JR2" 400)" = done ] && site_get r-example-test r-example-test.$ZONE / | grep -q "Database: connected (PostgreSQL)" && docker exec np-site-r-example-test-web-1 php -m | grep -qx pdo_pgsql'
+  ok "plain PHP (Apache) on PostgreSQL: image built, the starter connects with pdo_pgsql" '[ "$CODE" = 202 ] && [ "$(wait_job "$JR2" 400)" = done ] && site_get r-example-test r-example-test.$ZONE / | grep -q "Database: connected (PostgreSQL)" && grep -qx pdo_pgsql <<<"$(docker exec np-site-r-example-test-web-1 php -m)"'
   api POST /v1/sites/r-example-test/db/query '{"sql":"CREATE TABLE np (id int); INSERT INTO np VALUES (7); SELECT id FROM np"}'
   ok "Database page console on the PHP site PostgreSQL" '[ "$CODE" = 200 ] && grep -qF "[[\"7\"]]" <<<"$BODY"'
   api POST /v1/sites '{"domain":"s.example.test","aliases":[],"primary":"domain","server":"apache","php":"8.4","admin_email":"o@example.test","title":"S","db_engine":"postgres"}'
