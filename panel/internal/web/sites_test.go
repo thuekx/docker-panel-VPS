@@ -53,7 +53,8 @@ type fakeAgent struct {
 	dnsCalls   []string
 	wcZones    []string // zones the fake site may take a wildcard of
 	wcOn       string
-	app        string // APP-01: app of the fake site (empty = WordPress)
+	app        string               // APP-01: app of the fake site (empty = WordPress)
+	protected  []agent.ProtectedDir // SEC-01 protected folders of the fake site (APP-03 wave 3 setup lock)
 	appDB      bool
 	trash      []agent.Trashed
 	removed    []string
@@ -125,6 +126,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if f.app == "n8n" || f.app == "uptime-kuma" || f.app == "ghost" {
 		site.PHP, site.Server, site.AdminUser = "", "", ""
 	}
+	site.Protected = f.protected
 	if f.app == "ghost" {
 		site.DBEngine = "mysql"
 	}

@@ -126,6 +126,8 @@ ok "the last user cannot be removed" 'change "{\"op\":\"protect-user-remove\",\"
 ok "/.well-known cannot be protected; a hash that is not bcrypt is refused" 'change "{\"op\":\"protect-set\",\"path\":\"/.well-known\",\"user\":\"x\",\"hash\":\"$HASH1\"}"; C=$CODE; change "{\"op\":\"protect-set\",\"path\":\"/b\",\"user\":\"x\",\"hash\":\"plain\"}"; [ "$C" = 400 ] && [ "$CODE" = 400 ]'
 ok "no hash in site.json or the audit log" '! grep -q "\$2a\$" "$SITE01_TEST_ROOT/srv/nostek/sites/$SID/site.json" && ! grep -q "\$2a\$" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log" && grep -q "\"detail\":\"protect-set /admin user ana job" "$SITE01_TEST_ROOT/var/log/nostek-agent/audit.log"'
 ok "protection removed: open again, password file gone" 'applied "{\"op\":\"protect-remove\",\"path\":\"/admin\"}" && edge "$S" /admin/secret.txt "200 " && [ ! -e "$AF" ]'
+# APP-03 wave 3: the setup lock of a ready app is the folder / (the whole website) for the user setup
+ok "the whole website behind a login (setup lock shape), opened again" 'applied "{\"op\":\"protect-set\",\"path\":\"/\",\"user\":\"setup\",\"hash\":\"$HASH1\"}" && edge "$S" / "401 " && edge "$S" /adminx.txt "401 " && edge "$S" / "200 " -u "setup:$PASS1" && applied "{\"op\":\"protect-remove\",\"path\":\"/\"}" && edge "$S" / "200 "'
 
 # --- hotlink protection
 ok "hotlink protection on" 'applied "{\"op\":\"hotlink-on\",\"allow\":[]}"'

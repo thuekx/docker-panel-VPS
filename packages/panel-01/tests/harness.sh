@@ -52,7 +52,8 @@ ok ".env is 600, data dirs owned by panel user" '[ "$(stat -c %a "$(CORE)/.env")
 ok "source fetched at the exact commit" '[ "$(git -C "$PANEL01_TEST_ROOT/srv/nostek/src/$COMMIT" rev-parse HEAD)" = "$COMMIT" ]'
 ok "only edge (80, 443) and sftp (2222) publish" '[ "$(docker ps --filter label=com.docker.compose.project=nostek-core --format "{{.Ports}}" | grep -c "0.0.0.0:")" = 2 ] && docker ps --filter label=com.docker.compose.service=sftp --format "{{.Ports}}" | grep -q "0.0.0.0:2222->2222" && docker ps --filter label=com.docker.compose.service=edge --format "{{.Ports}}" | grep -q "0.0.0.0:443->8443"'
 # the edge picks the panel up a few seconds after APPLY returns: try for up to 30 s
-login_ok() { [ "$(curl -s -o /dev/null -w "%{http_code}" -H "Host: $D" http://127.0.0.1/)" = 301 ] && curl -sk --resolve "$D:443:127.0.0.1" "https://$D/login" | grep -q "np_csrf\|name=\"password\""; }
+# (the page is read whole first: with pipefail, curl | grep -q fails when grep stops reading early and curl gets SIGPIPE)
+login_ok() { local page; [ "$(curl -s -o /dev/null -w "%{http_code}" -H "Host: $D" http://127.0.0.1/)" = 301 ] && page="$(curl -sk --resolve "$D:443:127.0.0.1" "https://$D/login")" && grep -q "np_csrf\|name=\"password\"" <<<"$page"; }
 ok "http redirects, https serves the login" 'for _ in $(seq 1 15); do login_ok && break; sleep 2; done; login_ok'
 run APPLY "${A[@]}" --src-commit "$COMMIT"; ok "second apply refused" '[ $RC = 3 ]'
 run SETUP-LINK "${A[@]}"; L1="$(grep -oE "https://$D/setup/[A-Za-z0-9_-]+" <<<"$OUT")"; ok "setup link printed" '[ $RC = 0 ] && [ -n "$L1" ] && has "valid_until="'

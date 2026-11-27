@@ -157,3 +157,39 @@ func entryNames(t *testing.T, p string) []string {
 	}
 	return n
 }
+
+// APP-03 wave 3: a new ready app sits behind the setup login from its first render on; the hash only in the edge file.
+func TestReadySetupLock(t *testing.T) {
+	m, _, s, v := appSite(t, spec.Create{App: spec.AppUptimeKuma, Domain: "voltix.id", Primary: "domain",
+		SetupLock: &spec.SetupLock{User: "setup", Hash: hashA}})
+	if v.State != "done" {
+		t.Fatalf("job %+v", v)
+	}
+	got, _ := m.Get(s.ID)
+	if len(got.Protected) != 1 || got.Protected[0].Path != "/" || strings.Join(got.Protected[0].Users, ",") != "setup" {
+		t.Fatalf("protected %+v", got.Protected)
+	}
+	if b := mustRead(t, m.authFile(s.ID, "/")); b != "setup:"+hashA+"\n" {
+		t.Errorf("password file %q", b)
+	}
+	if sj := mustRead(t, filepath.Join(m.dir(s.ID), "site.json")); strings.Contains(sj, hashA) {
+		t.Errorf("site.json holds the hash")
+	}
+	comp := mustRead(t, m.composePath(s.ID))
+	if !strings.Contains(comp, "-protect0.middlewares: site-"+s.ID+"-auth0-r1") || !strings.Contains(comp, "basicauth.usersfile: \"/dynamic/auth/"+authName(s.ID, "/")+"\"") {
+		t.Errorf("compose lacks the setup login:\n%s", comp)
+	}
+	secDo(t, m, s.ID, SecurityChange{Op: "protect-remove", Path: "/"}) // "Open to everyone"
+	if got, _ := m.Get(s.ID); got.Protected != nil || strings.Contains(mustRead(t, m.composePath(s.ID)), "-protect0") {
+		t.Errorf("lock left: %+v", got.Protected)
+	}
+	for _, c := range []spec.Create{
+		{App: spec.AppStatic, Domain: "a.id", Primary: "domain", Server: "nginx", SetupLock: &spec.SetupLock{User: "setup", Hash: hashA}},
+		{App: spec.AppN8N, Domain: "b.id", Primary: "domain", SetupLock: &spec.SetupLock{User: "setup", Hash: "plain"}},
+		{App: spec.AppN8N, Domain: "c.id", Primary: "domain", SetupLock: &spec.SetupLock{User: "a b", Hash: hashA}},
+	} {
+		if err := c.Check(nil); err == nil {
+			t.Errorf("accepted %+v", c.SetupLock)
+		}
+	}
+}

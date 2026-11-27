@@ -205,6 +205,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /sites/new", s.need(true, s.siteSubmit))
 	mux.HandleFunc("GET /sites/job/{job}", s.need(true, s.siteJob))
 	mux.HandleFunc("POST /sites/job/{job}/secret", s.need(true, s.siteSecret))
+	mux.HandleFunc("POST /sites/job/{job}/setup-lock", s.need(true, s.siteSetupLock))
 	mux.HandleFunc("GET /sites/{id}", s.need(true, s.siteShow))
 	mux.HandleFunc("GET /stack/{id}", s.need(true, s.siteStack))
 	mux.HandleFunc("GET /sites/{id}/deploys/{n}/log", s.need(true, s.buildLog))

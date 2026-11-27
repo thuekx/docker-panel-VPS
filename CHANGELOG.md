@@ -3,6 +3,16 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.49.0] — 2026-11-27
+
+### Added
+- **Setup lock for ready apps** (APP-03 wave 3): Uptime Kuma, n8n and Ghost let the first visitor create the admin
+  account, so a new ready app now sits behind a setup login until that is done.
+  - "Lock until the admin account is made" is on by default when the app is made. The panel makes a random
+    password and shows it once on the job page (user `setup`); only its hash reaches the server.
+  - Sign in with it, create the admin account in the app, then press **Open to everyone**. Until then the Security
+    page lists it as a protected folder `/`, which can also be kept as a second login.
+
 ## [1.48.0] — 2026-11-27
 
 ### Added
