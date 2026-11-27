@@ -285,7 +285,7 @@ func (s *Server) loginPasskeyFinish(w http.ResponseWriter, r *http.Request) {
 		refuse(401, "pk.err.unknown")
 		return
 	}
-	if u.LockedUntil.After(s.now()) {
+	if u.LockedUntil.After(s.now()) || u.Disabled {
 		s.audit1(u, r, "login.locked", "passkey")
 		s.recordLogin(u, r, "locked")
 		refuse(401, "err.login")

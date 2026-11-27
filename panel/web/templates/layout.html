@@ -20,12 +20,13 @@
 <aside class="side">
   <a class="brand" href="/" aria-label="{{t .Lang "app.name"}}">{{template "mark"}}<span class="brand-word">NOSTEK <b>PANEL</b></span></a>
   <nav class="nav">
-    <a href="/" class="{{if eq .Active "dashboard"}}on{{end}}" data-anim="nav">{{template "ico-grid"}}<span>{{t .Lang "nav.dashboard"}}</span></a>
+    {{if .Admin}}<a href="/" class="{{if eq .Active "dashboard"}}on{{end}}" data-anim="nav">{{template "ico-grid"}}<span>{{t .Lang "nav.dashboard"}}</span></a>{{end}}
     <a href="/sites" class="{{if eq .Active "sites"}}on{{end}}" data-anim="nav">{{template "ico-globe"}}<span>{{t .Lang "nav.sites"}}</span></a>
-    <a href="/disk" class="{{if eq .Active "disk"}}on{{end}}" data-anim="nav">{{template "ico-disk"}}<span>{{t .Lang "nav.disk"}}</span></a>
-    <a href="/audit" class="{{if eq .Active "audit"}}on{{end}}" data-anim="nav">{{template "ico-list"}}<span>{{t .Lang "nav.audit"}}</span></a>
+    {{if .Admin}}<a href="/disk" class="{{if eq .Active "disk"}}on{{end}}" data-anim="nav">{{template "ico-disk"}}<span>{{t .Lang "nav.disk"}}</span></a>
+    <a href="/audit" class="{{if eq .Active "audit"}}on{{end}}" data-anim="nav">{{template "ico-list"}}<span>{{t .Lang "nav.audit"}}</span></a>{{end}}
+    {{range .Menu}}<a href="{{.Href}}" data-anim="nav">{{template "ico-layers"}}<span>{{.Label}}</span></a>{{end}}
     <a href="/profile" class="{{if eq .Active "profile"}}on{{end}}" data-anim="nav">{{template "ico-user"}}<span>{{t .Lang "nav.profile"}}</span></a>
-    <a href="/settings" class="{{if eq .Active "settings"}}on{{end}}" data-anim="nav">{{template "ico-gear"}}<span>{{t .Lang "nav.settings"}}</span></a>
+    {{if .Admin}}<a href="/settings" class="{{if eq .Active "settings"}}on{{end}}" data-anim="nav">{{template "ico-gear"}}<span>{{t .Lang "nav.settings"}}</span></a>{{end}}
     <a href="/help" class="{{if eq .Active "help"}}on{{end}}" data-anim="nav">{{template "ico-book"}}<span>{{t .Lang "nav.help"}}</span></a>
   </nav>
   <div class="side-foot">

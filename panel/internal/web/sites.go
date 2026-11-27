@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/thuekx/docker-panel-VPS/panel/ext"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
 
 	"golang.org/x/crypto/bcrypt"
@@ -102,10 +103,11 @@ var (
 )
 
 type sitesData struct {
-	Sites   []agent.Site
-	Trash   []trashRow
-	NoAgent bool
-	Err     string
+	Sites     []agent.Site
+	CanCreate bool // EXT-01: an admin, or an extension lets this user make websites
+	Trash     []trashRow
+	NoAgent   bool
+	Err       string
 }
 
 type trashRow struct {
@@ -122,8 +124,11 @@ func (s *Server) sitesList(w http.ResponseWriter, r *http.Request) {
 		d.NoAgent = errors.Is(err, agent.ErrNoAgent)
 		d.Err = err.Error()
 	}
-	d.Sites = list
-	if tr, err := s.ag.Trash(ctx); err == nil {
+	d.Sites = visibleSites(s, userOf(r), list, func(x agent.Site) string { return x.ID })
+	d.CanCreate = true
+	if u := userOf(r); u != nil && u.Role != ext.RoleAdmin {
+		d.CanCreate = s.ext.CheckCreate != nil
+	} else if tr, err := s.ag.Trash(ctx); err == nil {
 		for _, t := range tr {
 			d.Trash = append(d.Trash, trashRow{t, time.Unix(t.Deleted, 0).In(s.loc()).Format("02 Jan 2006 15:04"),
 				time.Unix(t.Purge, 0).In(s.loc()).Format("02 Jan 2006 15:04")})
@@ -216,6 +221,10 @@ func (s *Server) siteSubmit(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		s.render(w, r, "sitenew", page{Title: s.tr.T(s.lang(r), "sites.new"), Active: "sites", Data: d, Error: err.Error()})
 	}
+	if err := s.checkCreate(userOf(r), c.Domain, c.App, c.Engine); err != nil { // EXT-01
+		fail(err)
+		return
+	}
 	switch r.PostForm.Get("step") {
 	case "plan":
 		if c.App != "" && agent.IsSSHRepo(c.Repo) && c.Source != "files" {
@@ -253,6 +262,7 @@ func (s *Server) siteSubmit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.owners.set(job, userOf(r).ID)
+		s.onSite(ext.SiteCreated, userOf(r), site.ID)
 		if lockPass != "" {
 			s.owners.setLock(job, lockPass)
 			s.audit1(userOf(r), r, "site.setup_lock", site.ID+" login "+SetupUser+" until the admin account exists")
@@ -815,6 +825,9 @@ func (s *Server) siteAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit1(userOf(r), r, "site."+act, id+" "+site.Domain)
+	if act == "delete" {
+		s.onSite(ext.SiteDeleted, userOf(r), id)
+	}
 	http.Redirect(w, r, back+"?done="+act, http.StatusSeeOther)
 }
 

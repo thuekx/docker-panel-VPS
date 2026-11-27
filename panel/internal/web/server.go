@@ -20,6 +20,7 @@ import (
 
 	qrcode "github.com/skip2/go-qrcode"
 
+	"github.com/thuekx/docker-panel-VPS/panel/ext"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/alert"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/auth"
@@ -67,10 +68,12 @@ type Server struct {
 	plugin           []byte     // the Nostek Migrate plugin zip (MIG-01)
 	akey             *alert.Key // seals the alert secrets (OPS-01 wave 2)
 	alerts           alertState
-	alertSync        bool         // tests: send alerts before returning
-	pkCh             challenges   // AUTH-02: passkey ceremonies in progress
-	authFail         *authlog.Log // SRV-01
-	help             *helpDocs    // HELP-01
+	alertSync        bool           // tests: send alerts before returning
+	pkCh             challenges     // AUTH-02: passkey ceremonies in progress
+	authFail         *authlog.Log   // SRV-01
+	help             *helpDocs      // HELP-01
+	ext              ext.Extensions // EXT-01
+	extMux           *http.ServeMux
 }
 
 func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server, error) {
@@ -109,7 +112,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings", "update", "serversec", "quarantine", "system", "terminal", "help", "helplog", "helpguide"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings", "update", "serversec", "quarantine", "system", "terminal", "help", "helplog", "helpguide", "ext"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -274,6 +277,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /help", s.need(true, s.helpIndex))             // HELP-01
 	mux.HandleFunc("GET /help/changelog", s.need(true, s.helpChangelog))
 	mux.HandleFunc("GET /help/{slug}", s.need(true, s.helpGuide))
+	mux.HandleFunc("/x/", s.need(true, s.extServe)) // EXT-01: pages of an extension
 	mux.HandleFunc("POST /settings/system", s.need(true, s.systemAction))
 	mux.HandleFunc("GET /settings/quarantine", s.need(true, s.quarantinePage))
 	mux.HandleFunc("POST /settings/quarantine", s.need(true, s.quarantineAction))
@@ -375,6 +379,10 @@ func (s *Server) needWith(full, csrf bool, h http.HandlerFunc) http.HandlerFunc 
 			}
 			return
 		}
+		if u.Role != ext.RoleAdmin && !s.mayUse(r, u) { // EXT-01: deny by default for users that are not admins
+			s.notFound(w, r)
+			return
+		}
 		_ = s.st.TouchSession(sess.ID, s.now())
 		ctx := context.WithValue(context.WithValue(r.Context(), keyUser, u), keySess, sess)
 		h(w, r.WithContext(ctx))
@@ -396,6 +404,10 @@ func (s *Server) currentSession(r *http.Request) (*store.Session, *store.User) {
 	}
 	u, err := s.st.UserByID(sess.UserID)
 	if err != nil {
+		return nil, nil
+	}
+	if u.Disabled { // EXT-01: a locked user is signed out at its next request
+		_ = s.st.DeleteSession(sess.ID)
 		return nil, nil
 	}
 	return sess, u
@@ -509,6 +521,8 @@ type page struct {
 	Now                               string
 	Nonce                             string // style nonce of the code editor page
 	Guide                             string // HELP-01: the page's guide, linked at its top
+	Admin                             bool   // EXT-01: the user is an admin (server-wide menu)
+	Menu                              []ext.MenuItem
 	Data                              any
 }
 
@@ -527,6 +541,8 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	if p.User == nil {
 		p.User = userOf(r)
 	}
+	p.Admin = p.User == nil || p.User.Role == ext.RoleAdmin
+	p.Menu = s.menu(p.User)
 	if p.CSRF == "" {
 		if sess := sessOf(r); sess != nil {
 			p.CSRF = sess.CSRF
@@ -660,7 +676,7 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusUnauthorized, "err.login")
 		return
 	}
-	if u.LockedUntil.After(s.now()) {
+	if u.LockedUntil.After(s.now()) || u.Disabled {
 		auth.DummyCheck(pw)
 		s.audit1(u, r, "login.locked", "")
 		s.recordLogin(u, r, "locked")
@@ -871,6 +887,10 @@ type dashData struct {
 }
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
+	if u := userOf(r); u != nil && u.Role != ext.RoleAdmin { // EXT-01: the server view is for admins
+		http.Redirect(w, r, "/sites", http.StatusSeeOther)
+		return
+	}
 	snap := s.sys.Read(r.Context())
 	d := dashData{S: snap, TZ: s.loc().String()}
 	if !snap.BackupLast.IsZero() {
