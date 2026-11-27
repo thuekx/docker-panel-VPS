@@ -2,7 +2,8 @@
 
 Status: wave 1 BUILT 2026-11-14 (v1.17.0): Uptime Kuma, n8n. Wave 2 LIVE 2026-11-27 13:34 WIB (v1.48.0): Ghost with its own
 MySQL 8. Roadmap order (2026-11-12): every stack first
-(APP-01, APP-02), then IMG-01, then APP-03. Examples named in app-01.md: Ghost, n8n, Uptime Kuma.
+(APP-01, APP-02), then IMG-01, then APP-03. Examples named in app-01.md: Ghost, n8n, Uptime Kuma. Wave 3 BUILT 2026-11-27 (v1.49.0): setup lock until
+the first account exists.
 
 ## Wave 1: apps that keep their data in one folder
 
@@ -61,7 +62,7 @@ Overview, job page, list, both languages), Ghost: compose (MySQL service, passwo
 (database option, MySQL chosen for another app), approve card names MySQL 8; harness on real Docker (both apps healthy as uid 33 with their data in the
 website folder, no published port, backup with the app stopped and back, refusal, catalogue), 3 new mutants.
 
-## Wave 3 (in progress): setup lock until the first account exists
+## Wave 3: setup lock until the first account exists (v1.49.0)
 
 Uptime Kuma, n8n and Ghost let the first visitor create the admin account. Between "created" and "admin made" anyone
 who finds the name can take the app. The setup lock closes that gap with the protected folders of SEC-01.
@@ -79,3 +80,8 @@ who finds the name can take the app. The setup lock closes that gap with the pro
   app) or removed there too.
 - **Not covered**: a webhook URL of n8n or the Ghost members API are locked too while the lock is on; that is wanted
   until setup is done.
+- **Tests**: agent (the folder `/` and the edge password file from the first render, the hash never in `site.json`,
+  "Open to everyone" removes it, a lock refused for other apps or with a hash that is not bcrypt); panel (the box on
+  the approve card of a ready app only, only the hash sent, the password shown once to its creator then 410, the open
+  button only while the lock is on); SEC-01 harness on the real edge (the whole website asks for the login, the
+  setup user gets in, opened again); two mutants.
