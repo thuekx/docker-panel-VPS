@@ -32,6 +32,11 @@
   <p class="muted">{{t .Lang "settings.srv.help"}}</p>
   <a class="secondary btn" href="/settings/server">{{t .Lang "settings.srv"}}</a>
 </article>
+<article class="card" data-anim="card" id="quarantine">
+  <h2><span class="h-ico c-amber" aria-hidden="true">{{template "ico-shield"}}</span>{{t .Lang "settings.qr"}}</h2>
+  <p class="muted">{{t .Lang "settings.qr.help"}}</p>
+  <a class="secondary btn" href="/settings/quarantine">{{t .Lang "settings.qr"}}</a>
+</article>
 <article class="card" data-anim="card" id="update">
   <h2><span class="h-ico c-violet" aria-hidden="true">{{template "ico-cloud"}}</span>{{t .Lang "settings.upd"}}</h2>
   <p class="muted">{{t .Lang "settings.upd.help"}}</p>

@@ -18,7 +18,7 @@ import (
 )
 
 // AlertKinds are the alerts that can be switched on and off.
-var AlertKinds = []string{"login", "watchdog", "disk", "memory", "backup", "certificate"}
+var AlertKinds = []string{"login", "watchdog", "disk", "memory", "backup", "certificate", "malware"}
 
 const (
 	kTgChat   = "alert.tg.chat"
@@ -231,6 +231,18 @@ func (s *Server) AlertTick(ctx context.Context) {
 	}
 	if seqS != "" && v.Seq >= since { // the first look (or a reset agent) only takes the position: no old news
 		for _, e := range v.Events {
+			if e.Service == "malware" { // SEC-02: a scheduled scan found something
+				n, quar := e.Reason, false
+				if before, ok := strings.CutSuffix(e.Reason, " quarantined"); ok {
+					n, quar = before, true
+				}
+				key := "alert.malware"
+				if quar {
+					key = "alert.malware.quarantined"
+				}
+				s.notify(org, "malware", s.tr.T(lang, key, e.Site, n))
+				continue
+			}
 			what := e.Service
 			if e.Site != "" {
 				what = e.Site + " (" + e.Service + ")"

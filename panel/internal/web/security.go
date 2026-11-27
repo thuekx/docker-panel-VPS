@@ -158,6 +158,42 @@ func (s *Server) securityAction(w http.ResponseWriter, r *http.Request) {
 		s.audit1(u, r, "malware-scan", site.ID)
 		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
 		return
+	case "scan-schedule": // SEC-02: scheduled scans at night
+		every := f.Get("every")
+		if every != "" && every != "daily" && every != "weekly" {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		quar := every != "" && f.Get("quarantine") == "1"
+		if err := s.ag.SetScanSchedule(ctx, site.ID, every, quar); err != nil {
+			back(err.Error())
+			return
+		}
+		detail := site.ID + " off"
+		if every != "" {
+			detail = site.ID + " " + every
+			if quar {
+				detail += ", quarantine"
+			}
+		}
+		s.audit1(u, r, "malware-schedule", detail)
+		http.Redirect(w, r, base+"?done=schedule#scan", http.StatusSeeOther)
+		return
+	case "scan-quarantine": // SEC-02: a found file is moved aside, never deleted
+		p := f.Get("path")
+		if !strings.HasPrefix(p, "/") || len(p) > 4096 {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		q, err := s.ag.QuarantineFile(ctx, site.ID, p, f.Get("signature"))
+		if err != nil {
+			s.audit1(u, r, "malware-quarantine", site.ID+" "+p+" failed: "+err.Error())
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "malware-quarantine", site.ID+" "+q.Path+" "+q.ID)
+		http.Redirect(w, r, base+"?done=quarantined#scan", http.StatusSeeOther)
+		return
 	case "scan-trash": // a file the scan found goes to the website's file trash (restorable for 7 days)
 		p := f.Get("path")
 		if !strings.HasPrefix(p, "/") || len(p) > 4096 {

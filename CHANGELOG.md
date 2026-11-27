@@ -3,6 +3,17 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.40.0] — 2026-11-26
+
+### Added
+- **Malware scan at night** (SEC-02): Website → Security → Malware scan can run by itself every night or once a week
+  (01:00–05:59 WIB, one website at a time, only with enough free memory).
+- **Quarantine**: a found file can be moved aside with a press, or by itself when the schedule says so. It is
+  copied to a root-only folder with where it came from and what was found, then removed from the website.
+  Settings → Quarantine puts a file back to the same place or removes it for good. In the audit log.
+- **Alert "Malware found"**: a scheduled scan that finds something sends an alert. Guide:
+  [docs/guides/malware-scan.md](docs/guides/malware-scan.md).
+
 ## [1.39.0] — 2026-11-26
 
 ### Added

@@ -123,6 +123,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/sites/{id}/security", s.security)
 	mux.HandleFunc("POST /v1/sites/{id}/security", s.securityChange)
 	mux.HandleFunc("POST /v1/sites/{id}/security/scan", s.securityScan)
+	mux.HandleFunc("POST /v1/sites/{id}/security/scan-schedule", s.scanSchedule) // SEC-02
+	mux.HandleFunc("POST /v1/sites/{id}/quarantine", s.quarantineAdd)
+	mux.HandleFunc("GET /v1/quarantine", s.quarantineList)
+	mux.HandleFunc("POST /v1/quarantine/{qid}/restore", s.quarantineRestore)
+	mux.HandleFunc("POST /v1/quarantine/{qid}/delete", s.quarantineDelete)
 	mux.HandleFunc("GET /v1/sites/{id}/cert", s.cert)
 	mux.HandleFunc("PUT /v1/sites/{id}/cert", s.certSet)
 	mux.HandleFunc("POST /v1/sites/{id}/cert/delete", s.certRemove)
