@@ -93,6 +93,12 @@ GO_MUTANTS=(
   'internal/sites/render.go|exec docker-entrypoint.sh|exec env database__connection__password= docker-entrypoint.sh'   # APP-03 wave 2: Ghost starts without its database password
   'internal/sites/manager.go|		s.Protected = []Protected{{Path: "/", Users: []string{c.SetupLock.User}, Rev: 1}}|		_ = c.SetupLock'   # APP-03 wave 3: a new ready app is open to the first visitor
   'internal/spec/spec.go|		if !IsReadyApp(app) {|		if false && !IsReadyApp(app) {'   # APP-03 wave 3: a setup lock on a website that is not a ready app
+  'internal/sites/safeupdate.go|		safe, err := m.backup(ctx, j, s, "before-update")|		safe, err := "", error(nil)'   # WP-02: a safe update without a backup
+  'internal/sites/safeupdate.go|		if brokeBy(before, after) {|		if false {'   # WP-02: a broken update is not put back
+  'internal/sites/safeupdate.go|	return before.works() && after.Code >= 500|	return false'   # WP-02: an error 500 after the update is not seen as broken
+  'internal/sites/safeupdate.go|		if uerr != nil {
+			j.Fail|		if false {
+			j.Fail'   # WP-02: a failed update reported as done
   'internal/sites/limits.go|			if n := ramFor(php.Memory, mem); n > mem {|			if n := ramFor(php.Memory, mem); false && n > mem {'   # RES-01: memory_limit raised past its container's memory
   'internal/sites/limits.go|		case v > cur.Standard && allowed(v, RAMChoices):|		case v > 0:'   # RES-01: memory set below the standard
   'internal/sites/limits.go|if v, ok := ram[svc]; ok && v > std {|if v, ok := ram[svc]; false && ok && v > std {'   # RES-01: raised memory never reaches the containers

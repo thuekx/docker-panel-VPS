@@ -246,6 +246,31 @@ ok "db recreated on the pinned image, website answers, backup made first" '[ "$(
 api GET /v1/sites/b-example-test/images; ok "up to date afterwards; a second update is refused" '[ "$CODE" = 200 ] && imgcheck 0 && { api POST /v1/sites/b-example-test/images/update; [ "$CODE" = 400 ]; }'
 docker rmi np-old/mariadb:harness >/dev/null 2>&1
 
+# --- WP-02 safe update: backup first, real health check (wp eval) before and after, put back when it broke
+nbak() { api GET /v1/sites/b-example-test/backups; grep -o '"kind":"before-update"' <<<"$BODY" | wc -l; }
+jsteps() { grep -o '"steps":\[[^]]*\]' <<<"$BODY"; }
+N0="$(nbak)"
+MAXT=60 api POST /v1/sites/b-example-test/wp/plugins '{"do":"update","all":true,"safe":true}'; C1="$CODE"; JW="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ST="$(wait_job "$JW")"; api GET "/v1/jobs/$JW"
+ok "safe update runs as a job: checked before and after, done" '[ "$C1" = 202 ] && [ "$ST" = done ] && jsteps | grep -q "check before" && jsteps | grep -q "check after" && ! jsteps | grep -q "\"restore\""'
+ok "safe update made a before-update backup" '[ "$(nbak)" -gt "$N0" ]'
+# a plugin that breaks WordPress once any "wp plugin update" ran (a WP-CLI hook drops a flag file)
+mkdir -p "$WPB/wp-content/plugins/np-flip"
+cat > "$WPB/wp-content/plugins/np-flip/np-flip.php" <<'PHP'
+<?php
+/* Plugin Name: NP Flip (harness) */
+if ( file_exists( __DIR__ . '/broken' ) ) { np_flip_no_such_function(); }
+if ( defined( 'WP_CLI' ) && WP_CLI ) { WP_CLI::add_hook( 'after_invoke:plugin update', function () { touch( __DIR__ . '/broken' ); } ); }
+PHP
+chown -R 33:33 "$WPB/wp-content/plugins/np-flip"
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"activate","names":["np-flip"]}'
+MAXT=60 api POST /v1/sites/b-example-test/wp/plugins '{"do":"update","names":["akismet"],"safe":true}'; C1="$CODE"; JW="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ST="$(wait_job "$JW")"; api GET "/v1/jobs/$JW"
+ok "an update that breaks WordPress is put back by itself" '[ "$C1" = 202 ] && [ "$ST" = failed ] && jsteps | grep -q "\"restore\"" && grep -q "put back" <<<"$BODY" && [ ! -e "$WPB/wp-content/plugins/np-flip/broken" ] && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"deactivate","names":["np-flip"]}'
+MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"delete","names":["np-flip"]}'
+ok "harness plugin removed" '[ "$CODE" = 200 ] && [ ! -e "$WPB/wp-content/plugins/np-flip" ]'
+
 # --- APP-01 static and plain PHP websites (real images; WordPress must never be copied in)
 printf '%s c-example-test.%s d-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
 api POST /v1/sites '{"app":"static","domain":"c.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"Situs C"}'; JC="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"

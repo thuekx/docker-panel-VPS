@@ -19,6 +19,10 @@ func (f *fakeAgent) wordpress(w http.ResponseWriter, r *http.Request, write func
 	if r.Method == "POST" {
 		f.wpCalls = append(f.wpCalls, strings.TrimSpace(p+" "+string(b)))
 	}
+	if strings.HasPrefix(r.URL.Path, "/v1/jobs/jc0de") {
+		write(200, f.wpJob)
+		return
+	}
 	switch p {
 	case "":
 		if f.wpDown {
@@ -39,6 +43,10 @@ func (f *fakeAgent) wordpress(w http.ResponseWriter, r *http.Request, write func
 	case "/plugins", "/themes", "/core":
 		if strings.Contains(string(b), "broken") {
 			write(400, map[string]string{"error": "plugin broken could not be found"})
+			return
+		}
+		if strings.Contains(string(b), `"safe":true`) {
+			write(202, map[string]string{"job": "jc0de000000000001"})
 			return
 		}
 		write(200, map[string]string{"output": "Success: Updated 1 of 1 plugins."})
@@ -115,8 +123,10 @@ func TestWPActions(t *testing.T) {
 	}{
 		{url.Values{"op": {"set"}, "key": {"system_cron"}, "on": {"1"}}, 303, `/settings {"key":"system_cron","on":true}`},
 		{url.Values{"op": {"set"}, "key": {"maintenance"}, "on": {"0"}}, 303, `/settings {"key":"maintenance","on":false}`},
-		{url.Values{"op": {"core"}, "do": {"all"}}, 200, `/core {"do":"all"}`},
-		{url.Values{"op": {"plugin"}, "do": {"update"}, "all": {"1"}}, 200, `/plugins {"do":"update","all":true}`},
+		{url.Values{"op": {"core"}, "do": {"all"}, "safe": {"0"}}, 200, `/core {"do":"all"}`},
+		{url.Values{"op": {"plugin"}, "do": {"update"}, "all": {"1"}, "safe": {"0"}}, 200, `/plugins {"do":"update","all":true}`},
+		{url.Values{"op": {"core"}, "do": {"all"}}, 303, `/core {"do":"all","safe":true}`},
+		{url.Values{"op": {"plugin"}, "do": {"update"}, "name": {"akismet"}}, 303, `/plugins {"do":"update","names":["akismet"],"safe":true}`},
 		{url.Values{"op": {"plugin"}, "do": {"install"}, "name": {"wordfence"}, "activate": {"1"}}, 200, `/plugins {"do":"install","names":["wordfence"],"activate":true}`},
 		{url.Values{"op": {"theme"}, "do": {"delete"}, "name": {"twentytwentyfour"}}, 200, `/themes {"do":"delete","names":["twentytwentyfour"]}`},
 		{url.Values{"op": {"plugin"}, "do": {"delete"}, "name": {"broken"}}, 422, `/plugins {"do":"delete","names":["broken"]}`},
@@ -158,5 +168,67 @@ func TestWPActions(t *testing.T) {
 	}
 	if !strings.Contains(audit, "wp.cli") || !strings.Contains(audit, "wp.login") {
 		t.Error("audit lacks WordPress actions")
+	}
+}
+
+func TestWPSafeUpdate(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	e.setupAdmin(e.c, "admin@example.test")
+	_, page, _ := e.get(e.c, "/wp/voltix-id")
+	if !strings.Contains(page, "makes a backup first") {
+		t.Error("updates card does not say an update is safe")
+	}
+	code, _, h := e.postWith(e.c, "/wp/voltix-id", url.Values{"op": {"plugin"}, "do": {"update"}, "all": {"1"}}, page)
+	if code != 303 || h.Get("Location") != "/wp/voltix-id?tab=plugins&job=jc0de000000000001#job" {
+		t.Fatalf("safe update: %d %q", code, h.Get("Location"))
+	}
+	if got := f.wpCalls[len(f.wpCalls)-1]; got != `/plugins {"do":"update","all":true,"safe":true}` {
+		t.Fatalf("agent got %q", got)
+	}
+	cases := []struct {
+		job  agent.Job
+		want []string
+		not  []string
+	}{
+		{agent.Job{ID: "jc0de000000000001", Kind: "wp-update", Site: "voltix-id", State: "running", Steps: []string{"check before", "copy database"}},
+			[]string{`data-job="/sites/job/jc0de000000000001/status"`, "Backing up the database…", `data-step="check after"`}, []string{`data-step="restore"`}},
+		{agent.Job{ID: "jc0de000000000001", Kind: "wp-update", Site: "voltix-id", State: "done", Steps: []string{"check before", "copy database", "copy files", "update", "check after", "done before-update-20261127-160000.tar.gz"}},
+			[]string{"Updated, and the website still works.", "<code>before-update-20261127-160000.tar.gz</code>"}, []string{"data-job="}},
+		{agent.Job{ID: "jc0de000000000001", Kind: "wp-update", Site: "voltix-id", State: "failed", Steps: []string{"check before", "copy database", "copy files", "update", "check after", "restore", "restore database", "restore files", "switch files"},
+			Error: "the update broke the website (WordPress does not load: PHP Fatal error), so it was put back as it was from the backup before-update-20261127-160000.tar.gz"},
+			[]string{"The update broke the website, so the backup from just before it was put back by itself.", "Put back", "Broken by the update: putting the backup back", "PHP Fatal error"}, nil},
+		{agent.Job{ID: "jc0de000000000001", Kind: "wp-update", Site: "voltix-id", State: "failed", Steps: []string{"check before", "copy database", "copy files", "update", "check after"}, Error: "Error: Could not create directory. — the website still works"},
+			[]string{"The update did not finish.", "Could not create directory"}, []string{"Put back"}},
+		{agent.Job{ID: "jc0de000000000001", Kind: "backup", Site: "voltix-id", State: "done"}, nil, []string{`id="job"`}},
+		{agent.Job{ID: "jc0de000000000001", Kind: "wp-update", Site: "other-id", State: "done"}, nil, []string{`id="job"`}},
+	}
+	for i, c := range cases {
+		f.wpJob = c.job
+		for _, lang := range []string{"id", "en"} {
+			e.c.PostForm(e.ts.URL+"/lang", url.Values{"lang": {lang}})
+			code, body, _ := e.get(e.c, "/wp/voltix-id?tab=plugins&job=jc0de000000000001")
+			if code != 200 || missingKey.MatchString(body) {
+				t.Errorf("case %d (%s): %d, missing key %v", i, lang, code, missingKey.FindString(body))
+			}
+			if lang == "id" {
+				continue
+			}
+			for _, w := range c.want {
+				if !strings.Contains(body, w) {
+					t.Errorf("case %d lacks %q", i, w)
+				}
+			}
+			for _, w := range c.not {
+				if strings.Contains(body, w) {
+					t.Errorf("case %d shows %q", i, w)
+				}
+			}
+		}
+	}
+	// the progress poll knows the steps
+	f.wpJob = cases[0].job
+	if _, body, _ := e.get(e.c, "/sites/job/jc0de000000000001/status"); !strings.Contains(body, `"check after"`) {
+		t.Errorf("status lacks the steps still to come: %s", body)
 	}
 }

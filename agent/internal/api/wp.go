@@ -50,6 +50,10 @@ func (s *Server) wpItems(kind string) http.HandlerFunc {
 			what = what[:300] + "..."
 		}
 		action := "wp-" + kind + "-" + a.Do
+		if a.Safe {
+			s.safeUpdate(w, r, id, sites.SafeUpdate{Kind: kind, Do: a.Do, Names: a.Names, All: a.All}, action+"-safe", what)
+			return
+		}
 		out, err := s.M.Items(r.Context(), id, kind, a)
 		if err != nil {
 			s.fail(w, r, action, id, err)
@@ -60,13 +64,29 @@ func (s *Server) wpItems(kind string) http.HandlerFunc {
 	}
 }
 
+// safeUpdate starts a WP-02 safe update job: a backup first, a check after, put back when it broke the website.
+func (s *Server) safeUpdate(w http.ResponseWriter, r *http.Request, id string, u sites.SafeUpdate, action, what string) {
+	job, err := s.M.StartSafeUpdate(id, u)
+	if err != nil {
+		s.fail(w, r, action, id, err)
+		return
+	}
+	s.note(r, action, id, "started", strings.TrimSpace(what+" job "+job))
+	writeJSON(w, 202, map[string]string{"job": job})
+}
+
 func (s *Server) wpCore(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var a struct {
-		Do string `json:"do"`
+		Do   string `json:"do"`
+		Safe bool   `json:"safe"`
 	}
 	if err := decode(r, &a); err != nil {
 		writeErr(w, 400, err.Error())
+		return
+	}
+	if a.Safe {
+		s.safeUpdate(w, r, id, sites.SafeUpdate{Kind: "core", Do: a.Do}, "wp-core-"+a.Do+"-safe", "")
 		return
 	}
 	long(w, 16*time.Minute)

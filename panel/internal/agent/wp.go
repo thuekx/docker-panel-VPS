@@ -4,6 +4,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 )
 
 // WPItem is one plugin or theme.
@@ -56,6 +57,7 @@ type ItemAction struct {
 	Names    []string `json:"names,omitempty"`
 	All      bool     `json:"all,omitempty"`
 	Activate bool     `json:"activate,omitempty"`
+	Safe     bool     `json:"safe,omitempty"` // update as a job: backup first, check after, put back when broken (WP-02)
 }
 
 // Check is a WordPress integrity check.
@@ -105,6 +107,24 @@ func (c *Client) Core(ctx context.Context, id, do string) (string, error) {
 	}
 	err := c.call(ctx, "POST", site(id)+"/wp/core", map[string]string{"do": do}, &o)
 	return o.Output, err
+}
+
+// SafeUpdate starts a safe update (WP-02) and returns its job: kind "core" (do update | all), "plugin" or "theme".
+func (c *Client) SafeUpdate(ctx context.Context, id, kind string, a ItemAction) (string, error) {
+	var o struct {
+		Job string `json:"job"`
+	}
+	var err error
+	if kind == "core" {
+		err = c.call(ctx, "POST", site(id)+"/wp/core", map[string]any{"do": a.Do, "safe": true}, &o)
+	} else {
+		a.Safe = true
+		err = c.call(ctx, "POST", site(id)+"/wp/"+kind+"s", a, &o)
+	}
+	if err == nil && o.Job == "" {
+		err = errors.New("the agent started no job")
+	}
+	return o.Job, err
 }
 
 // SetWP switches one dashboard setting.

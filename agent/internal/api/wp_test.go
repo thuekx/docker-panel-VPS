@@ -22,12 +22,29 @@ func TestWPRoutes(t *testing.T) {
 		{"/v1/sites/voltix-id/wp/plugins", `{"do":"update","names":["a"],"shell":"x"}`},
 		{"/v1/sites/voltix-id/wp/themes", `{"do":"delete","all":true}`},
 		{"/v1/sites/voltix-id/wp/core", `{"do":"downgrade"}`},
+		{"/v1/sites/voltix-id/wp/core", `{"do":"downgrade","safe":true}`},
+		{"/v1/sites/voltix-id/wp/plugins", `{"do":"delete","names":["a"],"safe":true}`},
+		{"/v1/sites/voltix-id/wp/themes", `{"do":"update","safe":true}`},
 		{"/v1/sites/voltix-id/wp/settings", `{"key":"siteurl","on":true}`},
 		{"/v1/sites/voltix-id/wp/cli", `{"line":"shell"}`},
 		{"/v1/sites/voltix-id/wp/cli", `{"line":"option get \"x"}`},
 	} {
 		if code, out := do(t, c, "POST", x.path, x.body); code != 400 {
 			t.Errorf("%s %s answered %d %v", x.path, x.body, code, out)
+		}
+	}
+	// a safe update is a job (WP-02)
+	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/wp/plugins", `{"do":"update","names":["akismet"],"safe":true}`); code != 202 || out["job"] == nil {
+		t.Errorf("safe update answered %d %v", code, out)
+	} else {
+		for i := 0; i < 300; i++ {
+			if _, st := do(t, c, "GET", "/v1/jobs/"+out["job"].(string), ""); st["state"] != "running" {
+				if st["kind"] != "wp-update" {
+					t.Errorf("safe update job %v", st)
+				}
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 	if code, _ := do(t, c, "GET", "/v1/sites/nosuch/wp", ""); code != 404 {

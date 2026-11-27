@@ -35,6 +35,12 @@ type wpData struct {
 	TLSUntil  string
 	TLSDays   int
 	Notes     []wpNote // parts of the overview that could not be read, explained at the bottom
+	// WP-02: the safe update job shown at the top
+	Job     *agent.Job
+	Steps   []stepRow
+	Percent int
+	Backup  string // the before-update backup
+	PutBack bool   // the update broke the website and it was put back
 }
 
 // wpNote is one part of the overview that could not be read: Part names it for people, Detail is for support.
@@ -68,7 +74,25 @@ func (s *Server) wpPage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.renderWP(w, r, site, wpData{Tab: wpTab(r.URL.Query().Get("tab"))}, http.StatusOK)
+	d := wpData{Tab: wpTab(r.URL.Query().Get("tab"))}
+	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
+		ctx, cancel := s.agentCtx(r, 10*time.Second)
+		j, err := s.ag.Job(ctx, id)
+		cancel()
+		if err == nil && j.Site == site.ID && j.Kind == "wp-update" {
+			d.Job = &j
+			d.Steps, d.Percent = jobProgress(j, site)
+			for _, st := range j.Steps {
+				if name, ok := strings.CutPrefix(st, "done "); ok && backupNameRe.MatchString(name) {
+					d.Backup = name
+				}
+				if st == "restore" {
+					d.PutBack = true
+				}
+			}
+		}
+	}
+	s.renderWP(w, r, site, d, http.StatusOK)
 }
 
 func (s *Server) renderWP(w http.ResponseWriter, r *http.Request, site agent.Site, d wpData, code int) {
@@ -139,6 +163,40 @@ func (s *Server) wpAction(w http.ResponseWriter, r *http.Request) {
 		back("dashboard", "set", err)
 	case "core", "plugin", "theme":
 		tab := "dashboard"
+		if op != "core" {
+			tab = op + "s"
+		}
+		// WP-02: an update runs as a job with a backup first, unless the form asks for a quick one (safe=0)
+		if do := f.Get("do"); f.Get("safe") != "0" && (op == "core" && (do == "update" || do == "all") || op != "core" && do == "update") {
+			a := agent.ItemAction{Do: do, All: f.Get("all") == "1"}
+			for _, n := range f["name"] {
+				if n = strings.TrimSpace(n); !wpItemRe.MatchString(n) {
+					s.renderWP(w, r, site, wpData{Tab: tab, OutputErr: s.tr.T(s.lang(r), "wp.err.name")}, http.StatusUnprocessableEntity)
+					return
+				}
+				a.Names = append(a.Names, n)
+			}
+			if op != "core" && (len(a.Names) > 50 || len(a.Names) == 0 && !a.All) {
+				http.Error(w, "bad request", 400)
+				return
+			}
+			what := do + " " + strings.Join(a.Names, ",")
+			if a.All {
+				what = do + " all"
+			}
+			ctx, cancel := s.agentCtx(r, 30*time.Second)
+			defer cancel()
+			job, err := s.ag.SafeUpdate(ctx, site.ID, op, a)
+			if err != nil {
+				s.audit1(u, r, "wp."+op, site.ID+" safe "+what+failed(err))
+				back(tab, "", err)
+				return
+			}
+			s.owners.set(job, u.ID)
+			s.audit1(u, r, "wp."+op, site.ID+" safe "+strings.TrimSpace(what)+" job "+job)
+			http.Redirect(w, r, "/wp/"+site.ID+"?tab="+tab+"&job="+job+"#job", http.StatusSeeOther)
+			return
+		}
 		ctx, cancel := s.agentCtx(r, 16*time.Minute)
 		defer cancel()
 		long(w, 17*time.Minute)
