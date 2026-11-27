@@ -178,6 +178,14 @@ func (m *Manager) StartServerBackup(pass, panelVersion, agentVersion string) (st
 	if len(pass) > 1024 {
 		return "", fmt.Errorf("%w: the passphrase is too long", ErrBadInput)
 	}
+	seal := func(w io.Writer) (*npbk.Writer, error) { return npbk.NewWriter(w, pass) }
+	return m.startServerBackup("server-backup", seal, panelVersion, agentVersion, nil)
+}
+
+// startServerBackup runs a server backup job sealed by seal; after (when set) runs in the same job once the file is
+// made, with its name.
+func (m *Manager) startServerBackup(kind string, seal func(io.Writer) (*npbk.Writer, error), panelVersion, agentVersion string,
+	after func(ctx context.Context, j *Job, name string) error) (string, error) {
 	cp, err := m.serverBackupReady()
 	if err != nil {
 		return "", err
@@ -185,13 +193,16 @@ func (m *Manager) StartServerBackup(pass, panelVersion, agentVersion string) (st
 	if !m.mu.TryLock() {
 		return "", ErrBusy
 	}
-	j := m.jobs.New("server-backup", "")
+	j := m.jobs.New(kind, "")
 	go func() {
 		defer m.mu.Unlock()
 		defer os.Remove(cp)
-		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Hour)
+		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Hour)
 		defer cancel()
-		name, err := m.serverBackup(ctx, j, pass, panelVersion, agentVersion)
+		name, err := m.serverBackup(ctx, j, seal, panelVersion, agentVersion)
+		if err == nil && after != nil {
+			err = after(ctx, j, name)
+		}
 		if err != nil {
 			j.Fail(err.Error())
 			return
@@ -309,7 +320,7 @@ func (m *Manager) siteTar(ctx context.Context, s Site, tmpDir string) (string, e
 	return p, nil
 }
 
-func (m *Manager) serverBackup(ctx context.Context, j *Job, pass, panelVersion, agentVersion string) (string, error) {
+func (m *Manager) serverBackup(ctx context.Context, j *Job, seal func(io.Writer) (*npbk.Writer, error), panelVersion, agentVersion string) (string, error) {
 	dir := m.serverBackupDir()
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
@@ -333,7 +344,7 @@ func (m *Manager) serverBackup(ctx context.Context, j *Job, pass, panelVersion, 
 			os.Remove(part)
 		}
 	}()
-	sw, err := npbk.NewWriter(out, pass)
+	sw, err := seal(out)
 	if err != nil {
 		return "", err
 	}

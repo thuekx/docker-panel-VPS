@@ -128,3 +128,64 @@ func TestStandardRounds(t *testing.T) {
 		t.Fatalf("%q %v", got, err)
 	}
 }
+
+func TestRecipient(t *testing.T) {
+	rc, err := newRecipient(pass, 1000)
+	if err != nil || !rc.Valid() {
+		t.Fatal(rc, err)
+	}
+	if _, err := newRecipient("short", 1000); !errors.Is(err, ErrShort) {
+		t.Fatal(err)
+	}
+	plain := make([]byte, 3*chunk+123)
+	_, _ = rand.Read(plain)
+	var b bytes.Buffer
+	w, err := NewWriterTo(&b, rc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = w.Write(plain)
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	sealed := b.Bytes()
+	if !bytes.HasPrefix(sealed, []byte("NPBK2\n")) || bytes.Contains(sealed, rc.Pub) {
+		t.Fatal("bad header")
+	}
+	got, err := open(sealed, pass)
+	if err != nil || !bytes.Equal(got, plain) {
+		t.Fatal("round trip", err)
+	}
+	if _, err := open(sealed, "another passphrase!"); !errors.Is(err, ErrPassphrase) {
+		t.Fatal(err)
+	}
+	// a second file to the same recipient uses another key
+	var b2 bytes.Buffer
+	w2, _ := NewWriterTo(&b2, rc)
+	_, _ = w2.Write(plain)
+	_ = w2.Close()
+	if bytes.Equal(b2.Bytes()[:100], sealed[:100]) {
+		t.Fatal("same header twice")
+	}
+	// cut and changed
+	if _, err := open(sealed[:len(sealed)-10], pass); err == nil {
+		t.Fatal("cut accepted")
+	}
+	c := append([]byte{}, sealed...)
+	c[len(c)/2] ^= 1
+	if _, err := open(c, pass); !errors.Is(err, ErrPassphrase) {
+		t.Fatal(err)
+	}
+	// a changed ephemeral key is refused
+	c = append([]byte{}, sealed...)
+	c[6+4+16+3] ^= 1
+	if _, err := open(c, pass); err == nil {
+		t.Fatal("changed key accepted")
+	}
+	if (Recipient{}).Valid() {
+		t.Fatal("empty recipient valid")
+	}
+	if _, err := NewWriterTo(&b, Recipient{}); err == nil {
+		t.Fatal("bad recipient accepted")
+	}
+}

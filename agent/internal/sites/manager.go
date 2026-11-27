@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/netip"
 	"os"
 	"os/exec"
@@ -128,6 +129,10 @@ type Manager struct {
 	fwSt     fwState
 	srvEtc   string
 	onFWUndo func(why string, err error)
+	// BAK-03: the schedule and destinations lock, and an HTTP client for tests
+	planSt   *planState
+	planOnce sync.Once
+	destHTTP *http.Client
 	updOnce  sync.Once
 	// NATIVE-01: the native engine (nil native = not installed on this server)
 	native     *NativeConfig

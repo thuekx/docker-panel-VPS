@@ -76,8 +76,8 @@ On a fresh Ubuntu 22.04 or 24.04 server, with an A record from your panel name t
 ([full guide](docs/guides/install.md)):
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.34.0/packages/inst-01/nostek-install.sh
-echo "494267c2c0c2373bb44f12073d4a6d8421be6ebbc47a9aba2d148f7cbf57df82  nostek-install.sh" | sha256sum -c -
+curl -fsSLO https://raw.githubusercontent.com/thuekx/docker-panel-VPS/v1.41.0/packages/inst-01/nostek-install.sh
+echo "684822b0fd6c8a76aa9e24ded1dc744744195a18e1679e876483316405960b3f  nostek-install.sh" | sha256sum -c -
 sudo bash nostek-install.sh INSTALL --domain panel.example.com --timezone Asia/Jakarta
 ```
 

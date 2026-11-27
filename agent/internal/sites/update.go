@@ -416,7 +416,7 @@ func (m *Manager) StartUpdate(ctx context.Context, tag, pass, panelVersion, agen
 		if pass != "" {
 			j.Step("backup")
 			bctx, cancel := context.WithTimeout(context.Background(), 6*time.Hour)
-			name, err := m.serverBackup(bctx, j, pass, panelVersion, agentVersion)
+			name, err := m.serverBackup(bctx, j, func(w io.Writer) (*npbk.Writer, error) { return npbk.NewWriter(w, pass) }, panelVersion, agentVersion)
 			cancel()
 			os.Remove(backupCopy)
 			if err != nil {

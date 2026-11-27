@@ -231,6 +231,10 @@ func (s *Server) AlertTick(ctx context.Context) {
 	}
 	if seqS != "" && v.Seq >= since { // the first look (or a reset agent) only takes the position: no old news
 		for _, e := range v.Events {
+			if e.Service == "server-backup" { // BAK-03: a scheduled server backup or its copy failed
+				s.notify(org, "backup", s.tr.T(lang, "alert.sbk."+e.Reason))
+				continue
+			}
 			if e.Service == "malware" { // SEC-02: a scheduled scan found something
 				n, quar := e.Reason, false
 				if before, ok := strings.CutSuffix(e.Reason, " quarantined"); ok {

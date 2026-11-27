@@ -122,6 +122,8 @@ AG
 RA=(--domain panel.example.test --yes --release v1.34.0 --restore /root/old.npbk --passphrase-file /root/pass)
 restore_env; run PREFLIGHT --domain panel.example.test --restore /root/old.npbk --passphrase-file /root/pass
 ok "restore preflight checks the file and the passphrase" '[ $RC = 0 ] && has "PASS server backup /root/old.npbk" && has "PASS passphrase file (22 characters)"'
+restore_env; printf 'NPBK2\nsealed' > "$INST01_TEST_ROOT/root/old.npbk"; run PREFLIGHT --domain panel.example.test --restore /root/old.npbk --passphrase-file /root/pass
+ok "a scheduled server backup (sealed to a key, BAK-03) is accepted" '[ $RC = 0 ] && has "PASS server backup /root/old.npbk"'
 restore_env; printf 'PK\003\004zip' > "$INST01_TEST_ROOT/root/old.npbk"; run PREFLIGHT --domain panel.example.test --restore /root/old.npbk
 ok "a file that is not a server backup fails" '[ $RC = 1 ] && has "is not a Nostek server backup"'
 restore_env; echo short > "$INST01_TEST_ROOT/root/pass"; run PREFLIGHT --domain panel.example.test --restore /root/old.npbk --passphrase-file /root/pass

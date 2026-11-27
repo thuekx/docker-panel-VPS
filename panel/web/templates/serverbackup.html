@@ -15,7 +15,7 @@
     </li>{{end}}
   </ol>
   {{if eq $j.State "running"}}<p class="muted job-wait">{{if $j.Progress}}{{$j.Progress}} · {{end}}{{t $l "sbk.job.wait"}} <span class="elapsed" data-elapsed></span></p>{{end}}
-  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{t $l "sbk.job.made" $d.Result}}</p>{{end}}
+  {{if eq $j.State "done"}}<p data-toast class="banner ok">{{if eq $j.Kind "server-upload"}}{{t $l "sbk.job.sent" $d.Result}}{{else}}{{t $l "sbk.job.made" $d.Result}}{{end}}</p>{{end}}
   {{if $j.Error}}<p class="banner warn">{{t $l "sbk.job.fail"}}</p>
   <details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$j.Error}}</pre></details>{{end}}
 </section>
@@ -46,6 +46,94 @@
   <p class="muted">{{t $l "sbk.move.note"}}</p>
 </article>
 </section>
+{{$p := $d.Plan}}
+<section class="grid pair">
+<article class="card tone c-amber" data-anim="card" id="plan">
+  <h2>{{t $l "sch.title"}}</h2>
+  <p class="muted">{{t $l "sch.help"}}</p>
+  {{if $p.Err}}<p class="banner warn">{{t $l "sbk.err"}}</p>
+  {{else}}
+  <p>{{if $p.P.Every}}<span class="pill s-ok">{{t $l (printf "sch.every.%s" $p.P.Every)}}</span>{{if $p.NextWhen}} <span class="muted">{{t $l "sch.next" $p.NextWhen}}</span>{{end}}{{else}}<span class="pill">{{t $l "sch.off"}}</span>{{end}}</p>
+  {{if $p.LastWhen}}<p class="{{if $p.P.LastOK}}banner ok{{else}}banner warn{{end}}">{{if $p.P.LastOK}}{{t $l "sch.last.ok" $p.LastWhen $p.P.LastFile}}{{else}}{{t $l "sch.last.bad" $p.LastWhen}}{{end}}</p>
+  {{if and (not $p.P.LastOK) $p.P.LastMsg}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$p.P.LastMsg}}</pre></details>{{end}}{{end}}
+  <form method="post" action="/settings/backup" class="form" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="schedule">
+    <label>{{t $l "sch.every"}}<select name="every">
+      <option value=""{{if not $p.P.Every}} selected{{end}}>{{t $l "sch.off"}}</option>
+      <option value="daily"{{if eq $p.P.Every "daily"}} selected{{end}}>{{t $l "sch.every.daily"}}</option>
+      <option value="weekly"{{if eq $p.P.Every "weekly"}} selected{{end}}>{{t $l "sch.every.weekly"}}</option>
+    </select></label>
+    <div class="row">
+    <label>{{t $l "sch.hour"}}<select name="hour">{{range $p.Hours}}<option value="{{.}}"{{if eq . $p.P.Hour}} selected{{end}}>{{printf "%02d:00" .}} WIB</option>{{end}}</select></label>
+    <label>{{t $l "sch.day"}}<select name="weekday">{{range $p.Days}}<option value="{{.}}"{{if eq . $p.P.Weekday}} selected{{end}}>{{t $l (printf "sch.day.%d" .)}}</option>{{end}}</select></label>
+    </div>
+    <label>{{t $l "sch.passphrase"}}<input type="password" name="passphrase" minlength="{{$d.Min}}" maxlength="1024" autocomplete="new-password"{{if not $p.P.Sealed}} required{{end}}></label>
+    <label>{{t $l "sbk.passphrase2"}}<input type="password" name="passphrase2" minlength="{{$d.Min}}" maxlength="1024" autocomplete="new-password"{{if not $p.P.Sealed}} required{{end}}></label>
+    <p class="banner warn">{{if $p.P.Sealed}}{{t $l "sch.passphrase.keep"}}{{else}}{{t $l "sch.passphrase.help" $d.Min}}{{end}}</p>
+    <label>{{t $l "sbk.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit">{{t $l "sch.save"}}</button>
+  </form>
+  {{end}}
+</article>
+<article class="card tone c-blue" data-anim="card" id="dests">
+  <h2>{{t $l "dst.title"}}</h2>
+  <p class="muted">{{t $l "dst.help"}}</p>
+  {{if not $p.Err}}
+  {{if not $p.Dests}}<p class="muted">{{t $l "dst.none"}}</p>{{end}}
+  {{range $p.Dests}}<div class="dest" data-dest="{{.ID}}">
+    <div class="stat-head"><span><b class="ink">{{.Name}}</b> <span class="pill">{{t $l (printf "dst.kind.%s" .Kind)}}</span>{{if not .On}} <span class="pill">{{t $l "dst.off"}}</span>{{end}}</span></div>
+    <p class="muted"><code>{{.Where}}</code> · {{t $l "dst.keep.n" .Keep}}{{if .HostKey}} · {{t $l "dst.hostkey"}} <code>{{.HostKey}}</code>{{end}}</p>
+    {{if .Last}}<p class="{{if .Last.OK}}muted{{else}}banner warn{{end}}">{{if .Last.OK}}{{t $l "dst.last.ok" .LastWhen .Last.File}}{{else}}{{t $l "dst.last.bad" .LastWhen}}{{end}}</p>
+    {{if not .Last.OK}}<details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{.Last.Msg}}</pre></details>{{end}}{{end}}
+    {{if .Test}}<p class="muted">{{if .Test.OK}}{{t $l "dst.test.ok" .TestWhen}}{{else}}{{t $l "dst.test.bad" .TestWhen}} · {{.Test.Msg}}{{end}}</p>{{end}}
+    <div class="row">
+      <form method="post" action="/settings/backup#dests"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="dest-test"><input type="hidden" name="id" value="{{.ID}}"><button class="secondary" type="submit" data-busy="{{t $l "dst.test.busy"}}">{{t $l "dst.test"}}</button></form>
+      <a class="ghost btn" href="/settings/backup?dest={{.ID}}#destform">{{t $l "dst.edit"}}</a>
+      <form method="post" action="/settings/backup#dests"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="dest-delete"><input type="hidden" name="id" value="{{.ID}}"><button class="ghost danger-text" type="submit" data-confirm="{{t $l "dst.delete.ask" .Name}}">{{t $l "bak.delete"}}</button></form>
+    </div>
+  </div>{{end}}
+  <div class="row"><a class="secondary btn" href="/settings/backup?add=s3#destform">{{t $l "dst.add.s3"}}</a> <a class="secondary btn" href="/settings/backup?add=sftp#destform">{{t $l "dst.add.sftp"}}</a></div>
+  {{end}}
+</article>
+</section>
+{{if not $p.Err}}{{$e := $p.Edit}}{{$kind := $p.EditKind}}{{if $e}}{{$kind = $e.Kind}}{{end}}
+{{if $kind}}<section class="card wide tone c-teal" data-anim="card" id="destform">
+  <h2>{{if $e}}{{t $l "dst.edit.title" $e.Name}}{{else}}{{t $l (printf "dst.add.%s" $kind)}}{{end}}</h2>
+  <form method="post" action="/settings/backup" class="form" autocomplete="off">
+    <input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="dest-save"><input type="hidden" name="kind" value="{{$kind}}">
+    {{if $e}}<input type="hidden" name="id" value="{{$e.ID}}">{{end}}
+    <label>{{t $l "dst.name"}}<input name="name" maxlength="40" required value="{{if $e}}{{$e.Name}}{{end}}"></label>
+    {{if eq $kind "s3"}}
+    <label>{{t $l "dst.endpoint"}}<input name="endpoint" type="url" placeholder="https://is3.cloudhost.id" required value="{{if $e}}{{$e.Endpoint}}{{end}}"></label>
+    <div class="row">
+    <label>{{t $l "dst.bucket"}}<input name="bucket" required value="{{if $e}}{{$e.Bucket}}{{end}}"></label>
+    <label>{{t $l "dst.region"}}<input name="region" placeholder="us-east-1" value="{{if $e}}{{$e.Region}}{{end}}"></label>
+    </div>
+    <label>{{t $l "dst.prefix"}}<input name="prefix" placeholder="nostek-server" value="{{if $e}}{{$e.Prefix}}{{end}}"></label>
+    <label>{{t $l "dst.access"}}<input name="access_key" required value="{{if $e}}{{$e.AccessKey}}{{end}}"></label>
+    <label>{{t $l "dst.secret"}}<input name="secret" type="password" autocomplete="off"{{if not $e}} required{{end}} placeholder="{{if $e}}{{t $l "dst.secret.keep"}}{{end}}"></label>
+    <p class="muted">{{t $l "dst.s3.help"}}</p>
+    {{else}}
+    <div class="row">
+    <label>{{t $l "dst.host"}}<input name="host" required value="{{if $e}}{{$e.Host}}{{end}}"></label>
+    <label>{{t $l "dst.port"}}<input name="port" type="number" min="1" max="65535" required value="{{if $e}}{{$e.Port}}{{else}}22{{end}}"></label>
+    </div>
+    <div class="row">
+    <label>{{t $l "dst.user"}}<input name="user" required value="{{if $e}}{{$e.User}}{{end}}"></label>
+    <label>{{t $l "dst.path"}}<input name="path" required placeholder="backups/nostek" value="{{if $e}}{{$e.Path}}{{end}}"></label>
+    </div>
+    {{if $p.P.SSHKey}}<p class="muted">{{t $l "dst.sshkey.help"}}</p><pre class="logs">{{$p.P.SSHKey}}</pre>
+    {{else}}<p class="banner warn">{{t $l "dst.sshkey.none"}}</p>{{end}}
+    {{end}}
+    <div class="row">
+    <label>{{t $l "dst.keep"}}<input name="keep" type="number" min="1" max="90" required value="{{if $e}}{{$e.Keep}}{{else}}7{{end}}"></label>
+    <label class="check"><input type="checkbox" name="on" value="1"{{if or (not $e) $e.On}} checked{{end}}> {{t $l "dst.on"}}</label>
+    </div>
+    <label>{{t $l "sbk.password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+    <div class="row"><button class="primary" type="submit">{{t $l "dst.save"}}</button> <a class="ghost btn" href="/settings/backup#dests">{{t $l "dst.cancel"}}</a></div>
+  </form>
+  {{if and (eq $kind "sftp") (not $p.P.SSHKey)}}<form method="post" action="/settings/backup#destform"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="ssh-key"><button class="secondary" type="submit">{{t $l "dst.sshkey.make"}}</button></form>{{end}}
+</section>{{end}}{{end}}
 <section class="card wide tone c-violet" data-anim="card" id="list">
   <h2>{{t $l "sbk.list"}}</h2>
   {{if $d.Err}}<p class="banner warn">{{t $l "sbk.err"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.Err}}</pre></details>
@@ -56,6 +144,7 @@
     <td class="num">{{.Human}}</td>
     <td class="bak-acts">
       <a class="ghost btn" href="/settings/backup/file/{{.Name}}">{{t $l "bak.download"}}</a>
+      {{$name := .Name}}{{range $d.Plan.Dests}}<form method="post" action="/settings/backup"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="send"><input type="hidden" name="name" value="{{$name}}"><input type="hidden" name="dest" value="{{.ID}}"><button class="ghost" type="submit">{{t $l "dst.send" .Name}}</button></form>{{end}}
       <form method="post" action="/settings/backup"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="delete"><input type="hidden" name="name" value="{{.Name}}"><button class="ghost danger-text" type="submit" data-confirm="{{t $l "sbk.delete.ask" .When}}">{{t $l "bak.delete"}}</button></form>
     </td></tr>{{end}}
   </tbody></table></div>

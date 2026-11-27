@@ -27,6 +27,33 @@ The passphrase is not stored anywhere. Without it nobody can open the file, the 
 password manager. The file is encrypted with AES-256-GCM in 64 KiB parts (key from PBKDF2-SHA256, 600 000 rounds);
 a changed, cut or reordered file is refused when it is read.
 
+## On a schedule, with copies off the server (v1.41.0)
+
+**Settings → Server backup → Scheduled server backup**:
+1. Choose **Every day** or **Once a week**, the hour (WIB) and, for weekly, the day.
+2. Type a passphrase twice (at least 12 characters) and your account password, then **Save the schedule**.
+   - The server keeps only a **public key** made from that passphrase, never the passphrase. Scheduled backups are
+     sealed to that key, so they need no passphrase at night, and they open on restore with the same passphrase,
+     the same way as above (`--restore`).
+   - Later changes of the hour or day need no passphrase. A new passphrase applies to the next backups only; older
+     files still open with the old one.
+3. The newest 3 stay on the server, as for backups made by hand.
+
+**Backup destinations** (same page) receive a copy after every scheduled backup:
+- **S3 storage**: endpoint (`https://…`), bucket, an optional folder, access key and secret key. Any S3-compatible
+  service with path-style addresses works (IDCloudHost, Wasabi, Backblaze B2, MinIO, AWS). Give the key access to
+  that bucket only.
+- **SFTP server**: host, port, user and folder. The panel signs in with its own SSH key: press **Make the SSH key**
+  and add the public key it shows to `~/.ssh/authorized_keys` of that user. The server's host key is remembered at
+  the first test, and a changed host key is refused afterwards.
+- Each destination keeps its newest N copies (default 7); older ones there are removed. Other files are left alone.
+- **Test** writes and removes a small file. Every destination shows its last copy and its last test.
+- **Copy to …** next to a listed backup sends that file by hand.
+- Keys and passwords stay in a root-only file on the server and are never shown again. They are not part of a
+  server backup: set the destinations again on a new server.
+
+When a scheduled backup or one of its copies fails, an alert of the kind **Backup** is sent (Settings → Alerts).
+
 ## Restore on a new server
 
 The new server needs what a normal install needs (see [install.md](install.md)): Ubuntu 22.04/24.04, the panel's

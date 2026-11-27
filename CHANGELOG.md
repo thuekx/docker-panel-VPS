@@ -3,6 +3,24 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.41.0] — 2026-11-27
+
+### Added
+- **Scheduled server backups** (BAK-03): Settings → Server backup can make the server backup by itself, every day or
+  once a week, at a chosen hour (WIB).
+  - The passphrase is typed once and **not stored**: the server keeps only a public key made from it, so scheduled
+    files are sealed without the passphrase and opened on restore with it (`--restore`, as before).
+- **Backup destinations**: after every scheduled backup the file is copied to S3-compatible storage and/or an SFTP
+  server (key login with the panel's own SSH key; the host key is pinned at the first test).
+  - Each destination keeps its newest N copies and has a **Test** button and the result of its last copy.
+  - A listed backup can be copied by hand. Keys stay on the server and are never shown again.
+- A failed scheduled backup or copy sends a **Backup** alert. Guide:
+  [docs/guides/server-backup.md](docs/guides/server-backup.md).
+
+### Changed
+- The installer accepts scheduled server backups for `--restore`. The README and the install guide point to the
+  installer of v1.41.0 (new sha256).
+
 ## [1.40.0] — 2026-11-26
 
 ### Added
