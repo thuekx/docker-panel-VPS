@@ -134,6 +134,10 @@ type Manager struct {
 	planOnce sync.Once
 	destHTTP *http.Client
 	updOnce  sync.Once
+	// PHP-02: where the ionCube Loader comes from (tests: a fake server) and the lock of its cache
+	ionURL  string
+	ionHTTP *http.Client
+	ionMu   sync.Mutex
 	// NATIVE-01: the native engine (nil native = not installed on this server)
 	native     *NativeConfig
 	host       HostRunner

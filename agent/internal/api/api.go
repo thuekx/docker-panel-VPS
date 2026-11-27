@@ -154,6 +154,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/sites/{id}/redis", s.redis) // REDIS-01
 	mux.HandleFunc("POST /v1/sites/{id}/redis", s.redisSet)
 	mux.HandleFunc("POST /v1/sites/{id}/redis/flush", s.redisFlush)
+	mux.HandleFunc("GET /v1/sites/{id}/ioncube", s.ionCube) // PHP-02
+	mux.HandleFunc("POST /v1/sites/{id}/ioncube", s.ionCubeSet)
 	mux.HandleFunc("GET /v1/backup-plan", s.backupPlan)
 	mux.HandleFunc("POST /v1/backup-plan/schedule", s.serverBackupSchedule)
 	mux.HandleFunc("POST /v1/backup-plan/run", s.backupRun)

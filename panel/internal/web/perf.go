@@ -26,8 +26,10 @@ type perfData struct {
 	Steps    []stepRow
 	Percent  int
 	Running  bool
-	Backup   string           // the before-php backup a finished PHP change made
-	Redis    *agent.RedisView // REDIS-01; nil when the agent has no Redis routes
+	Backup   string             // the before-php backup a finished PHP change made
+	Redis    *agent.RedisView   // REDIS-01; nil when the agent has no Redis routes
+	Ion      *agent.IonCubeView // PHP-02; nil when the agent has no ionCube routes
+	IonAt    string             // when the loader archive was downloaded
 }
 
 // phpSteps is the order of the steps of a PHP change of this website.
@@ -68,8 +70,17 @@ func (s *Server) perfPage(w http.ResponseWriter, r *http.Request) {
 			d.Job = rv.Job
 		}
 	}
+	if iv, err := s.ag.IonCube(ctx, site.ID); err == nil {
+		d.Ion = &iv
+		if iv.Cache != nil && iv.Cache.Fetched > 0 {
+			d.IonAt = time.Unix(iv.Cache.Fetched, 0).In(s.loc()).Format("02 Jan 2006")
+		}
+		if d.Job == nil && iv.Job != nil && iv.Job.State == "running" {
+			d.Job = iv.Job
+		}
+	}
 	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
-		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && (j.Kind == "php" || j.Kind == "optimize" || j.Kind == "redis") {
+		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && (j.Kind == "php" || j.Kind == "optimize" || j.Kind == "redis" || j.Kind == "ioncube") {
 			d.Job = &j
 		}
 	}
@@ -79,8 +90,11 @@ func (s *Server) perfPage(w http.ResponseWriter, r *http.Request) {
 	if d.Job != nil {
 		d.Running = d.Job.State == "running"
 		d.JobTitle = "perf.opt.job"
-		if d.Job.Kind == "redis" {
+		switch d.Job.Kind {
+		case "redis":
 			d.JobTitle = "perf.redis.job"
+		case "ioncube":
+			d.JobTitle = "perf.ion.job"
 		}
 		if d.Job.Kind == "php" {
 			d.JobTitle = "perf.php.job"
@@ -183,6 +197,21 @@ func (s *Server) perfAction(w http.ResponseWriter, r *http.Request) {
 		}
 		s.owners.set(job, u.ID)
 		s.audit1(u, r, "site.redis", detail)
+		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
+	case "ioncube-on", "ioncube-off":
+		on := f.Get("op") == "ioncube-on"
+		detail := site.ID + " off"
+		if on {
+			detail = site.ID + " on"
+		}
+		job, err := s.ag.SetIonCube(ctx, site.ID, on)
+		if err != nil {
+			s.audit1(u, r, "site.ioncube", detail+" failed: "+err.Error())
+			back(err.Error(), "#ioncube")
+			return
+		}
+		s.owners.set(job, u.ID)
+		s.audit1(u, r, "site.ioncube", detail)
 		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
 	case "redis-flush":
 		if err := s.ag.FlushRedis(ctx, site.ID); err != nil {

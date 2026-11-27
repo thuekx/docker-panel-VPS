@@ -53,7 +53,7 @@ after AUTH-02
 ├── OPS-02 ✓ BUILT v1.42.0 2026-11-27
 ├── REDIS-01 ✓ BUILT v1.43.0 2026-11-27
 ├── CERT-02 ✓ BUILT v1.44.0 2026-11-27
-├── PHP-02 ○
+├── PHP-02 ✓ BUILT v1.45.0 2026-11-27
 ├── TERM-01 ○
 └── INST-02 ○
 ```

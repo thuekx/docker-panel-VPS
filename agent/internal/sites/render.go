@@ -73,6 +73,8 @@ type Site struct {
 	ScanEvery *ScanSchedule `json:"scan_schedule,omitempty"`
 	// REDIS-01: the website's own Redis (nil = off)
 	Redis *RedisConf `json:"redis,omitempty"`
+	// PHP-02: the ionCube Loader is loaded by the website's PHP
+	IonCube bool `json:"ioncube,omitempty"`
 	// PHP-01: the PHP version before the last change (the way back)
 	PrevPHP string `json:"prev_php,omitempty"`
 	// PHP-01: compression and browser cache at the edge (nil = off)
@@ -378,7 +380,7 @@ networks:
     external: true
   out: {}
 `)
-	return applyRAM(s.redisClients(b.String()), s.RAM), nil
+	return applyRAM(s.ionCubeMounts(s.redisClients(b.String())), s.RAM), nil
 }
 
 func (s Site) wpServices(b *strings.Builder, p catalog.PHPVersion) {

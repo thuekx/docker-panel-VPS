@@ -3,6 +3,18 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.45.0] — 2026-11-27
+
+### Added
+- **ionCube Loader per website** (PHP-02): Website → Performance → ionCube Loader, for PHP applications sold
+  encoded with ionCube.
+  - The server downloads the loader from ionCube and adds it to that website's PHP only (WordPress, plain PHP,
+    Laravel on Docker). The website restarts, and the panel checks that PHP loads it; if not, the website runs
+    without it again.
+  - A PHP change brings the loader of the new version along. Versions without a loader are not offered while it is
+    on.
+  - Guide: [docs/guides/ioncube.md](docs/guides/ioncube.md).
+
 ## [1.44.0] — 2026-11-27
 
 ### Added
