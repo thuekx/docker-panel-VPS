@@ -3,6 +3,18 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.50.0] — 2026-11-27
+
+### Added
+- **Help in the panel** (HELP-01): a new **Help** item in the menu.
+  - **Changelog**: every release of Nostek Panel and what it brought, for every feature, with the release this
+    server runs marked. Every page links to it at the bottom, and the Update page too.
+  - **Guides**: all guides (update, server backup, certificates, API, server security, malware scan, database
+    access, terminal, passkeys, Redis, ionCube, install, changing the default VPS user) readable in the panel.
+    Pages with a guide show a **Guide** button at the top.
+  - Both come with the release itself, so they always match the running version and open without GitHub.
+  - Design: [docs/design/help-01.md](docs/design/help-01.md).
+
 ## [1.49.0] — 2026-11-27
 
 ### Added

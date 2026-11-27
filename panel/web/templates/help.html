@@ -1,0 +1,18 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}
+<section class="card wide tone c-violet" data-anim="card" id="changelog">
+  <h2><span class="h-ico c-violet" aria-hidden="true">{{template "ico-list"}}</span>{{t $l "help.log"}}</h2>
+  <p class="muted">{{t $l "help.log.help" .Version}}</p>
+  {{with $d.Releases}}<p class="help-vers">{{range $i, $r := .}}{{if lt $i 6}}<a class="pill s-info" href="/help/changelog#{{$r.ID}}">v{{$r.Version}}</a> {{end}}{{end}}</p>{{end}}
+  <a class="secondary btn" href="/help/changelog">{{t $l "help.log.open"}}</a>
+</section>
+<h2 class="help-h">{{t $l "help.guides"}}</h2>
+<p class="muted">{{t $l "help.guides.help"}}</p>
+<section class="grid two">
+{{range $d.Guides}}<article class="card" data-anim="card" id="g-{{.Slug}}">
+  <h2><span class="h-ico c-teal" aria-hidden="true">{{template "ico-book"}}</span>{{.Title}}</h2>
+  <p class="muted">{{.Summary}}</p>
+  <a class="secondary btn" href="/help/{{.Slug}}">{{t $l "help.read"}}</a>
+</article>{{end}}
+</section>
+{{end}}

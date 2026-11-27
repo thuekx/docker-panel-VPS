@@ -1872,5 +1872,21 @@
   "term.state.off": "Ended",
   "term.ended": "Session ended",
   "term.again": "Open again",
-  "term.audit": "Who opened a session, when and for how long is in the audit log; what is typed is not recorded."
+  "term.audit": "Who opened a session, when and for how long is in the audit log; what is typed is not recorded.",
+  "nav.help": "Help",
+  "help.title": "Help",
+  "help.guide": "Guide",
+  "help.log": "Changelog",
+  "help.log.help": "Everything that changed in Nostek Panel, release by release, for every feature. This server runs version %s.",
+  "help.log.open": "Open the whole changelog",
+  "help.log.running": "This server runs v%s.",
+  "help.log.jump": "Go to its changes",
+  "help.log.now": "running",
+  "help.vers": "Releases",
+  "help.guides": "Guides",
+  "help.guides.help": "Step-by-step guides that come with this release of the panel. Pages with a guide also show a Guide link at the top.",
+  "help.read": "Read the guide",
+  "help.back": "← All help",
+  "help.toc": "On this page",
+  "help.english": "This guide is written in English."
 }
