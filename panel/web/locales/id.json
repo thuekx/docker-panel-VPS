@@ -1872,5 +1872,21 @@
   "term.state.off": "Berakhir",
   "term.ended": "Sesi berakhir",
   "term.again": "Buka lagi",
-  "term.audit": "Siapa yang membuka sesi, kapan, dan berapa lama tercatat di log audit; apa yang diketik tidak dicatat."
+  "term.audit": "Siapa yang membuka sesi, kapan, dan berapa lama tercatat di log audit; apa yang diketik tidak dicatat.",
+  "nav.help": "Bantuan",
+  "help.title": "Bantuan",
+  "help.guide": "Panduan",
+  "help.log": "Changelog",
+  "help.log.help": "Semua yang berubah di Nostek Panel, rilis demi rilis, untuk semua fitur. Server ini menjalankan versi %s.",
+  "help.log.open": "Buka changelog lengkap",
+  "help.log.running": "Server ini menjalankan v%s.",
+  "help.log.jump": "Lihat perubahannya",
+  "help.log.now": "berjalan",
+  "help.vers": "Rilis",
+  "help.guides": "Panduan",
+  "help.guides.help": "Panduan langkah demi langkah yang ikut dengan rilis panel ini. Halaman yang punya panduan juga menampilkan link Panduan di bagian atas.",
+  "help.read": "Baca panduan",
+  "help.back": "← Semua bantuan",
+  "help.toc": "Di halaman ini",
+  "help.english": "Panduan ini ditulis dalam bahasa Inggris."
 }

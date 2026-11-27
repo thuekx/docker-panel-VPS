@@ -70,6 +70,7 @@ type Server struct {
 	alertSync        bool         // tests: send alerts before returning
 	pkCh             challenges   // AUTH-02: passkey ceremonies in progress
 	authFail         *authlog.Log // SRV-01
+	help             *helpDocs    // HELP-01
 }
 
 func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server, error) {
@@ -89,6 +90,9 @@ func New(cfg Config, st *store.Store, assets fs.FS, sys sysinfo.Reader) (*Server
 	if err := s.parseTemplates(assets); err != nil {
 		return nil, err
 	}
+	if s.help, err = loadHelp(assets); err != nil {
+		return nil, err
+	}
 	sub, err := fs.Sub(assets, "static")
 	if err != nil {
 		return nil, err
@@ -105,7 +109,7 @@ func (s *Server) Bundle() *i18n.Bundle { return s.tr }
 
 func (s *Server) parseTemplates(assets fs.FS) error {
 	s.tpl = map[string]*template.Template{}
-	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings", "update", "serversec", "quarantine", "system", "terminal"}
+	pages := []string{"login", "login2fa", "setup", "enrol", "codes", "dashboard", "audit", "settings", "reveal", "message", "sites", "sitenew", "sitejob", "site", "profile", "files", "fileedit", "db", "wp", "wplogin", "backup", "migrate", "domains", "security", "buildlog", "disk", "diskserver", "sftp", "perf", "metrics", "cron", "apikeys", "serverbackup", "certsettings", "update", "serversec", "quarantine", "system", "terminal", "help", "helplog", "helpguide"}
 	for _, p := range pages {
 		t := template.New("layout.html").Funcs(template.FuncMap{
 			"t": func(lang, key string, args ...any) string { return s.tr.T(lang, key, args...) },
@@ -267,6 +271,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /settings/certs", s.need(true, s.certSettingsPage))
 	mux.HandleFunc("POST /settings/certs", s.need(true, s.certSettingsAction))
 	mux.HandleFunc("GET /settings/system", s.need(true, s.systemPage)) // OPS-02
+	mux.HandleFunc("GET /help", s.need(true, s.helpIndex))             // HELP-01
+	mux.HandleFunc("GET /help/changelog", s.need(true, s.helpChangelog))
+	mux.HandleFunc("GET /help/{slug}", s.need(true, s.helpGuide))
 	mux.HandleFunc("POST /settings/system", s.need(true, s.systemAction))
 	mux.HandleFunc("GET /settings/quarantine", s.need(true, s.quarantinePage))
 	mux.HandleFunc("POST /settings/quarantine", s.need(true, s.quarantineAction))
@@ -501,6 +508,7 @@ type page struct {
 	Version                           string
 	Now                               string
 	Nonce                             string // style nonce of the code editor page
+	Guide                             string // HELP-01: the page's guide, linked at its top
 	Data                              any
 }
 
@@ -510,6 +518,11 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	p.Accent = s.accent(r)
 	p.Back = safeBack(r.URL.Path)
 	p.Version = s.cfg.Version
+	if g, ok := pageGuide[name]; ok && p.Guide == "" && s.help != nil {
+		if _, have := s.help.bySlug[g]; have {
+			p.Guide = g
+		}
+	}
 	p.Now = s.now().In(s.loc()).Format("02 Jan 2006 15:04 MST")
 	if p.User == nil {
 		p.User = userOf(r)

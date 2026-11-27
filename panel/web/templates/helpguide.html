@@ -1,0 +1,10 @@
+{{define "content"}}
+{{$l := .Lang}}{{$g := .Data.Guide}}
+<p><a href="/help">{{t $l "help.back"}}</a></p>
+{{if eq $l "id"}}<p class="banner info">{{t $l "help.english"}}</p>{{end}}
+<div class="help-cols">
+{{with $g.TOC}}<nav class="card help-toc" aria-label="{{t $l "help.toc"}}" data-anim="card"><b>{{t $l "help.toc"}}</b><ol>{{range .}}<li><a href="#{{.ID}}">{{.Text}}</a></li>{{end}}</ol></nav>{{end}}
+<article class="card doc" data-anim="card">{{$g.HTML}}</article>
+</div>
+<p><a href="/help">{{t $l "help.back"}}</a></p>
+{{end}}

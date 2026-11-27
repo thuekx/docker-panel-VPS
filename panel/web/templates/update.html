@@ -61,5 +61,5 @@
   {{range $d.Newer}}<details class="tech" open><summary><b>{{.Name}}</b>{{if .When}} <span class="muted">· {{.When}}</span>{{end}} <span class="pill s-info">{{t $l "upd.new"}}</span></summary><pre class="notes">{{.Notes}}</pre></details>{{end}}
   {{range $d.Older}}<details class="tech"><summary><b>{{.Name}}</b>{{if .When}} <span class="muted">· {{.When}}</span>{{end}}</summary><pre class="notes">{{.Notes}}</pre></details>{{end}}
 </section>
-<p><a href="/settings">{{t $l "sbk.back"}}</a></p>
+<p><a href="/help/changelog">{{t $l "help.log.open"}}</a> · <a href="/settings">{{t $l "sbk.back"}}</a></p>
 {{end}}

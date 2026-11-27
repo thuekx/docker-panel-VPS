@@ -1,0 +1,10 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}
+<p><a href="/help">{{t $l "help.back"}}</a></p>
+<p class="banner info">{{if $d.Running}}{{t $l "help.log.running" $d.Version}} <a href="#{{$d.Running}}">{{t $l "help.log.jump"}}</a>{{else}}{{t $l "help.log.help" .Version}}{{end}}</p>
+<div class="help-cols">
+<nav class="card help-toc" aria-label="{{t $l "help.vers"}}" data-anim="card"><b>{{t $l "help.vers"}}</b><ol>{{range $d.Releases}}<li><a href="#{{.ID}}"{{if eq .ID $d.Running}} aria-current="true"{{end}}>v{{.Version}}</a>{{if .Date}} <span class="muted small">{{.Date}}</span>{{end}}{{if eq .ID $d.Running}} <span class="pill s-ok">{{t $l "help.log.now"}}</span>{{end}}</li>{{end}}</ol></nav>
+<article class="card doc changelog" data-anim="card"{{if $d.Running}} data-running="{{$d.Running}}"{{end}}>{{$d.Log}}</article>
+</div>
+<p><a href="/help">{{t $l "help.back"}}</a></p>
+{{end}}
