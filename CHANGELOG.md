@@ -3,6 +3,20 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.47.0] — 2026-11-27
+
+### Added
+- **Debian 12 and arm64 servers** (INST-02): the one-command installer now also takes a fresh Debian 12 server,
+  on amd64 or arm64.
+  - Docker Engine comes from Docker's Debian repository there; its signing key is checked as on Ubuntu.
+  - Websites on Debian use the Docker engine. The native engine still needs Ubuntu 24.04.
+  - On Debian 12 and on arm64 the installer takes v1.47.0 or newer.
+  - Install guide: [docs/guides/install.md](docs/guides/install.md).
+
+### Fixed
+- The malware scanner works on arm64 servers: it uses ClamAV's Debian-based image there, because the usual ClamAV
+  image has no arm64 build.
+
 ## [1.46.0] — 2026-11-27
 
 ### Added

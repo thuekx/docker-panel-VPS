@@ -67,7 +67,18 @@ const (
 	// ClamAV is the malware scanner of the Security tab (SEC-01 wave 3): the official image without signatures;
 	// freshclam keeps them in <data>/clamav.
 	ClamAV = "clamav/clamav:1.5.5_base@sha256:7e43db777ae70ed9b60e75fcbdfda6f462c710565c69ccff2ed83a7ec5aba417"
+	// ClamAVDebian is the same ClamAV on Debian, which also has an arm64 build (the Alpine image is amd64 only);
+	// arm64 servers use it (INST-02).
+	ClamAVDebian = "clamav/clamav-debian:1.5.5_base@sha256:523277ba4a20c7b854babe0dbe9ca92d771d3119fc96f71b0b31e34d37924b15"
 )
+
+// ClamAVFor is the ClamAV image for a CPU type (runtime.GOARCH).
+func ClamAVFor(arch string) string {
+	if arch == "arm64" {
+		return ClamAVDebian
+	}
+	return ClamAV
+}
 
 // PHP returns the entry for a version.
 func PHP(v string) (PHPVersion, bool) {

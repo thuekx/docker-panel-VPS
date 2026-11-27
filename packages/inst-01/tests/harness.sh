@@ -42,7 +42,7 @@ new_env() {
   export PATH="$HERE/stubs:/usr/sbin:/usr/bin:/sbin:/bin"
   export FAKE_HOSTNAME=fake-vps FAKE_LOCAL_IP=10.0.0.5 FAKE_PUBLIC_IP=198.51.100.7 FAKE_DNS_IP=198.51.100.7 FAKE_WILD_IP=198.51.100.7
   export FAKE_SSH_PORTS="22 20022" FAKE_DISK=40000
-  unset FAKE_FPR || true
+  unset FAKE_FPR FAKE_ARCH || true
 }
 A=(--domain panel.example.test)
 run() { OUT="$(bash "$SCRIPT" "$@" 2>&1 </dev/null)"; RC=$?; }
@@ -55,7 +55,11 @@ apt_ran() { grep -q '^apt-get' "$FAKE/argv.log" 2>/dev/null; }
 new_env; run PREFLIGHT "${A[@]}"; ok "preflight passes" '[ $RC = 0 ] && has "RESULT INST-01 PREFLIGHT PASS"'
 ok "preview zone derived from the panel name" 'has "\*.preview.example.test points to 198.51.100.7"'
 ok "preflight changes nothing" '! apt_ran && [ ! -f "$FAKE/ufw_on" ] && [ -z "$(phase)" ]'
-new_env; printf 'ID=debian\nVERSION_ID="12"\n' > "$INST01_TEST_ROOT/etc/os-release"; run PREFLIGHT "${A[@]}"; ok "other system refused" '[ $RC = 1 ] && has "needs Ubuntu 22.04 or 24.04"'
+new_env; printf 'ID=debian\nVERSION_ID="11"\nVERSION_CODENAME=bullseye\n' > "$INST01_TEST_ROOT/etc/os-release"; run PREFLIGHT "${A[@]}"; ok "other system refused" '[ $RC = 1 ] && has "needs Ubuntu 22.04, Ubuntu 24.04 or Debian 12 (found debian 11)"'
+new_env; printf 'ID=rocky\nVERSION_ID="9"\n' > "$INST01_TEST_ROOT/etc/os-release"; run PREFLIGHT "${A[@]}"; ok "non-Debian system refused" '[ $RC = 1 ] && has "found rocky 9"'
+new_env; printf 'ID=debian\nVERSION_ID="12"\nVERSION_CODENAME=bookworm\n' > "$INST01_TEST_ROOT/etc/os-release"; run PREFLIGHT "${A[@]}"; ok "Debian 12 accepted, Debian Docker source checked" '[ $RC = 0 ] && has "PASS Debian 12" && has "reachable: download.docker.com/linux/debian/gpg"'
+new_env; export FAKE_ARCH=arm64; run PREFLIGHT "${A[@]}"; ok "arm64 accepted" '[ $RC = 0 ] && has "architecture arm64"'
+new_env; export FAKE_ARCH=i386; run PREFLIGHT "${A[@]}"; ok "other architecture refused" '[ $RC = 1 ] && has "needs amd64 or arm64 (found i386)"'
 new_env; FAKE_DISK=8000; run PREFLIGHT "${A[@]}"; ok "small disk fails" '[ $RC = 1 ] && has "needs at least 15 GB"'
 new_env; printf 'MemTotal: 500000 kB\n' > "$INST01_TEST_ROOT/proc/meminfo"; run PREFLIGHT "${A[@]}"; ok "too little memory fails" '[ $RC = 1 ] && has "needs at least 1 GB memory"'
 new_env; FAKE_DNS_IP=203.0.113.9; run PREFLIGHT "${A[@]}"; ok "panel name elsewhere fails" '[ $RC = 1 ] && has "must have an A record to 198.51.100.7 (found: 203.0.113.9"'
@@ -80,6 +84,7 @@ ok "time zone set" '[ "$(cat "$FAKE/tz")" = Asia/Makassar ]'
 ok "firewall: every SSH port, 80 and 443; safety timer stopped" 'grep -qx 22/tcp "$FAKE/ufw_rules" && grep -qx 20022/tcp "$FAKE/ufw_rules" && grep -qx 80/tcp "$FAKE/ufw_rules" && grep -qx 443/tcp "$FAKE/ufw_rules" && [ -f "$FAKE/ufw_on" ] && [ ! -f "$FAKE/timer" ] && [ "$(grep -n "^systemd-run" "$FAKE/argv.log" | head -1 | cut -d: -f1)" -lt "$(grep -n "^ufw --force enable" "$FAKE/argv.log" | head -1 | cut -d: -f1)" ]'
 ok "fail2ban guards both SSH ports" 'grep -qx "port = 22,20022" "$INST01_TEST_ROOT/etc/fail2ban/jail.d/nostek.local"'
 ok "docker repository signed-by, log limits" 'grep -q "signed-by=/etc/apt/keyrings/docker.asc" "$INST01_TEST_ROOT/etc/apt/sources.list.d/docker.list" && grep -q "\"max-size\": \"20m\"" "$INST01_TEST_ROOT/etc/docker/daemon.json"'
+ok "Ubuntu docker repository; fail2ban gets its systemd reader" 'grep -q "download.docker.com/linux/ubuntu noble stable" "$INST01_TEST_ROOT/etc/apt/sources.list.d/docker.list" && grep -q "^apt-get .*install.* fail2ban python3-systemd " "$FAKE/argv.log"'
 ok "apt is non-interactive; swap added" '[ -z "$(grep "^apt-get" "$FAKE/argv.log" | grep -v -- "Dpkg::Use-Pty=0")" ] && [ -f "$FAKE/swap" ]'
 ok "baseline recorded for PANEL-01, log is 600" 'grep -qx "release=v1.32.1" "$INST01_TEST_ROOT/var/lib/nostek/inst-01/state" && [ "$(stat -c %a "$INST01_TEST_ROOT/var/log/nostek-install.log")" = 600 ] && grep -q "RESULT INST-01 INSTALL PASS" "$INST01_TEST_ROOT/var/log/nostek-install.log"'
 run INSTALL "${A[@]}" --yes; ok "second install refused" '[ $RC = 1 ] && has "already installed (version v1.32.1)"'
@@ -145,6 +150,13 @@ ok "panel and agent installed from v1.34.0, no admin link" 'grep -q "^panel-01-c
 ok "the passphrase is in no command line and no log" '! grep -qF "$PASSPHRASE" "$FAKE/argv.log" "$INST01_TEST_ROOT/var/log/nostek-install.log" "$FAKE/pkg.log"'
 restore_env; touch "$FAKE/break_sites"; run INSTALL "${RA[@]}"
 ok "a failed website restore is FAIL, the panel database is left alone" '[ $RC = 1 ] && has "restoring the websites failed" && ! grep -q "server-restore panel" "$FAKE/argv.log" && [ "$(phase)" = RESTORING ]'
+
+# ---------- INST-02: Debian 12 and arm64 need a release built for them (v1.47.0) ----------
+new_env; printf 'ID=debian\nVERSION_ID="12"\nVERSION_CODENAME=bookworm\n' > "$INST01_TEST_ROOT/etc/os-release"; run INSTALL "${A[@]}" --yes --release v1.34.0; ok "Debian 12 with a release before v1.47.0 refused before any change" '[ $RC = 1 ] && has "older than v1.47.0, the first release this installer can install on this server" && ! apt_ran'
+new_env; export FAKE_ARCH=arm64; run INSTALL "${A[@]}" --yes --release v1.34.0; ok "arm64 with a release before v1.47.0 refused before any change" '[ $RC = 1 ] && has "older than v1.47.0" && ! apt_ran'
+G checkout -q v1.34.0; echo 1.47.0 > "$REPO/VERSION"; G commit -qam v1.47.0; G tag v1.47.0
+new_env; printf 'ID=debian\nVERSION_ID="12"\nVERSION_CODENAME=bookworm\n' > "$INST01_TEST_ROOT/etc/os-release"; export FAKE_ARCH=arm64; run INSTALL "${A[@]}" --yes --release v1.47.0
+ok "Debian 12 arm64 install uses the Debian Docker repository" '[ $RC = 0 ] && has "RESULT INST-01 INSTALL PASS version=v1.47.0" && grep -qx "deb \[arch=arm64 signed-by=/etc/apt/keyrings/docker.asc\] https://download.docker.com/linux/debian bookworm stable" "$INST01_TEST_ROOT/etc/apt/sources.list.d/docker.list" && grep -q "^curl .*download.docker.com/linux/debian/gpg" "$FAKE/argv.log"'
 
 rm -rf "$TMP_ALL"/t.*; LEFT="$(find "$TMP_ALL" -mindepth 1 -maxdepth 1 ! -name repo | wc -l)"
 if [ "$BAD" -eq 0 ]; then echo "RESULT INST-01 HARNESS PASS tests=$TESTS sisa_uji=$LEFT"; exit 0; fi

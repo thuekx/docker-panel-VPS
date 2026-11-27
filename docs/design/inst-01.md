@@ -4,7 +4,7 @@ Status: BUILT v1.32.0, 2026-11-26. Decision INST-1 = A (short installer, backups
 sha256-checked release). Guide for users: [docs/guides/install.md](../guides/install.md).
 
 ## Goal
-Anyone with a fresh Ubuntu 22.04/24.04 server and a DNS name can install Nostek Panel with one command, without the
+Anyone with a fresh Ubuntu 22.04/24.04 (or, since INST-02 / v1.47.0, Debian 12; see [inst-02.md](inst-02.md)) server and a DNS name can install Nostek Panel with one command, without the
 project's own runbooks. The project's own server keeps its HOST-01/HOST-02/PANEL-01/SITE-01 path.
 
 ## Shape

@@ -44,4 +44,4 @@ Order is binding (ROADMAP-ORDER-1). Status: ✓ done · ✱ now · ○ next. Tim
 | 15f | CERT-02 | Certificate request (CSR) with its private key kept on the server, and a self-signed certificate for test names (RAYX-2, 2026-11-26) ([cert-02.md](../design/cert-02.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.44.0 2026-11-27 |
 | 15g | PHP-02 | Optional ionCube Loader per PHP website (for encoded PHP applications) (RAYX-2, 2026-11-26) ([php-02.md](../design/php-02.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.45.0 2026-11-27 |
 | 15h | TERM-01 | Web terminal per website, off by default: a shell inside that website's own container or user only (like a jailed SSH), every session in the audit log (RAYX-2, 2026-11-26) ([term-01.md](../design/term-01.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.46.0 2026-11-27 |
-| 15i | INST-02 | Installer for Debian 12 and arm64 servers (RAYX-2, 2026-11-26) | Rancang panel Docker untuk VPS fresh | ○ |
+| 15i | INST-02 | Installer for Debian 12 and arm64 servers (RAYX-2, 2026-11-26) ([inst-02.md](../design/inst-02.md)) | Rancang panel Docker untuk VPS fresh | ✓ BUILT v1.47.0 2026-11-27 |

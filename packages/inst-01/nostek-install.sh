@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Nostek Panel - INST-01: one-command installer for a fresh Ubuntu 22.04/24.04 server.
-# Checks the server first (Ubuntu, memory, disk, host name, public address, the panel name's DNS, ports, the
+# Nostek Panel - INST-01: one-command installer for a fresh Ubuntu 22.04/24.04 or Debian 12 server (amd64 or arm64).
+# Checks the server first (system, memory, disk, host name, public address, the panel name's DNS, ports, the
 # download sources), then sets the base (time zone, updates, swap, Docker Engine with its signing key checked,
 # fail2ban, firewall) and installs the panel (PANEL-01) and its agent (SITE-01) from one release. The release is
 # fetched by its commit id (git checks the content) and each install script must match the sha256 in the
@@ -21,6 +21,7 @@ umask 022
 STEP="INST-01"; INSTALLER_VERSION="2"
 MIN_RELEASE="1.32.0"   # the first release whose PANEL-01 accepts this installer's baseline
 MIN_RESTORE="1.34.0"   # the first release that can restore a server backup (BAK-02)
+MIN_INST02="1.47.0"    # the first release built for Debian 12 and arm64 (INST-02: ClamAV image per architecture)
 R="${INST01_TEST_ROOT:-}"
 VARLIB="$R/var/lib/nostek"
 STATE_DIR="$VARLIB/inst-01"
@@ -28,7 +29,9 @@ SRC_ROOT="$R/srv/nostek/src"
 LOG="$R/var/log/nostek-install.log"
 TIMER_UNIT="nostek-inst01-revert"
 REVERT_SECONDS=600
-DOCKER_FPR="9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+DOCKER_FPR="9DC858229FC7DD38854AE2D88D81803C0EBFCD88"   # the same key signs the Ubuntu and the Debian repository
+DISTRO="ubuntu"   # set by the system check: ubuntu | debian (INST-02); picks the Docker repository
+ARCH=""           # set by the system check: amd64 | arm64
 REPO_URL="https://github.com/thuekx/docker-panel-VPS.git"
 if [ -n "$R" ]; then REPO_URL="${INST01_TEST_REPO:-$REPO_URL}"; fi   # test hook: only with a test root
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l
@@ -129,14 +132,20 @@ ssh_ports() { # the ports sshd listens on (22 when it cannot be read)
   echo "$p"
 }
 ver_ge() { [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]; } # $1 >= $2
+# the oldest release this server can take: Debian 12 and arm64 need a release built for them
+min_release() { if [ "$DISTRO" = debian ] || [ "$ARCH" = arm64 ]; then echo "$MIN_INST02"; else echo "$MIN_RELEASE"; fi; }
 
 preflight() {
   progress 1/8 "system"
-  local id ver arch
+  local id ver
   id="$(. "$R/etc/os-release" 2>/dev/null; echo "${ID:-}")"; ver="$(. "$R/etc/os-release" 2>/dev/null; echo "${VERSION_ID:-}")"
-  case "$id $ver" in "ubuntu 22.04"|"ubuntu 24.04") pass "Ubuntu $ver" ;; *) fail "needs Ubuntu 22.04 or 24.04 (found ${id:-?} ${ver:-?})" ;; esac
-  arch="$(dpkg --print-architecture 2>/dev/null)"
-  case "$arch" in amd64|arm64) pass "architecture $arch" ;; *) fail "needs amd64 or arm64 (found ${arch:-?})" ;; esac
+  case "$id $ver" in
+    "ubuntu 22.04"|"ubuntu 24.04") DISTRO=ubuntu; pass "Ubuntu $ver" ;;
+    "debian 12") DISTRO=debian; pass "Debian $ver (websites use the Docker engine; the native engine needs Ubuntu 24.04)" ;;
+    *) fail "needs Ubuntu 22.04, Ubuntu 24.04 or Debian 12 (found ${id:-?} ${ver:-?})" ;;
+  esac
+  ARCH="$(dpkg --print-architecture 2>/dev/null)"
+  case "$ARCH" in amd64|arm64) pass "architecture $ARCH" ;; *) fail "needs amd64 or arm64 (found ${ARCH:-?})" ;; esac
   command -v systemctl >/dev/null 2>&1 && pass "systemd" || fail "systemd is needed"
   progress 2/8 "memory and disk"
   local mem disk
@@ -165,7 +174,8 @@ preflight() {
   SSHP="$(ssh_ports)"; info "SSH listens on: $SSHP(kept open in the firewall)"
   progress 7/8 "download sources"
   local u
-  for u in https://download.docker.com/linux/ubuntu/gpg https://github.com https://registry-1.docker.io/v2/; do
+  command -v curl >/dev/null 2>&1 || fail "curl is needed: apt-get install -y curl"
+  for u in "https://download.docker.com/linux/$DISTRO/gpg" https://github.com https://registry-1.docker.io/v2/; do
     if curl -sS --max-time 10 -o /dev/null "$u" 2>/dev/null; then pass "reachable: ${u#https://}"; else fail "cannot reach ${u#https://}"; fi
   done
   progress 8/8 "earlier installs"
@@ -199,7 +209,7 @@ resolve_release() {
     want="$(printf '%s\n' "$refs" | awk '{print $2}' | sed -n 's#^refs/tags/\(v[0-9]*\.[0-9]*\.[0-9]*\)$#\1#p' | sort -V | tail -n1)"
     [ -n "$want" ] || { echo "FAIL no release tag found"; return 1; }
   fi
-  ver_ge "${want#v}" "$MIN_RELEASE" || { echo "FAIL $want is older than v$MIN_RELEASE, the first release this installer can install"; return 1; }
+  ver_ge "${want#v}" "$(min_release)" || { echo "FAIL $want is older than v$(min_release), the first release this installer can install on this server"; return 1; }
   # an annotated tag's commit is on its peeled line (^{}); a plain tag points to the commit itself
   COMMIT="$(printf '%s\n' "$refs" | awk -v t="refs/tags/$want^{}" '$2==t{print $1}')"
   [ -n "$COMMIT" ] || COMMIT="$(printf '%s\n' "$refs" | awk -v t="refs/tags/$want" '$2==t{print $1}')"
@@ -218,7 +228,7 @@ fetch_release() {
   fi
   local v; v="$(tr -d '[:space:]' < "$dst/VERSION" 2>/dev/null)"
   [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "FAIL commit has no release VERSION file"; return 1; }
-  ver_ge "$v" "$MIN_RELEASE" || { echo "FAIL v$v is older than v$MIN_RELEASE, the first release this installer can install"; return 1; }
+  ver_ge "$v" "$(min_release)" || { echo "FAIL v$v is older than v$(min_release), the first release this installer can install on this server"; return 1; }
   [ -z "$RELEASE" ] && RELEASE="v$v"
   [ "$RELEASE" = "v$v" ] || { echo "FAIL tag $RELEASE holds version v$v"; return 1; }
   if [ -n "$RESTORE" ]; then ver_ge "$v" "$MIN_RESTORE" || { echo "FAIL v$v cannot restore a server backup (needs v$MIN_RESTORE or newer)"; return 1; }; fi
@@ -240,7 +250,7 @@ set_timezone() {
 do_updates() {
   apt_run update || return 1
   apt_run upgrade || return 1
-  apt_run install unattended-upgrades fail2ban ufw ca-certificates curl gnupg git tmux || return 1
+  apt_run install unattended-upgrades fail2ban python3-systemd ufw ca-certificates curl gnupg git tmux || return 1
   printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' > "$R/etc/apt/apt.conf.d/20auto-upgrades"
   pass "packages upgraded; unattended security upgrades on"
 }
@@ -253,12 +263,12 @@ ensure_swap() {
 install_docker() {
   if command -v docker >/dev/null 2>&1 && docker version >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then pass "docker already installed"; else
     install -d -m 0755 "$R/etc/apt/keyrings"
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o "$STATE_DIR/docker.asc" || return 1
+    curl -fsSL "https://download.docker.com/linux/$DISTRO/gpg" -o "$STATE_DIR/docker.asc" || return 1
     local fpr; fpr="$(gpg --show-keys --with-colons "$STATE_DIR/docker.asc" 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}')"
     [ "$fpr" = "$DOCKER_FPR" ] || { echo "FAIL docker key fingerprint mismatch (${fpr:-none})"; return 1; }
     install -m 0644 "$STATE_DIR/docker.asc" "$R/etc/apt/keyrings/docker.asc"
     local codename arch; codename="$(. "$R/etc/os-release"; echo "${VERSION_CODENAME:-}")"; arch="$(dpkg --print-architecture)"
-    echo "deb [arch=$arch signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $codename stable" > "$R/etc/apt/sources.list.d/docker.list"
+    echo "deb [arch=$arch signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$DISTRO $codename stable" > "$R/etc/apt/sources.list.d/docker.list"
     apt_run update || return 1
     apt_run install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || return 1
     pass "docker engine installed (signing key fingerprint verified)"
