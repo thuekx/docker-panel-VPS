@@ -289,11 +289,16 @@ func TestNoExtensionDeniesOthers(t *testing.T) {
 			t.Errorf("%s without an extension: %d", p, code)
 		}
 	}
+	// a lock written without ending the sessions (by another process) still signs the user out
+	e.st.DB.Exec(`INSERT INTO user_locks(user_id,at) VALUES(?,0)`, u.ID)
+	if code, _, h := e.get(c, "/sites"); code != 303 || h.Get("Location") != "/login" {
+		t.Fatalf("session of a locked user: %d", code)
+	}
 	if err := e.st.DeleteUser(u.ID); err != nil {
 		t.Fatal(err)
 	}
-	if code, _, h := e.get(c, "/sites"); code != 303 || h.Get("Location") != "/login" {
-		t.Fatalf("deleted user still in: %d", code)
+	if _, err := e.st.UserByEmail("dev@example.test"); err == nil {
+		t.Fatal("user not deleted")
 	}
 }
 
