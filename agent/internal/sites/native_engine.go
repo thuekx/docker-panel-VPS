@@ -82,6 +82,7 @@ var hostBins = map[string]string{
 	"mariadb":      "/usr/bin/mariadb",
 	"mariadb-dump": "/usr/bin/mariadb-dump",
 	"ufw":          "/usr/sbin/ufw", // DB-02: the database ports (also without the native engine)
+	"git":          "/usr/bin/git",  // UPD-01: which commit a release tag names
 }
 
 // HostStreamer is a HostRunner that can send a program's output to a writer (database dumps of any size).

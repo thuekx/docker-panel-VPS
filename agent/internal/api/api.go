@@ -136,6 +136,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/server-backups", s.serverBackupStart)
 	mux.HandleFunc("GET /v1/server-backups/{name}", s.serverBackupGet)
 	mux.HandleFunc("POST /v1/server-backups/{name}/delete", s.serverBackupDelete)
+	mux.HandleFunc("GET /v1/update", s.update)
+	mux.HandleFunc("POST /v1/update", s.updateStart)
 	mux.HandleFunc("GET /v1/trash", s.trash)
 	mux.HandleFunc("POST /v1/trash/{entry}/restore", s.restore)
 	mux.HandleFunc("POST /v1/trash/{entry}/remove", s.removeTrash)
