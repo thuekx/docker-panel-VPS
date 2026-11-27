@@ -350,33 +350,55 @@ func (m *Manager) SetLimits(ctx context.Context, id string, c LimitChange) error
 	return m.writeLimits(ctx, next)
 }
 
+// managedFiles reads the files the agent writes for a Docker website (prev, with site.json) and renders what they
+// should hold now (next). Images stay as they are: newer ones come only through "Update image" (IMG-01). Nginx keeps
+// the body of the file on disk, unless fresh (OPS-02 drift): then it starts again from the template.
+func (m *Manager) managedFiles(s Site, fresh bool) (prev, next map[string][]byte, err error) {
+	dir := m.dir(s.ID)
+	cf, err := s.Compose()
+	if err != nil {
+		return nil, nil, err
+	}
+	prev = map[string][]byte{}
+	for _, f := range []string{"compose.yml", "php.ini", "nginx.conf", "apache.conf", "site.json"} {
+		if b, err := os.ReadFile(filepath.Join(dir, f)); err == nil {
+			prev[f] = b
+		}
+	}
+	cf = keepImages(cf, string(prev["compose.yml"]))
+	next = map[string][]byte{"compose.yml": []byte(cf)}
+	if _, ok := prev["php.ini"]; ok {
+		next["php.ini"] = []byte(s.PHPIniFile())
+	}
+	if b, ok := prev["nginx.conf"]; ok {
+		if t := s.nginxTemplate(); fresh && t != "" {
+			b = []byte(t)
+		}
+		next["nginx.conf"] = []byte(s.withNginxRules(s.nginxBody(string(b))))
+	} else if t := s.nginxTemplate(); fresh && t != "" {
+		next["nginx.conf"] = []byte(s.withNginxRules(s.nginxBody(t)))
+	}
+	if s.apacheMount() != "" {
+		next["apache.conf"] = []byte(s.apacheRules())
+	}
+	return prev, next, nil
+}
+
 // writeLimits writes the website's files with its new limits and recreates its containers; on a failure the
 // previous files come back and the website is started on them again.
 func (m *Manager) writeLimits(ctx context.Context, s Site) error {
 	if s.IsNative() {
 		return m.nativeLimits(ctx, s)
 	}
+	return m.writeManaged(ctx, s, false)
+}
+
+// writeManaged writes the managed files (fresh: Nginx from its template) and recreates the containers when needed.
+func (m *Manager) writeManaged(ctx context.Context, s Site, fresh bool) error {
 	dir := m.dir(s.ID)
-	cf, err := s.Compose()
+	prev, next, err := m.managedFiles(s, fresh)
 	if err != nil {
 		return err
-	}
-	prev := map[string][]byte{}
-	for _, f := range []string{"compose.yml", "php.ini", "nginx.conf", "apache.conf", "site.json"} {
-		if b, err := os.ReadFile(filepath.Join(dir, f)); err == nil {
-			prev[f] = b
-		}
-	}
-	cf = keepImages(cf, string(prev["compose.yml"])) // newer images only through "Update image" (IMG-01)
-	next := map[string][]byte{"compose.yml": []byte(cf)}
-	if _, ok := prev["php.ini"]; ok {
-		next["php.ini"] = []byte(s.PHPIniFile())
-	}
-	if b, ok := prev["nginx.conf"]; ok {
-		next["nginx.conf"] = []byte(s.withNginxRules(s.nginxBody(string(b))))
-	}
-	if s.apacheMount() != "" {
-		next["apache.conf"] = []byte(s.apacheRules())
 	}
 	putBack := func() {
 		for f, b := range prev {

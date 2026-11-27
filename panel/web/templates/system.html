@@ -1,0 +1,57 @@
+{{define "content"}}
+{{$l := .Lang}}{{$d := .Data}}{{$csrf := .CSRF}}
+{{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "sys.done.%s" .Flash)}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+<section class="card wide tone c-teal" data-anim="card" id="services">
+  <h2>{{t $l "sys.svc"}}</h2>
+  <p class="muted">{{t $l "sys.svc.help"}}</p>
+  {{if $d.SvcErr}}<p class="banner warn">{{t $l "upd.err.agent"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.SvcErr}}</pre></details>
+  {{else}}
+  {{if $d.Unhealthy}}<p class="banner warn">{{t $l "sys.svc.bad" $d.Unhealthy}}</p>{{end}}
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "sys.svc.name"}}</th><th>{{t $l "sys.svc.state"}}</th><th></th></tr></thead><tbody>
+  {{range $d.Services}}<tr>
+    <td><b>{{t $l (printf "sys.svc.n.%s" .Name)}}</b><div class="muted small"><code>{{.Name}}</code> · {{t $l (printf "sys.kind.%s" .Kind)}}</div></td>
+    <td>{{if .OK}}<span class="pill s-ok">{{.State}}</span>{{else}}<span class="pill s-bad">{{.State}}</span>{{end}}{{if .Detail}}<div class="muted small">{{.Detail}}</div>{{end}}</td>
+    <td class="bak-acts">{{if .Restart}}<form method="post" action="/settings/system"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="restart"><input type="hidden" name="name" value="{{.Name}}">
+      <button class="ghost" type="submit" data-busy="{{t $l "sys.restart.busy"}}" data-confirm="{{if eq .Name "panel"}}{{t $l "sys.restart.panel"}}{{else}}{{t $l "sys.restart.ask" .Name}}{{end}}">{{t $l "sys.restart"}}</button></form>
+      {{else}}<span class="muted small">{{t $l "sys.restart.none"}}</span>{{end}}</td>
+  </tr>{{end}}
+  </tbody></table></div>
+  {{end}}
+</section>
+<section class="card wide tone c-violet" data-anim="card" id="procs">
+  <h2>{{t $l "sys.proc"}}</h2>
+  {{if $d.ProcErr}}<p class="banner warn">{{t $l "upd.err.agent"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.ProcErr}}</pre></details>
+  {{else}}
+  <p class="muted">{{t $l "sys.proc.help" $d.Procs.Count $d.Procs.Cores $d.MemTotal}}</p>
+  <div class="grid pair">
+  <div><h3>{{t $l "sys.proc.cpu"}}</h3>
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "sys.proc.name"}}</th><th class="num">CPU</th><th class="num">RAM</th></tr></thead><tbody>
+  {{range $d.ByCPU}}<tr><td><b>{{.Name}}</b><div class="muted small">PID {{.PID}} · {{.User}}{{if .Where}} · <code>{{.Where}}</code>{{end}}</div></td><td class="num">{{.CPUText}}</td><td class="num">{{.RSSText}}</td></tr>{{end}}
+  </tbody></table></div></div>
+  <div><h3>{{t $l "sys.proc.mem"}}</h3>
+  <div class="table-wrap"><table><thead><tr><th>{{t $l "sys.proc.name"}}</th><th class="num">RAM</th><th class="num">%</th></tr></thead><tbody>
+  {{range $d.ByMem}}<tr><td><b>{{.Name}}</b><div class="muted small">PID {{.PID}} · {{.User}}{{if .Where}} · <code>{{.Where}}</code>{{end}}</div></td><td class="num">{{.RSSText}}</td><td class="num">{{.MemText}}</td></tr>{{end}}
+  </tbody></table></div></div>
+  </div>
+  <p><a class="secondary btn" href="/settings/system#procs">{{t $l "sys.proc.again"}}</a></p>
+  {{end}}
+</section>
+<section class="card wide tone c-amber" data-anim="card" id="drift">
+  <h2>{{t $l "sys.drift"}}</h2>
+  <p class="muted">{{t $l "sys.drift.help"}}</p>
+  {{if $d.DriftErr}}<p class="banner warn">{{t $l "upd.err.agent"}}</p><details class="tech"><summary>{{t $l "bak.details"}}</summary><pre class="logs">{{$d.DriftErr}}</pre></details>
+  {{else if not $d.Drift}}<p class="muted">{{t $l "sys.drift.none"}}</p>
+  {{else}}
+  {{if $d.DriftN}}<p class="banner warn">{{t $l "sys.drift.n" $d.DriftN}}</p>{{else}}<p class="banner ok">{{t $l "sys.drift.ok"}}</p>{{end}}
+  {{range $d.Drift}}{{$site := .}}<div class="dest" data-drift="{{.Site}}">
+    <div class="stat-head"><span><b class="ink">{{.Domain}}</b> {{if .Native}}<span class="pill">{{t $l "sys.drift.native"}}</span>{{else if .Error}}<span class="pill s-bad">{{t $l "sys.drift.err"}}</span>{{else if .Drift}}<span class="pill s-bad">{{t $l "sys.drift.changed"}}</span>{{else}}<span class="pill s-ok">{{t $l "sys.drift.same"}}</span>{{end}}</span></div>
+    {{if .Error}}<p class="muted small">{{.Error}}</p>{{end}}
+    {{range .Files}}{{if ne .State "same"}}<details class="tech"><summary><code>{{.File}}</code> · {{t $l (printf "sys.drift.f.%s" .State)}}{{if eq .State "changed"}} (+{{.Added}} −{{.Removed}}){{end}}</summary>{{if .Diff}}<pre class="logs">{{.Diff}}</pre>{{end}}</details>{{end}}{{end}}
+    {{if .Drift}}<form method="post" action="/settings/system"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="drift-fix"><input type="hidden" name="site" value="{{.Site}}">
+      <button class="primary" type="submit" data-busy="{{t $l "sys.drift.busy"}}" data-confirm="{{t $l "sys.drift.ask" .Domain}}">{{t $l "sys.drift.fix"}}</button></form>{{end}}
+  </div>{{end}}
+  {{end}}
+</section>
+<p><a href="/settings">{{t $l "sbk.back"}}</a></p>
+{{end}}

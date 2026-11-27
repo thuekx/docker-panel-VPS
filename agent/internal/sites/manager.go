@@ -462,6 +462,21 @@ func (m *Manager) compose(ctx context.Context, id string, stdin io.Reader, args 
 	return m.run.Docker(ctx, dir, stdin, full...)
 }
 
+// nginxTemplate is the Nginx configuration a new website starts from ("" when it has none).
+func (s Site) nginxTemplate() string {
+	switch {
+	case s.IsLaravel():
+		return NginxLaravelConf
+	case s.AppName() == spec.AppStatic:
+		return NginxStaticConf
+	case s.IsWP() && s.Server == "nginx":
+		return NginxConf
+	case s.Server == "nginx":
+		return NginxPHPConf
+	}
+	return ""
+}
+
 func tail(b []byte) string {
 	s := strings.TrimSpace(string(b))
 	if len(s) > 600 {
@@ -515,17 +530,12 @@ func (m *Manager) create(j *Job, s Site) {
 		return
 	}
 	files := map[string]string{"compose.yml": cf}
-	switch {
-	case s.IsLaravel():
-		files["nginx.conf"] = NginxLaravelConf
+	if c := s.nginxTemplate(); c != "" {
+		files["nginx.conf"] = c
+	}
+	if s.IsLaravel() {
 		files["laravel.ini"] = LaravelIni
 		files["laravel-env.php"] = LaravelPrepend
-	case s.AppName() == spec.AppStatic:
-		files["nginx.conf"] = NginxStaticConf
-	case s.IsWP() && s.Server == "nginx":
-		files["nginx.conf"] = NginxConf
-	case s.Server == "nginx":
-		files["nginx.conf"] = NginxPHPConf
 	}
 	if s.AppName() != spec.AppStatic && !s.IsReady() {
 		files["php.ini"] = s.PHPIniFile()
