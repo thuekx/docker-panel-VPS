@@ -75,6 +75,8 @@ type Site struct {
 	Redis *RedisConf `json:"redis,omitempty"`
 	// PHP-02: the ionCube Loader is loaded by the website's PHP
 	IonCube bool `json:"ioncube,omitempty"`
+	// WP-02 wave 2: this website is the staging copy of that website
+	StagingOf string `json:"staging_of,omitempty"`
 	// TERM-01: the web terminal may open a shell in the website's container
 	Terminal bool `json:"terminal,omitempty"`
 	// PHP-01: the PHP version before the last change (the way back)

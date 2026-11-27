@@ -271,6 +271,28 @@ MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"deactivate","names
 MAXT=240 api POST /v1/sites/b-example-test/wp/plugins '{"do":"delete","names":["np-flip"]}'
 ok "harness plugin removed" '[ "$CODE" = 200 ] && [ ! -e "$WPB/wp-content/plugins/np-flip" ]'
 
+# --- WP-02 wave 2 staging copy: a new website staging.<domain> with the live files and database, push back to live
+printf '%s staging-b-example-test.%s %s\n' "$IP" "$ZONE" "$MARK" >> /etc/hosts
+sleep 6   # the Go resolver re-reads /etc/hosts at most every 5 seconds
+WPS="$SITE01_TEST_ROOT/srv/nostek/sites/staging-b-example-test/wp"
+echo "live v1" > "$WPB/wp-content/uploads/np-stage.txt"; chown 33:33 "$WPB/wp-content/uploads/np-stage.txt"
+api POST /v1/sites/b-example-test/staging; C1="$CODE"; JS="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ST="$(wait_job "$JS" 200)"; api GET "/v1/jobs/$JS"
+ok "staging copy made from the live website" '[ "$C1" = 202 ] && [ "$ST" = done ] && grep -q "\"staging_of\": *\"b-example-test\"" "$SITE01_TEST_ROOT/srv/nostek/sites/staging-b-example-test/site.json" && [ "$(cat "$WPS/wp-content/uploads/np-stage.txt")" = "live v1" ]'
+MAXT=120 api POST /v1/sites/staging-b-example-test/wp/cli '{"line":"wp option get home"}'; H1="$BODY"
+MAXT=120 api POST /v1/sites/staging-b-example-test/wp/cli '{"line":"wp option get blog_public"}'
+ok "the copy answers on its own address with search engines off, its own database login" 'grep -q "staging-b-example-test" <<<"$H1" && grep -q "\"output\":\"0\"" <<<"$BODY" && [ "$(web staging-b-example-test staging-b-example-test.$ZONE /)" = 200 ] && ! cmp -s "$WPS/wp-config.php" "$WPB/wp-config.php"'
+api POST /v1/sites/b-example-test/staging; ok "a second staging copy is refused" '[ "$CODE" = 400 ]'
+echo "staging v2" > "$WPS/wp-content/uploads/np-stage.txt"
+api POST /v1/sites/b-example-test/staging/push '{"from":"staging-b-example-test"}'; C1="$CODE"; JP="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+ST="$(wait_job "$JP" 200)"
+MAXT=120 api POST /v1/sites/b-example-test/wp/cli '{"line":"wp option get home"}'; H1="$BODY"
+MAXT=120 api POST /v1/sites/b-example-test/wp/cli '{"line":"wp option get blog_public"}'
+ok "push to live: staging files live, live address and search setting kept, website answers" '[ "$C1" = 202 ] && [ "$ST" = done ] && [ "$(cat "$WPB/wp-content/uploads/np-stage.txt")" = "staging v2" ] && grep -q "b-example-test" <<<"$H1" && ! grep -q "staging-b-example-test" <<<"$H1" && grep -q "\"output\":\"0\"" <<<"$BODY" && [ "$(web b-example-test b-example-test.$ZONE /)" = 200 ]'
+api GET /v1/sites/b-example-test/backups; ok "push made a backup of live first" 'grep -q "\"kind\":\"before-migrate\"" <<<"$BODY"'
+api POST /v1/sites/staging-b-example-test/delete; ES="$(grep -o '"trash":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"
+api POST "/v1/trash/$ES/remove"; ok "staging copy deleted" '[ "$CODE" = 200 ] && [ -z "$(docker ps -q --filter name=np-site-staging-b-example-test)" ]'
+
 # --- APP-01 static and plain PHP websites (real images; WordPress must never be copied in)
 printf '%s c-example-test.%s d-example-test.%s %s\n' "$IP" "$ZONE" "$ZONE" "$MARK" >> /etc/hosts
 api POST /v1/sites '{"app":"static","domain":"c.example.test","aliases":[],"primary":"domain","server":"nginx","php":"","admin_email":"","title":"Situs C"}'; JC="$(grep -o '"job":"[^"]*"' <<<"$BODY" | cut -d'"' -f4)"

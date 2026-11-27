@@ -127,6 +127,24 @@ func (c *Client) SafeUpdate(ctx context.Context, id, kind string, a ItemAction) 
 	return o.Job, err
 }
 
+// StartStaging makes the staging copy of a WordPress website (WP-02 wave 2); it returns the job and the new website.
+func (c *Client) StartStaging(ctx context.Context, id string) (string, Site, error) {
+	var v struct {
+		Job  string `json:"job"`
+		Site Site   `json:"site"`
+	}
+	err := c.call(ctx, "POST", site(id)+"/staging", nil, &v)
+	return v.Job, v.Site, err
+}
+
+// PushStaging copies the staging website from over its live website id.
+func (c *Client) PushStaging(ctx context.Context, id, from string) (string, error) {
+	var v struct {
+		Job string `json:"job"`
+	}
+	return v.Job, c.call(ctx, "POST", site(id)+"/staging/push", map[string]string{"from": from}, &v)
+}
+
 // SetWP switches one dashboard setting.
 func (c *Client) SetWP(ctx context.Context, id, key string, on bool) error {
 	return c.call(ctx, "POST", site(id)+"/wp/settings", map[string]any{"key": key, "on": on}, nil)

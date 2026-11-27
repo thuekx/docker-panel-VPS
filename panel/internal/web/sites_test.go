@@ -30,6 +30,8 @@ type fakeAgent struct {
 	wpCalls    []string // "path body" of every WordPress call
 	wpDown     bool
 	wpJob      agent.Job // WP-02: the safe update job
+	stgCopy    bool      // WP-02 wave 2: voltix-id has a staging copy in the list
+	stgOf      string    // WP-02 wave 2: voltix-id is the staging copy of this website
 	bakCalls   []string  // "method path body" of every backup call
 	bakDown    bool
 	bakJob     agent.Job
@@ -115,6 +117,7 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		URL: "https://voltix-id.preview.nostek.dev", Phase: "ready", Status: "running",
 		Hosts: []agent.Host{{Name: "voltix.id", Role: "primary"}, {Name: "voltix-id.preview.nostek.dev", Role: "preview", Routed: true}}}
 	site.App, site.Database, site.DBEngine, site.Engine = f.app, f.appDB, f.dbEngine, f.engine
+	site.StagingOf = f.stgOf
 	if f.app == "laravel" {
 		site.Version = "13"
 	}
@@ -285,7 +288,19 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Ready:   []agent.Ready{{ID: "uptime-kuma", Name: "Uptime Kuma", Version: "2.5.11-slim-rootless"}, {ID: "n8n", Name: "n8n", Version: "2.47.7"}, {ID: "ghost", Name: "Ghost", Version: "6.79.0-alpine"}},
 			Native:  map[bool]*agent.Native{true: {PHP: []string{"8.3", "8.4"}}}[f.native]})
 	case r.URL.Path == "/v1/sites" && r.Method == "GET":
-		write(200, map[string]any{"sites": []agent.Site{site}})
+		list := []agent.Site{site}
+		if f.stgCopy {
+			list = append(list, agent.Site{ID: "staging-voltix-id", Domain: "staging.voltix.id", URL: "https://staging-voltix-id.preview.nostek.dev", Phase: "ready", StagingOf: "voltix-id"})
+		}
+		write(200, map[string]any{"sites": list})
+	case r.URL.Path == "/v1/sites/shop-id" && f.stgOf == "shop-id":
+		write(200, agent.Site{ID: "shop-id", Domain: "shop.id", Phase: "ready"})
+	case r.URL.Path == "/v1/sites/voltix-id/staging":
+		write(202, map[string]any{"job": "jc0de000000000002", "site": agent.Site{ID: "staging-voltix-id", StagingOf: "voltix-id"}})
+	case strings.HasPrefix(r.URL.Path, "/v1/sites/") && strings.HasSuffix(r.URL.Path, "/staging/push"):
+		b, _ := io.ReadAll(r.Body)
+		f.wpCalls = append(f.wpCalls, r.URL.Path+" "+strings.TrimSpace(string(b)))
+		write(202, map[string]string{"job": "jc0de000000000003"})
 	case r.URL.Path == "/v1/trash":
 		t := f.trash
 		if t == nil {

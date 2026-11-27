@@ -121,6 +121,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /v1/sites/{id}/migrate/upload", s.migrateUpload)
 	mux.HandleFunc("POST /v1/sites/{id}/migrate/clear", s.migrateClear)
 	mux.HandleFunc("POST /v1/sites/{id}/migrate", s.migrateStart)
+	mux.HandleFunc("POST /v1/sites/{id}/staging", s.stagingStart) // WP-02 wave 2
+	mux.HandleFunc("POST /v1/sites/{id}/staging/push", s.stagingPush)
 	mux.HandleFunc("GET /v1/sites/{id}/domains", s.domains)
 	mux.HandleFunc("POST /v1/sites/{id}/domains", s.domainsChange)
 	mux.HandleFunc("GET /v1/sites/{id}/security", s.security)

@@ -47,6 +47,16 @@ func TestWPRoutes(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
+	// staging (WP-02 wave 2): a push only from the website's own staging copy
+	if code, out := do(t, c, "POST", "/v1/sites/voltix-id/staging/push", `{"from":"voltix-id"}`); code != 400 {
+		t.Errorf("push from itself answered %d %v", code, out)
+	}
+	if code, _ := do(t, c, "POST", "/v1/sites/voltix-id/staging/push", `{"from":"../x"}`); code < 400 || code > 404 {
+		t.Errorf("push from a bad id answered %d", code)
+	}
+	if code, _ := do(t, c, "POST", "/v1/sites/nosuch/staging", ""); code != 404 && code != 400 {
+		t.Errorf("staging of an unknown website answered %d", code)
+	}
 	if code, _ := do(t, c, "GET", "/v1/sites/nosuch/wp", ""); code != 404 {
 		t.Errorf("unknown site answered %d", code)
 	}

@@ -17,6 +17,7 @@
   <div class="job-done" data-anim="card">
     <p>{{t $l "sites.job.url"}} <a href="{{.Data.Site.URL}}" target="_blank" rel="noopener noreferrer">{{.Data.Site.URL}}</a>{{if .Data.Site.IsWP}} · <a href="{{.Data.Site.URL}}/wp-admin/" target="_blank" rel="noopener noreferrer">wp-admin</a>{{end}}</p>
     {{if eq $j.Kind "image"}}<p class="muted">{{t $l "img.done"}}</p><p class="row"><a class="primary btn" href="/sites/{{.Data.Site.ID}}#images">{{t $l "sites.tab.overview"}}</a><a class="ghost btn" href="/backup/{{.Data.Site.ID}}">{{t $l "bak.title"}}</a></p>
+    {{else if eq $j.Kind "staging"}}<p class="muted">{{t $l "wp.stg.done"}}</p><p class="row"><a class="primary btn" href="/wp/{{.Data.Site.ID}}">{{t $l "wp.stg.open"}}</a>{{with .Data.Site.StagingOf}}<a class="ghost btn" href="/wp/{{.}}">{{t $l "wp.stg.live"}}</a>{{end}}</p>
     {{else if .Data.Site.IsWP}}
     <p>{{t $l "sites.job.user"}} <code>{{.Data.Site.AdminUser}}</code></p>
     {{if .Data.Password}}

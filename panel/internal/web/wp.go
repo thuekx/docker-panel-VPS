@@ -41,6 +41,11 @@ type wpData struct {
 	Percent int
 	Backup  string // the before-update backup
 	PutBack bool   // the update broke the website and it was put back
+	JobKey  string // locale prefix of the job card: wp.safe (update) | wp.push (staging pushed to live)
+	StepKey string // locale prefix of its steps: wp.step | wp.pstep
+	// WP-02 wave 2: the staging copy of this website, or the live website of this staging copy
+	Staging *agent.Site
+	Live    *agent.Site
 }
 
 // wpNote is one part of the overview that could not be read: Part names it for people, Detail is for support.
@@ -79,14 +84,17 @@ func (s *Server) wpPage(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := s.agentCtx(r, 10*time.Second)
 		j, err := s.ag.Job(ctx, id)
 		cancel()
-		if err == nil && j.Site == site.ID && j.Kind == "wp-update" {
-			d.Job = &j
+		if err == nil && j.Site == site.ID && (j.Kind == "wp-update" || j.Kind == "push") {
+			d.Job, d.JobKey, d.StepKey = &j, "wp.safe", "wp.step"
+			if j.Kind == "push" {
+				d.JobKey, d.StepKey = "wp.push", "wp.pstep"
+			}
 			d.Steps, d.Percent = jobProgress(j, site)
 			for _, st := range j.Steps {
 				if name, ok := strings.CutPrefix(st, "done "); ok && backupNameRe.MatchString(name) {
 					d.Backup = name
 				}
-				if st == "restore" {
+				if st == "restore" && j.Kind == "wp-update" {
 					d.PutBack = true
 				}
 			}
@@ -106,6 +114,17 @@ func (s *Server) renderWP(w http.ResponseWriter, r *http.Request, site agent.Sit
 	}
 	d.WP = x
 	d.Notes = wpNotes(x.Warnings)
+	if site.StagingOf != "" {
+		if l, err := s.ag.Site(ctx, site.StagingOf); err == nil {
+			d.Live = &l
+		}
+	} else if list, err := s.ag.Sites(ctx); err == nil {
+		for i := range list {
+			if list[i].StagingOf == site.ID {
+				d.Staging = &list[i]
+			}
+		}
+	}
 	if x.TLS.Expires > 0 {
 		t := time.Unix(x.TLS.Expires, 0)
 		d.TLSUntil = t.In(s.loc()).Format("02 Jan 2006")
@@ -242,6 +261,42 @@ func (s *Server) wpAction(w http.ResponseWriter, r *http.Request) {
 			d.Output, d.OutputErr, code = "", err.Error(), http.StatusUnprocessableEntity
 		}
 		s.renderWP(w, r, site, d, code)
+	case "staging": // WP-02 wave 2: make the staging copy
+		if site.StagingOf != "" {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		ctx, cancel := s.agentCtx(r, 30*time.Second)
+		defer cancel()
+		job, st, err := s.ag.StartStaging(ctx, site.ID)
+		if err != nil {
+			s.audit1(u, r, "wp.staging", site.ID+failed(err))
+			back("dashboard", "", err)
+			return
+		}
+		s.owners.set(job, u.ID)
+		s.audit1(u, r, "wp.staging", site.ID+" -> "+st.ID+" job "+job)
+		http.Redirect(w, r, "/sites/job/"+job, http.StatusSeeOther)
+	case "push": // WP-02 wave 2: the staging copy over the live website, from either website's page
+		live, from := site.ID, f.Get("from")
+		if site.StagingOf != "" {
+			live, from = site.StagingOf, site.ID
+		}
+		if f.Get("confirm") != "1" || !siteRe.MatchString(from) {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		ctx, cancel := s.agentCtx(r, 30*time.Second)
+		defer cancel()
+		job, err := s.ag.PushStaging(ctx, live, from)
+		if err != nil {
+			s.audit1(u, r, "wp.push", from+" -> "+live+failed(err))
+			back("dashboard", "", err)
+			return
+		}
+		s.owners.set(job, u.ID)
+		s.audit1(u, r, "wp.push", from+" -> "+live+" job "+job)
+		http.Redirect(w, r, "/wp/"+live+"?job="+job+"#job", http.StatusSeeOther)
 	case "check":
 		ctx, cancel := s.agentCtx(r, 4*time.Minute)
 		defer cancel()
