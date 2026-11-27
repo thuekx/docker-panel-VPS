@@ -1,6 +1,6 @@
 # APP-03 — Ready-app catalogue
 
-Status: wave 1 BUILT 2026-11-14 (v1.17.0): Uptime Kuma, n8n. Wave 2 BUILT 2026-11-27 (v1.48.0): Ghost with its own
+Status: wave 1 BUILT 2026-11-14 (v1.17.0): Uptime Kuma, n8n. Wave 2 LIVE 2026-11-27 13:34 WIB (v1.48.0): Ghost with its own
 MySQL 8. Roadmap order (2026-11-12): every stack first
 (APP-01, APP-02), then IMG-01, then APP-03. Examples named in app-01.md: Ghost, n8n, Uptime Kuma.
 

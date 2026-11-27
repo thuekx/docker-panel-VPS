@@ -1,6 +1,6 @@
 # Passkey sign-in (AUTH-02)
 
-Status: BUILT v1.37.0, 2026-11-26. Roadmap slot 14e (RAYX-1 = A).
+Status: LIVE v1.37.0 2026-11-27 13:34 WIB (built 2026-11-26). Roadmap slot 14e (RAYX-1 = A).
 
 ## What it does
 - **Profile → Passkeys:** an admin adds up to 10 passkeys (a phone, a security key, the laptop's fingerprint reader).

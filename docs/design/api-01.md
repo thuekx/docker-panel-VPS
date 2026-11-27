@@ -1,6 +1,6 @@
 # Panel API with API keys (API-01)
 
-Status: BUILT v1.33.0, 2026-11-26. Roadmap slot 14a (RAYX-1 = A). User guide: [docs/guides/api.md](../guides/api.md).
+Status: LIVE v1.33.0 2026-11-27 13:34 WIB (built 2026-11-26). Roadmap slot 14a (RAYX-1 = A). User guide: [docs/guides/api.md](../guides/api.md).
 
 ## Goal
 Scripts and CI can read the panel and do the few things a pipeline needs (restart, Git deploy, publish a static

@@ -1,6 +1,6 @@
 # Scheduled server backups and backup destinations (BAK-03)
 
-Status: BUILT v1.41.0, 2026-11-27. Roadmap slot 15c (RAYX-2). Builds on the server backup of BAK-02
+Status: LIVE v1.41.0 2026-11-27 13:34 WIB (built 2026-11-27). Roadmap slot 15c (RAYX-2). Builds on the server backup of BAK-02
 ([bak-02.md](bak-02.md)). User guide: [docs/guides/server-backup.md](../guides/server-backup.md).
 
 ## Schedule
