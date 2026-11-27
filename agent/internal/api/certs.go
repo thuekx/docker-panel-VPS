@@ -47,3 +47,60 @@ func (s *Server) certRemove(w http.ResponseWriter, r *http.Request) {
 	s.note(r, "cert-remove", id, "ok", "")
 	writeJSON(w, 200, map[string]bool{"ok": true})
 }
+
+// CERT-02: a certificate request made on the server (the key stays here) and a self-signed certificate.
+
+func (s *Server) certRequest(w http.ResponseWriter, r *http.Request) {
+	v, err := s.M.CertRequest(r.PathValue("id"))
+	if err != nil {
+		s.fail(w, r, "", "", err)
+		return
+	}
+	writeJSON(w, 200, v)
+}
+
+func (s *Server) certRequestCreate(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var a sites.CSRInput
+	if err := decode(r, &a); err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	v, err := s.M.CreateCSR(id, a)
+	if err != nil {
+		s.fail(w, r, "cert-csr", id, err)
+		return
+	}
+	s.note(r, "cert-csr", id, "ok", strings.Join(v.Names, ",")+" "+v.KeyType)
+	writeJSON(w, 200, v)
+}
+
+func (s *Server) certRequestDelete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := s.M.DeleteCSR(id); err != nil {
+		s.fail(w, r, "cert-csr-delete", id, err)
+		return
+	}
+	s.note(r, "cert-csr-delete", id, "ok", "")
+	writeJSON(w, 200, map[string]bool{"ok": true})
+}
+
+func (s *Server) certSelfSigned(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var a struct {
+		Names []string `json:"names"`
+		Key   string   `json:"key"`
+		Days  int      `json:"days"`
+	}
+	if err := decode(r, &a); err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	ci, err := s.M.SelfSigned(id, a.Names, a.Key, a.Days)
+	if err != nil {
+		s.fail(w, r, "cert-self-signed", id, err)
+		return
+	}
+	s.note(r, "cert-self-signed", id, "ok", strings.Join(ci.Names, ",")+" until "+time.Unix(ci.NotAfter, 0).UTC().Format("2006-01-02"))
+	writeJSON(w, 200, ci)
+}

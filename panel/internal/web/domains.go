@@ -7,6 +7,7 @@ package web
 import (
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +38,9 @@ type domainsData struct {
 	Cert     agent.CertInfo // CERT-01: the website's own certificate
 	CertEnd  string
 	CertDays int
+	Req      agent.CertRequest // CERT-02: a waiting certificate request
+	ReqAt    string
+	OwnNames []string // the website's names a request or a self-signed certificate may cover
 }
 
 // domainWhy says, as a locale key, what a name needs.
@@ -93,6 +97,17 @@ func (s *Server) domainsPage(w http.ResponseWriter, r *http.Request) {
 			t := time.Unix(ci.NotAfter, 0)
 			d.CertEnd, d.CertDays = t.In(s.loc()).Format("02 Jan 2006"), int(time.Until(t).Hours()/24)
 		}
+	}
+	if rq, err := s.ag.CertRequest(ctx, site.ID); err == nil && rq.CSR != "" {
+		d.Req, d.ReqAt = rq, time.Unix(rq.Created, 0).In(s.loc()).Format("02 Jan 2006 15:04")
+	}
+	for _, h := range dm.Hosts {
+		if h.Role != "preview" {
+			d.OwnNames = append(d.OwnNames, h.Name)
+		}
+	}
+	if base := strings.TrimPrefix(dm.Canonical, "www."); slices.Contains(d.OwnNames, base) {
+		d.OwnNames = append(d.OwnNames, "*."+base) // a wildcard of the main domain
 	}
 	if id := r.URL.Query().Get("job"); jobRe.MatchString(id) {
 		if j, err := s.ag.Job(ctx, id); err == nil && j.Site == site.ID && j.Kind == "domains" {
@@ -187,7 +202,7 @@ func (s *Server) certAction(w http.ResponseWriter, r *http.Request) {
 	switch f.Get("op") {
 	case "set":
 		cert, key := strings.TrimSpace(f.Get("cert")), strings.TrimSpace(f.Get("key"))
-		if cert == "" || key == "" {
+		if cert == "" {
 			back(s.tr.T(l, "cert.need"))
 			return
 		}
@@ -195,7 +210,10 @@ func (s *Server) certAction(w http.ResponseWriter, r *http.Request) {
 			back(s.tr.T(l, "cert.toobig"))
 			return
 		}
-		ci, err := s.ag.SetCert(ctx, site.ID, cert+"\n", key+"\n")
+		if key != "" {
+			key += "\n"
+		} // CERT-02: no key = the certificate of the waiting request, paired with the key on the server
+		ci, err := s.ag.SetCert(ctx, site.ID, cert+"\n", key)
 		if err != nil {
 			s.audit1(u, r, "cert.set", site.ID+" refused: "+err.Error())
 			back(err.Error())
@@ -222,6 +240,42 @@ func (s *Server) certAction(w http.ResponseWriter, r *http.Request) {
 		}
 		s.audit1(u, r, "cert.wildcard", detail)
 		http.Redirect(w, r, base+"?job="+job+"#job", http.StatusSeeOther)
+	case "csr":
+		in := agent.CSRInput{Names: f["names"], KeyType: f.Get("key"), Org: strings.TrimSpace(f.Get("org")), Unit: strings.TrimSpace(f.Get("unit")),
+			City: strings.TrimSpace(f.Get("city")), State: strings.TrimSpace(f.Get("state")), Country: strings.TrimSpace(f.Get("country"))}
+		if len(in.Names) == 0 || len(in.Names) > 20 {
+			back(s.tr.T(l, "csr.need"))
+			return
+		}
+		rq, err := s.ag.CreateCSR(ctx, site.ID, in)
+		if err != nil {
+			s.audit1(u, r, "cert.csr", site.ID+" refused: "+err.Error())
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "cert.csr", site.ID+" "+strings.Join(rq.Names, ",")+" "+rq.KeyType)
+		http.Redirect(w, r, base+"?done=csr#csr", http.StatusSeeOther)
+	case "csr-delete":
+		if err := s.ag.DeleteCSR(ctx, site.ID); err != nil {
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "cert.csr-delete", site.ID)
+		http.Redirect(w, r, base+"?done=csrdeleted#cert", http.StatusSeeOther)
+	case "self-signed":
+		days, _ := strconv.Atoi(f.Get("days"))
+		if len(f["names"]) == 0 || len(f["names"]) > 20 || days < 1 {
+			back(s.tr.T(l, "csr.need"))
+			return
+		}
+		ci, err := s.ag.SelfSigned(ctx, site.ID, f["names"], f.Get("key"), days)
+		if err != nil {
+			s.audit1(u, r, "cert.self-signed", site.ID+" refused: "+err.Error())
+			back(err.Error())
+			return
+		}
+		s.audit1(u, r, "cert.self-signed", site.ID+" "+strings.Join(ci.Names, ",")+" until "+time.Unix(ci.NotAfter, 0).UTC().Format("2006-01-02"))
+		http.Redirect(w, r, base+"?done=selfsigned#cert", http.StatusSeeOther)
 	case "remove":
 		if err := s.ag.RemoveCert(ctx, site.ID); err != nil {
 			back(err.Error())

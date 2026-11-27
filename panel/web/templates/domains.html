@@ -76,12 +76,12 @@
 <section class="card wide tone c-green" data-anim="card" id="cert">
   <h2><span class="h-ico" aria-hidden="true">{{template "ico-key"}}</span>{{t $l "cert.title"}}</h2>
   {{with $d.Cert}}{{if .Own}}
-  <p><span class="pill {{if .Trusted}}s-ok{{else}}s-warn{{end}}">{{if .Trusted}}{{t $l "cert.trusted"}}{{else}}{{t $l "cert.private"}}{{end}}</span>
+  <p><span class="pill {{if .Trusted}}s-ok{{else}}s-warn{{end}}">{{if .Trusted}}{{t $l "cert.trusted"}}{{else if .SelfSign}}{{t $l "cert.selfsigned"}}{{else}}{{t $l "cert.private"}}{{end}}</span>
     {{t $l "cert.own" .Issuer}}</p>
   <p class="muted">{{t $l "cert.names"}} {{range $i, $n := .Names}}{{if $i}}, {{end}}<code>{{$n}}</code>{{end}}</p>
   {{if $d.CertEnd}}<p class="{{if lt $d.CertDays 14}}banner warn{{else}}muted{{end}}">{{t $l "cert.until" $d.CertEnd $d.CertDays}}</p>{{end}}
   {{if .Uncovered}}<p class="muted">{{t $l "cert.uncovered"}} {{range $i, $n := .Uncovered}}{{if $i}}, {{end}}<code>{{$n}}</code>{{end}}</p>{{end}}
-  {{if not .Trusted}}<p class="muted">{{t $l "cert.private.help"}}</p>{{end}}
+  {{if .SelfSign}}<p class="muted">{{t $l "cert.selfsigned.help"}}</p>{{else if not .Trusted}}<p class="muted">{{t $l "cert.private.help"}}</p>{{end}}
   <form method="post" action="/domains/{{$s.ID}}/cert"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="remove">
     <button class="ghost danger-text" type="submit" data-confirm="{{t $l "cert.remove.ask"}}">{{t $l "cert.remove"}}</button></form>
   {{else}}<p class="muted">{{t $l "cert.auto"}}</p>{{end}}{{end}}
@@ -89,10 +89,40 @@
   <form method="post" action="/domains/{{$s.ID}}/cert" class="form" autocomplete="off"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="set">
     <p class="muted">{{t $l "cert.help"}}</p>
     <label>{{t $l "cert.cert"}}<textarea name="cert" rows="6" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----" required></textarea></label>
-    <label>{{t $l "cert.key"}}<textarea name="key" rows="4" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----" required></textarea></label>
-    <p class="muted small">{{t $l "cert.key.help"}}</p>
+    <label>{{t $l "cert.key"}}<textarea name="key" rows="4" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----"{{if not $d.Req.CSR}} required{{end}}></textarea></label>
+    <p class="muted small">{{if $d.Req.CSR}}{{t $l "csr.key.empty"}}{{else}}{{t $l "cert.key.help"}}{{end}}</p>
     <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if $d.Err}} disabled{{end}}>{{t $l "cert.go"}}</button>
   </form></details>
+  {{with $d.Req}}{{if .CSR}}<div class="banner warn" id="csr">
+    <p><b>{{t $l "csr.waiting"}}</b> {{t $l "csr.waiting.for"}} {{range $i, $n := .Names}}{{if $i}}, {{end}}<code>{{$n}}</code>{{end}} · {{t $l (printf "csr.key.%s" .KeyType)}} · {{$d.ReqAt}}</p>
+    <label>{{t $l "csr.csr"}}<textarea rows="8" readonly spellcheck="false">{{.CSR}}</textarea></label>
+    <p class="muted small">{{t $l "csr.next"}}</p>
+    <form method="post" action="/domains/{{$s.ID}}/cert"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="csr-delete">
+      <button class="ghost danger-text" type="submit" data-confirm="{{t $l "csr.delete.ask"}}">{{t $l "csr.delete"}}</button></form>
+  </div>{{end}}{{end}}
+  {{if $d.OwnNames}}
+  <details><summary>{{t $l "csr.title"}}</summary>
+  <form method="post" action="/domains/{{$s.ID}}/cert" class="form" autocomplete="off"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="csr">
+    <p class="muted">{{t $l "csr.help"}}</p>
+    <fieldset><legend>{{t $l "csr.names"}}</legend>{{range $i, $n := $d.OwnNames}}<label class="check"><input type="checkbox" name="names" value="{{$n}}"{{if eq $i 0}} checked{{end}}> <code>{{$n}}</code></label>{{end}}</fieldset>
+    <label>{{t $l "csr.key"}}<select name="key"><option value="ec256" selected>{{t $l "csr.key.ec256"}}</option><option value="rsa2048">{{t $l "csr.key.rsa2048"}}</option><option value="rsa3072">{{t $l "csr.key.rsa3072"}}</option></select></label>
+    <label>{{t $l "csr.org"}}<input name="org" maxlength="64"></label>
+    <label>{{t $l "csr.unit"}}<input name="unit" maxlength="64"></label>
+    <label>{{t $l "csr.city"}}<input name="city" maxlength="64"></label>
+    <label>{{t $l "csr.state"}}<input name="state" maxlength="64"></label>
+    <label>{{t $l "csr.country"}}<input name="country" maxlength="2" placeholder="ID" autocapitalize="characters"></label>
+    <p class="muted small">{{t $l "csr.subject.help"}}</p>
+    <button class="primary" type="submit" data-busy="{{t $l "dom.busy"}}"{{if $d.Req.CSR}} data-confirm="{{t $l "csr.replace.ask"}}"{{end}}>{{t $l "csr.go"}}</button>
+  </form></details>
+  <details><summary>{{t $l "ss.title"}}</summary>
+  <form method="post" action="/domains/{{$s.ID}}/cert" class="form"><input type="hidden" name="csrf" value="{{$csrf}}"><input type="hidden" name="op" value="self-signed">
+    <p class="muted">{{t $l "ss.help"}}</p>
+    <fieldset><legend>{{t $l "csr.names"}}</legend>{{range $i, $n := $d.OwnNames}}<label class="check"><input type="checkbox" name="names" value="{{$n}}"{{if eq $i 0}} checked{{end}}> <code>{{$n}}</code></label>{{end}}</fieldset>
+    <label>{{t $l "csr.key"}}<select name="key"><option value="ec256" selected>{{t $l "csr.key.ec256"}}</option><option value="rsa2048">{{t $l "csr.key.rsa2048"}}</option></select></label>
+    <label>{{t $l "ss.days"}}<select name="days"><option value="30">30</option><option value="90">90</option><option value="365" selected>365</option><option value="825">825</option></select></label>
+    <button class="secondary" type="submit" data-confirm="{{t $l "ss.ask"}}">{{t $l "ss.go"}}</button>
+  </form></details>
+  {{end}}
   {{if not $d.Cert.Own}}
   <h3 id="wildcard">{{t $l "wc.title"}}</h3>
   {{if $d.D.Wildcard}}
