@@ -1,3 +1,9 @@
+---
+id: NP-ADM-003
+tier: admin
+keywords: update, pembaruan, versi, upgrade, rilis, rollback
+---
+
 # Updating Nostek Panel from the panel
 
 From v1.38.0 on, a new release is installed from **Settings → Update**. The agent and the panel move to it

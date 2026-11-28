@@ -4,7 +4,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$w := $d.WP}}{{$csrf := .CSRF}}
 {{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "wp.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 {{if $d.OutputErr}}<p class="err" role="alert" data-anim="shake">{{$d.OutputErr}}</p>{{end}}
 {{template "sitetabs" (tabs $l $s "wp")}}
 {{with $d.Job}}{{$j := .}}

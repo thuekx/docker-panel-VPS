@@ -1,6 +1,6 @@
 {{define "content"}}
 <p class="lead">{{t .Lang "setup.lead"}}</p>
-{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 <form method="post" class="form">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <label>{{t .Lang "setup.email"}}<input type="email" name="email" autocomplete="username" required autofocus></label>

@@ -1,3 +1,9 @@
+---
+id: NP-MN-012
+tier: user
+keywords: ioncube, loader, php, encoded, lisensi, whmcs
+---
+
 # ionCube Loader
 
 Some PHP applications (billing systems, licensed scripts) are sold encoded with ionCube and say "requires the ionCube

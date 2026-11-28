@@ -1,6 +1,6 @@
 {{define "content"}}
 {{if eq .Flash "test"}}<p data-toast class="banner ok" data-anim="card">{{t .Lang "alert.tested"}}</p>{{else if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t .Lang "settings.saved"}}</p>{{end}}
-{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 <section class="grid two">
 <article class="card" data-anim="card">
   <h2>{{t .Lang "settings.tz"}}</h2>

@@ -1,6 +1,6 @@
 {{define "content"}}
 {{$l := .Lang}}{{$f := .Data.Form}}
-{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 {{if .Data.NoAgent}}<p class="banner warn">{{t $l "sites.noagent"}}</p>{{end}}
 {{if .Data.Plan}}{{$p := .Data.Plan}}
 <section class="card wide approve" data-anim="card">

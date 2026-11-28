@@ -1,10 +1,16 @@
+---
+id: NP-ADM-010
+tier: admin
+keywords: terminal, shell, ssh, composer, wp-cli, artisan, npm
+---
+
 # Web terminal
 
 Website → **Terminal** opens a shell inside that website's own container, in the browser. Use it for Composer,
 WP-CLI, `php artisan`, `npm` or a quick look at the files.
 
-1. The terminal is **off** for every website until you press **Turn the terminal on**. Everyone who can sign in to
-   the panel can then open it.
+1. The terminal is **off** for every website until you press **Turn the terminal on**. Every admin of the panel can
+   then open it.
 2. The page shows where the shell runs: the container (for example `php`), the user (`33:33`, which the
    website's files belong to, never root) and the folder it starts in (`/var/www/html`, or `/app` for Node.js, Go and Python
    apps).

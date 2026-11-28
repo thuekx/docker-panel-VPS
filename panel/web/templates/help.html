@@ -1,5 +1,15 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}
+<form class="card wide help-search" method="get" action="/help" role="search" data-anim="card">
+  <label for="help-q">{{t $l "help.search"}}</label>
+  <div class="row"><input id="help-q" name="q" type="search" value="{{$d.Query}}" placeholder="{{t $l "help.search.hint"}}" autocomplete="off" maxlength="200"><button class="primary" type="submit">{{t $l "help.search.go"}}</button></div>
+  <p class="muted">{{t $l "help.search.help"}}</p>
+</form>
+{{if $d.Searched}}<section class="card wide" data-anim="card" id="found">
+  <h2>{{t $l "help.found" $d.Query}}</h2>
+  {{with $d.Found}}<ul class="help-found">{{range .}}<li><a href="/help/{{.Slug}}"><b>{{.Title}}</b></a> <span class="pill s-info">{{.ID}}</span><br><span class="muted">{{.Summary}}</span></li>{{end}}</ul>
+  {{else}}<p class="muted">{{t $l "help.found.none"}}</p><p><a href="/help/contact-support">{{t $l "help.found.support"}}</a></p>{{end}}
+</section>{{end}}
 <section class="card wide tone c-violet" data-anim="card" id="changelog">
   <h2><span class="h-ico c-violet" aria-hidden="true">{{template "ico-list"}}</span>{{t $l "help.log"}}</h2>
   <p class="muted">{{t $l "help.log.help" .Version}}</p>
@@ -9,10 +19,16 @@
 <h2 class="help-h">{{t $l "help.guides"}}</h2>
 <p class="muted">{{t $l "help.guides.help"}}</p>
 <section class="grid two">
-{{range $d.Guides}}<article class="card" data-anim="card" id="g-{{.Slug}}">
-  <h2><span class="h-ico c-teal" aria-hidden="true">{{template "ico-book"}}</span>{{.Title}}</h2>
-  <p class="muted">{{.Summary}}</p>
-  <a class="secondary btn" href="/help/{{.Slug}}">{{t $l "help.read"}}</a>
-</article>{{end}}
+{{range $d.Guides}}{{template "helpcard" (dict "G" . "L" $l)}}{{end}}
 </section>
+{{with $d.Admin}}<h2 class="help-h">{{t $l "help.admin"}}</h2>
+<p class="muted">{{t $l "help.admin.help"}}</p>
+<section class="grid two">
+{{range .}}{{template "helpcard" (dict "G" . "L" $l)}}{{end}}
+</section>{{end}}
 {{end}}
+{{define "helpcard"}}<article class="card" data-anim="card" id="g-{{.G.Slug}}">
+  <h2><span class="h-ico c-teal" aria-hidden="true">{{template "ico-book"}}</span>{{.G.Title}}</h2>
+  <p class="muted">{{.G.Summary}}</p>
+  <p class="help-meta"><span class="pill s-info">{{.G.ID}}</span> <a class="secondary btn" href="/help/{{.G.Slug}}">{{t .L "help.read"}}</a></p>
+</article>{{end}}

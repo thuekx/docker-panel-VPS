@@ -1,3 +1,9 @@
+---
+id: NP-AL-002
+tier: user
+keywords: passkey, sidik jari, fingerprint, kunci keamanan, login, masuk, webauthn
+---
+
 # Signing in with a passkey
 
 A passkey lets you sign in to the panel with your phone, a security key or the fingerprint reader of your computer,

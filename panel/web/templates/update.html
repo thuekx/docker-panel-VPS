@@ -1,6 +1,6 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$v := $d.V}}{{$csrf := .CSRF}}
-{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 <section class="card wide profile-head" data-anim="card">
   <div class="avatar" aria-hidden="true">{{template "ico-cloud"}}</div>
   <div>

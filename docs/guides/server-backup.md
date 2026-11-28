@@ -1,3 +1,9 @@
+---
+id: NP-ADM-004
+tier: admin
+keywords: backup server, cadangan, pindah server, restore, pulihkan, s3, sftp, frasa sandi, passphrase
+---
+
 # Server backup and moving to a new server
 
 A **server backup** is one file with the whole panel and every website, sealed with a passphrase. Use it to move a
@@ -12,7 +18,7 @@ installer on the new server.
 | Each website | Its files, its database, its settings (PHP, server, limits, environment, cron jobs, schedules), domains, security settings, protected-folder passwords, SFTP accounts, deploy keys |
 
 Not inside: older backups of each website, old static releases, the trash, the nightly off-server copy settings
-(HOST-02), and the ClouDNS API sub-user for wildcard certificates (set it again on the new server).
+(the server's own restic backup), and the ClouDNS API sub-user for wildcard certificates (set it again on the new server).
 A website that was not ready (still being created, or failed) is left out and named in the file.
 
 ## Make one
@@ -80,10 +86,10 @@ sudo bash nostek-install.sh INSTALL --domain panel.example.com --restore /root/n
 
 1. Sign in and check each website on its preview address.
 2. Change each website's DNS to the new server. The certificate is issued as soon as the name points there.
-3. Set up the nightly off-server backup again (HOST-02), and open TCP 2222 at the provider if SFTP is used.
+3. Set up the nightly off-server backup again, and open TCP 2222 at the provider if SFTP is used.
 4. Keep the old server until the websites answer on the new one.
 
-**Native websites** (host Nginx/PHP-FPM, NATIVE-01) are not brought back automatically: they need their Linux user,
+**Native websites** (host Nginx/PHP-FPM) are not brought back automatically: they need their Linux user,
 PHP pool and database made on the new server first. Their backup is kept in `/srv/nostek/server-restore/<website>/`.
 Create the website again with the same domain and the native engine, copy `backup.tar.gz` into its `backups/` folder
 as `manual-YYYYMMDD-HHMMSS.tar.gz`, and restore it from its Backups tab.

@@ -1,4 +1,5 @@
 {{define "content"}}
 <p class="lead">{{t .Lang (printf "%s.lead" .Data)}}</p>
+{{template "errhelp" .}}
 <a class="primary btn" href="/login">{{t .Lang "login.title"}}</a>
 {{end}}

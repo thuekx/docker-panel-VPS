@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$s := .Data.Site}}
 {{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "sites.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p data-toast class="err" role="alert">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 {{template "sitetabs" (tabs $l $s "site")}}
 <section class="grid pair">
 <article class="card tone c-acc" data-anim="card">

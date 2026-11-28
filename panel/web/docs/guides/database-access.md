@@ -1,3 +1,9 @@
+---
+id: NP-MN-006
+tier: user
+keywords: database, basis data, mariadb, mysql, postgresql, dbeaver, heidisql, repair, perbaiki, optimize, remote
+---
+
 # Database: access from outside, check and repair
 
 ## Check, repair and optimize tables

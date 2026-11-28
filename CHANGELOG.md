@@ -3,6 +3,30 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.54.0] — 2026-11-28
+
+### Added
+- **Guide in two languages, with search** (HELP-02): the Help page is now the panel's guide.
+  - Every article is in Indonesian and English and follows the panel's language. Each has a fixed code (for example
+    `NP-TS-010`) and its own address; typing a code in the search box, or opening `/help/<code>`, opens it.
+  - A search box finds articles by title, keywords, text and error message; accents and capitals do not matter.
+  - Users who are not admins see only the articles for users; articles for admins are listed apart and answer
+    "Not found" for everyone else, like the pages they describe.
+  - Common errors now show **"Why? Read the fix"** under the error box, linked to the article that explains them
+    (another change running, agent not reachable, domain not pointing here, file problems, sign-in problems, page
+    not found). Other errors link "what to send to support" and show an **incident code** with the time; the same
+    code is written to the panel's log with the page and the full error.
+  - New articles: [sign-in problems](docs/guides/sign-in-problems.md), [page not found](docs/guides/page-not-found.md),
+    [another change running](docs/guides/another-change-running.md),
+    [agent not reachable](docs/guides/panel-cannot-reach-server.md),
+    [domain not pointing](docs/guides/domain-not-pointing.md), [file problems](docs/guides/file-problems.md),
+    [contact support](docs/guides/contact-support.md). Sign-in problems and contact support open without signing in.
+
+### Changed
+- The 14 guides got their code, keywords and an Indonesian version; internal step names in their text were replaced
+  by plain words. The Domains page now links the certificates article.
+- The "agent not reachable" banner names the article instead of an install package.
+
 ## [1.53.0] — 2026-11-28
 
 ### Added

@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$csrf := .CSRF}}
 {{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "sbk.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}
 <section class="card wide job job-{{$j.State}}" data-anim="card" id="job"{{if eq $j.State "running"}} data-job="/sites/job/{{$j.ID}}/status" data-job-reload{{end}}>

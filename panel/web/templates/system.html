@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$csrf := .CSRF}}
 {{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "sys.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 <section class="card wide tone c-teal" data-anim="card" id="services">
   <h2>{{t $l "sys.svc"}}</h2>
   <p class="muted">{{t $l "sys.svc.help"}}</p>

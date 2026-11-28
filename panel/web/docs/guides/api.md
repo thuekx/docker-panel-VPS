@@ -1,4 +1,10 @@
-# Panel API (API-01)
+---
+id: NP-ADM-006
+tier: admin
+keywords: api, kunci api, api key, token, ci, curl, otomatis, deploy, script
+---
+
+# Panel API
 
 Scripts and CI pipelines use the panel through a small JSON API at `https://PANEL/api/v1`, signed in with an API
 key. The API never accepts the panel's sign-in cookie, and the panel never shows a key a second time.

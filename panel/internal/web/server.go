@@ -276,7 +276,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /settings/system", s.need(true, s.systemPage)) // OPS-02
 	mux.HandleFunc("GET /help", s.need(true, s.helpIndex))             // HELP-01
 	mux.HandleFunc("GET /help/changelog", s.need(true, s.helpChangelog))
-	mux.HandleFunc("GET /help/{slug}", s.need(true, s.helpGuide))
+	mux.HandleFunc("GET /help/{slug}", s.helpOpen(s.need(true, s.helpGuide)))
 	mux.HandleFunc("/x/", s.need(true, s.extServe)) // EXT-01: pages of an extension
 	mux.HandleFunc("POST /settings/system", s.need(true, s.systemAction))
 	mux.HandleFunc("GET /settings/quarantine", s.need(true, s.quarantinePage))
@@ -521,6 +521,8 @@ type page struct {
 	Now                               string
 	Nonce                             string // style nonce of the code editor page
 	Guide                             string // HELP-01: the page's guide, linked at its top
+	ErrHelp                           string // HELP-02: the article that explains the page's error
+	Incident                          string // HELP-02: the incident code of the page's error (also in the log)
 	Admin                             bool   // EXT-01: the user is an admin (server-wide menu)
 	Menu                              []ext.MenuItem
 	Data                              any
@@ -533,7 +535,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 	p.Back = safeBack(r.URL.Path)
 	p.Version = s.cfg.Version
 	if g, ok := pageGuide[name]; ok && p.Guide == "" && s.help != nil {
-		if _, have := s.help.bySlug[g]; have {
+		if i, have := s.help.bySlug[g]; have && helpVisible(r, s.help.guides[i]) {
 			p.Guide = g
 		}
 	}
@@ -542,6 +544,9 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, p p
 		p.User = userOf(r)
 	}
 	p.Admin = p.User == nil || p.User.Role == ext.RoleAdmin
+	if p.Error != "" || name == "message" {
+		s.errInfo(r, name, &p)
+	}
 	p.Menu = s.menu(p.User)
 	if p.CSRF == "" {
 		if sess := sessOf(r); sess != nil {

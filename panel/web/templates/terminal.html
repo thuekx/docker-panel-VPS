@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
 {{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "term.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 {{template "sitetabs" (tabs $l $s "terminal")}}
 <section class="card wide tone c-teal" data-anim="card" id="terminal">
   <div class="deploy-head"><h2><span class="h-ico" aria-hidden="true">{{template "ico-term"}}</span>{{t $l "term.title"}}</h2>{{if $v.On}}<span class="pill s-ok">{{t $l "alert.on"}}</span>{{else}}<span class="pill s-unknown">{{t $l "perf.opt.off"}}</span>{{end}}</div>
