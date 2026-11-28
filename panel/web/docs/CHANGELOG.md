@@ -3,7 +3,7 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
-## [1.54.0] — 2026-11-28
+## [1.55.0] — 2026-11-28
 
 ### Added
 - **Guide in two languages, with search** (HELP-02): the Help page is now the panel's guide.

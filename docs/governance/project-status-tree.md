@@ -59,5 +59,5 @@ after AUTH-02
 ├── HELP-01 changelog + guides in the panel ● LIVE v1.50.0 2026-11-27 16:49 WIB
 ├── WP-02 WordPress safe update + staging copy ● LIVE v1.51.0 + v1.52.0 2026-11-28 02:07 WIB
 ├── EXT-01 extension points (panel as a library, deny by default for other users) ✓ BUILT v1.53.0 2026-11-28
-└── HELP-02 guide with codes, id + en, search, error links (wave 1) ✓ BUILT v1.54.0 2026-11-28
+└── HELP-02 guide with codes, id + en, search, error links (wave 1) ✓ BUILT v1.55.0 2026-11-28
 ```

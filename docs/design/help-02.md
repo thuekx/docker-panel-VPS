@@ -1,4 +1,4 @@
-# HELP-02: the panel's guide (v1.54.0, wave 1)
+# HELP-02: the panel's guide (v1.55.0, wave 1)
 
 Roadmap 15m, decision HELP-2 (2026-11-28). Builds on HELP-01 (Help menu, articles shipped with the release).
 
