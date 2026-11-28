@@ -1,3 +1,9 @@
+---
+id: NP-MN-021
+tier: user
+keywords: redis, cache, object cache, sesi, session, queue, antrean
+---
+
 # Redis per website
 
 Website → **Performance** → **Redis** gives one website its own Redis. Its container, password and memory belong to

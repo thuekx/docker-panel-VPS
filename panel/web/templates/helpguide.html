@@ -1,10 +1,11 @@
 {{define "content"}}
 {{$l := .Lang}}{{$g := .Data.Guide}}
-<p><a href="/help">{{t $l "help.back"}}</a></p>
-{{if eq $l "id"}}<p class="banner info">{{t $l "help.english"}}</p>{{end}}
+{{if .Active}}<p><a href="/help">{{t $l "help.back"}}</a></p>{{end}}
+{{if $g.English}}<p class="banner info">{{t $l "help.english"}}</p>{{end}}
+<p class="help-meta"><span class="pill s-info">{{$g.ID}}</span>{{if eq $g.Tier "admin"}} <span class="pill s-warn">{{t $l "help.tier.admin"}}</span>{{end}}</p>
 <div class="help-cols">
 {{with $g.TOC}}<nav class="card help-toc" aria-label="{{t $l "help.toc"}}" data-anim="card"><b>{{t $l "help.toc"}}</b><ol>{{range .}}<li><a href="#{{.ID}}">{{.Text}}</a></li>{{end}}</ol></nav>{{end}}
 <article class="card doc" data-anim="card">{{$g.HTML}}</article>
 </div>
-<p><a href="/help">{{t $l "help.back"}}</a></p>
+{{if .Active}}<p><a href="/help">{{t $l "help.back"}}</a></p>{{else}}<p><a class="primary btn" href="/login">{{t $l "login.title"}}</a></p>{{end}}
 {{end}}

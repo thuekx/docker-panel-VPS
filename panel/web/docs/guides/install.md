@@ -1,3 +1,9 @@
+---
+id: NP-ADM-001
+tier: admin
+keywords: install, instal, pasang, server baru, vps, ubuntu, debian, arm64, installer
+---
+
 # Install Nostek Panel on a fresh server
 
 One command installs Nostek Panel on a fresh Ubuntu or Debian server: the base (time zone, updates, swap, Docker Engine,
@@ -46,7 +52,7 @@ the newest release) or `--src-commit SHA`, `--ip ADDRESS` (when the public addre
 | Docker Engine | From Docker's own repository; its signing key fingerprint is checked first. Log limits and live-restore. |
 | fail2ban | Guards every port SSH listens on. |
 | Firewall (ufw) | Incoming closed except SSH (every port it listens on), 80 and 443. A timer turns the firewall off again after 10 minutes if the install stops before it has checked the rules. Containers that publish a port (the panel's edge on 80/443, SFTP on 2222) are opened by Docker itself. |
-| Panel | Core stack in `/srv/nostek/core` (PANEL-01) and the agent `nostek-agent` (SITE-01), built from the release. |
+| Panel | Core stack in `/srv/nostek/core` and the agent `nostek-agent`, built from the release. |
 
 SSH itself is not changed: the same user, port and keys keep working. To move to your own user and another port, see
 [change the default login user](change-default-user.md).
@@ -54,7 +60,7 @@ SSH itself is not changed: the same user, port and keys keep working. To move to
 ## How the release is checked
 
 The installer finds the release's commit from its tag, fetches exactly that commit with git (a commit id is a hash
-of its content, so git refuses anything else) and checks the PANEL-01 and SITE-01 install scripts against the
+of its content, so git refuses anything else) and checks the panel and agent install scripts against the
 sha256 in the release's own lock files before it runs them. Base and service images are pinned by digest inside the
 release. The installer itself is checked by the `sha256sum -c` line above.
 

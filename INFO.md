@@ -229,6 +229,17 @@ No secret, password, token or private e-mail belongs in this file or in any file
   reference screens are patterns only.
 - **Engines in the console:** every engine gets a module dashboard in the console with the same UX.
 - **UI text** lives only in locale files (parity checked by a test).
+- **Guide in the panel** (HELP-02, 2026-11-28): the panel's guide is the articles in `docs/guides/`, shipped with
+  every release. Each article has a fixed code `NP-<MN|AL|TS|FAQ|ADM>-<nnn>` (never reused), a tier (`user` or
+  `admin`; no internal notes and no articles about a client's own work in this public repo), keywords and the error
+  codes it explains, and is written twice: `<slug>.md` (English) and `<slug>.id.md` (Indonesian). Per PR:
+  - a change users can see updates or adds its article in the same PR;
+  - a new common error gets a code in `panel/internal/web/helperr.go` and an article that lists it; errors that are
+    not common fall to the "contact support" article with an incident code;
+  - run `sh panel/sync-docs.sh` after changing `docs/guides` or `CHANGELOG.md`; `go test ./internal/web/` runs
+    `TestHelpCheck` (codes, tiers, both languages, links, error codes, no step codes, no server commands in user
+    articles) and `TestDocsCopy`.
+  The panel's articles are public and may also be published on kb.nostek.dev; NHM articles live in the NHM repo.
 
 ## 9. Coordinator and multi-thread rules (if the project uses a coordinator)
 

@@ -1,3 +1,9 @@
+---
+id: NP-ADM-009
+tier: admin
+keywords: sistem, layanan, service, proses, restart, docker, agen, file dikelola
+---
+
 # System page
 
 **Settings → System** shows what Nostek Panel itself runs on.

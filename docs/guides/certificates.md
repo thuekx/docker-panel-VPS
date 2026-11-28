@@ -1,3 +1,10 @@
+---
+id: NP-MN-009
+tier: user
+keywords: sertifikat, certificate, https, ssl, tls, lets encrypt, csr, wildcard, cloudns, cloudflare, self-signed
+errors: cloudns
+---
+
 # Certificates: automatic, own and wildcard
 
 Every website name gets a free **Let's Encrypt** certificate by itself, as soon as its DNS points to this server.

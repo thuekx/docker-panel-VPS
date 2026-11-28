@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$l := .Lang}}{{$d := .Data}}{{$s := $d.Site}}{{$csrf := .CSRF}}{{$v := $d.V}}
 {{if .Flash}}<p data-toast class="banner ok" data-anim="card">{{t $l (printf "sec.done.%s" .Flash)}}</p>{{end}}
-{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{end}}
+{{if .Error}}<p data-toast class="err" role="alert" data-anim="shake">{{.Error}}</p>{{template "errhelp" .}}{{end}}
 {{template "sitetabs" (tabs $l $s "security")}}
 {{with $d.Job}}{{$j := .}}
 {{if eq $j.State "running"}}<noscript><meta http-equiv="refresh" content="5"></noscript>{{end}}

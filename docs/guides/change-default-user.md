@@ -1,4 +1,10 @@
-# Guide: change the default VPS user and SSH port safely (GUIDE-01)
+---
+id: NP-ADM-002
+tier: admin
+keywords: ssh, user, port, ubuntu, root, login, sudo, keamanan
+---
+
+# Change the default VPS user and SSH port safely
 
 For Ubuntu 22.04 / 24.04 servers created by a VPS provider with a default user (often `ubuntu`, `root` or
 similar). You end up with your own user, an SSH port of your choice, and the old user locked (not deleted).

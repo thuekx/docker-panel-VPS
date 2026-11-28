@@ -1,3 +1,9 @@
+---
+id: NP-ADM-007
+tier: admin
+keywords: firewall, ufw, port, fail2ban, blokir, diblok, ip, unblock
+---
+
 # Server security: firewall and blocked addresses
 
 **Settings → Server security** shows the server's firewall and the addresses fail2ban has blocked.
