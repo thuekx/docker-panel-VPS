@@ -58,5 +58,6 @@ after AUTH-02
 ├── INST-02 ● LIVE v1.47.0 2026-11-27 13:34 WIB
 ├── HELP-01 changelog + guides in the panel ● LIVE v1.50.0 2026-11-27 16:49 WIB
 ├── WP-02 WordPress safe update + staging copy ● LIVE v1.51.0 + v1.52.0 2026-11-28 02:07 WIB
-└── EXT-01 extension points (panel as a library, deny by default for other users) ✓ BUILT v1.53.0 2026-11-28
+├── EXT-01 extension points (panel as a library, deny by default for other users) ● LIVE v1.53.0 2026-11-28 19:05 WIB
+└── QUOTA-01 ext4 project quota on the root filesystem (host step, one reboot) ✓ BUILT 2026-11-28
 ```
