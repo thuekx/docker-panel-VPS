@@ -237,8 +237,11 @@ func TestScheduledBackup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(50 * time.Millisecond)
-	for i := 0; i < 100 && m.serverJob() != nil; i++ {
+	// wait for the upload's result (up to 10 s: a busy CI runner can be slow)
+	for i := 0; i < 1000; i++ {
+		if x, _ := m.dest(id); m.serverJob() == nil && x.Last != nil && !x.Last.OK {
+			break
+		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	if x, _ := m.dest(id); x.Last == nil || x.Last.OK || !strings.Contains(x.Last.Msg, "AccessDenied") {
