@@ -136,9 +136,13 @@ php_admin_flag[display_errors] = off
 // Docker or other websites, no private or loopback addresses (the internet stays reachable), and its limits.
 func (s Site) nativeSandbox(p NativePaths) []string {
 	dir := p.site(s.ID)
-	return []string{
+	var slice []string
+	if s.Group != "" { // GRP-01: inside the group's slice, with its limits
+		slice = []string{"Slice=" + GroupSlice(s.Group)}
+	}
+	return append(slice,
 		fmt.Sprintf("MemoryMax=%dM", s.nativeMem()),
-		"CPUQuota=" + NativeCPU,
+		"CPUQuota="+NativeCPU,
 		fmt.Sprintf("TasksMax=%d", NativeTasks),
 		"UMask=0027",
 		"NoNewPrivileges=yes",
@@ -159,15 +163,15 @@ func (s Site) nativeSandbox(p NativePaths) []string {
 		"SystemCallArchitectures=native",
 		"CapabilityBoundingSet=",
 		"AmbientCapabilities=",
-		"TemporaryFileSystem=" + p.Data + ":ro",
-		"BindPaths=" + dir + "/wp " + dir + "/tmp " + dir + "/logs",
+		"TemporaryFileSystem="+p.Data+":ro",
+		"BindPaths="+dir+"/wp "+dir+"/tmp "+dir+"/logs",
 		"InaccessiblePaths=-/run/nostek-agent -/run/docker.sock -/var/run/docker.sock -/etc/nostek-agent -/root",
 		"RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6",
 		// written out: systemd-run does not take the names localhost, link-local and multicast
 		"IPAddressDeny=127.0.0.0/8 ::1/128 169.254.0.0/16 fe80::/10 224.0.0.0/4 ff00::/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 fc00::/7",
 		"IPAddressAllow=127.0.0.53/32", // the host's DNS resolver (systemd-resolved): names for updates and APIs
-		"Environment=HOME=" + dir + "/tmp TMPDIR=" + dir + "/tmp WP_CLI_CACHE_DIR=" + dir + "/tmp/wp-cli",
-	}
+		"Environment=HOME="+dir+"/tmp TMPDIR="+dir+"/tmp WP_CLI_CACHE_DIR="+dir+"/tmp/wp-cli",
+	)
 }
 
 // nativeMem is the memory limit of the website's PHP in MB: the standard, or what it was raised to.

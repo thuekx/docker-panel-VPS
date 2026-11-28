@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
@@ -314,5 +315,47 @@ func TestSetExtensionsRefusesBadRoutes(t *testing.T) {
 		if err := e.srv.SetExtensions(x); err == nil {
 			t.Errorf("accepted %+v", x)
 		}
+	}
+}
+
+func TestExtensionGroups(t *testing.T) {
+	e := newEnv(t)
+	f := e.withAgent()
+	x := &testExt{}
+	if err := e.srv.SetExtensions(x.extensions()); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	g, err := x.host.Groups(ctx)
+	if err != nil || len(g) != 1 || g[0].Name != "a1" || g[0].Memory != 1024 || g[0].CPU != 100 || g[0].Tasks != 256 || g[0].MemUsed != 300 || len(g[0].Sites) != 1 {
+		t.Fatalf("groups %+v %v", g, err)
+	}
+	if err := x.host.SetGroup(ctx, "a2", ext.GroupLimits{CPU: 150, Memory: 2048, Tasks: 512}); err != nil {
+		t.Fatal(err)
+	}
+	if err := x.host.SetSiteGroup(ctx, "voltix-id", "a2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := x.host.DeleteGroup(ctx, "a1"); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []error{
+		x.host.SetGroup(ctx, "../x", ext.GroupLimits{CPU: 100, Memory: 512, Tasks: 256}),
+		x.host.SetSiteGroup(ctx, "voltix-id", "A-2"),
+		x.host.SetSiteGroup(ctx, "../etc", ""),
+		x.host.DeleteGroup(ctx, "a/1"),
+	} {
+		if bad == nil {
+			t.Error("bad name passed to the agent")
+		}
+	}
+	f.mu.Lock()
+	got := strings.Join(f.grpCalls, "\n")
+	f.mu.Unlock()
+	want := `PUT /v1/groups/a2 {"cpu_percent":150,"memory_mb":2048,"tasks":512}
+POST /v1/sites/voltix-id/group {"group":"a2"}
+POST /v1/groups/a1/delete`
+	if got != want {
+		t.Errorf("agent calls:\n%s\nwant\n%s", got, want)
 	}
 }

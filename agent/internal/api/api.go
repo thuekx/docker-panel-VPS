@@ -196,6 +196,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/sites/{id}/cron", s.cronChange)
 	mux.HandleFunc("GET /v1/sites/{id}/limits", s.limits)
 	mux.HandleFunc("POST /v1/sites/{id}/limits", s.limitsSet)
+	mux.HandleFunc("POST /v1/sites/{id}/group", s.siteGroup) // GRP-01
+	mux.HandleFunc("GET /v1/groups", s.groups)
+	mux.HandleFunc("PUT /v1/groups/{name}", s.groupSet)
+	mux.HandleFunc("POST /v1/groups/{name}/delete", s.groupDelete)
 	mux.HandleFunc("GET /v1/sites/{id}/disk", s.siteDisk)
 	mux.HandleFunc("GET /v1/disk", s.serverDisk)
 	mux.HandleFunc("POST /v1/disk/clean", s.diskClean)

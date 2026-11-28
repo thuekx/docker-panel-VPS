@@ -64,6 +64,19 @@ type Site struct {
 	ID, Domain, App, Status string
 }
 
+// GroupLimits are the limits a website group shares: CPU (100 = one core), memory in MB and processes.
+type GroupLimits struct {
+	CPU, Memory, Tasks int
+}
+
+// Group is a website group: its limits, its websites and the memory it uses now in MB (-1 = unknown).
+type Group struct {
+	Name string
+	GroupLimits
+	Sites   []string
+	MemUsed int
+}
+
 // Host is what an extension may ask of the panel.
 type Host interface {
 	// User is the signed-in user of r (only inside the extension's own pages).
@@ -89,6 +102,15 @@ type Host interface {
 	SiteAction(ctx context.Context, id, action string) error
 	// DeleteSite moves a website to the trash; it returns the job id.
 	DeleteSite(ctx context.Context, id string) (string, error)
+	// Groups lists the website groups. A group's websites share its CPU, memory and process limits (each
+	// website's own limits still apply inside them).
+	Groups(ctx context.Context) ([]Group, error)
+	// SetGroup makes a group or changes its limits; they apply at once. A name is 1-24 of a-z0-9.
+	SetGroup(ctx context.Context, name string, l GroupLimits) error
+	// DeleteGroup removes a group that has no website.
+	DeleteGroup(ctx context.Context, name string) error
+	// SetSiteGroup moves a website into a group ("" = none); the website restarts in it.
+	SetSiteGroup(ctx context.Context, site, group string) error
 }
 
 // Route is an extension page, served at "/x/<name><Path>" for the signed-in users the handler itself accepts.

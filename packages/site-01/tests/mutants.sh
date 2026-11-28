@@ -106,6 +106,10 @@ GO_MUTANTS=(
   'internal/sites/limits.go|			if n := ramFor(php.Memory, mem); n > mem {|			if n := ramFor(php.Memory, mem); false && n > mem {'   # RES-01: memory_limit raised past its container's memory
   'internal/sites/limits.go|		case v > cur.Standard && allowed(v, RAMChoices):|		case v > 0:'   # RES-01: memory set below the standard
   'internal/sites/limits.go|if v, ok := ram[svc]; ok && v > std {|if v, ok := ram[svc]; false && ok && v > std {'   # RES-01: raised memory never reaches the containers
+  'internal/sites/render.go|s.RAM), s.Group), nil|s.RAM), ""), nil'   # GRP-01: a website in a group runs outside its slice
+  'internal/sites/groups.go|	if maxCPU := m.cpus() * 100; l.CPU < GroupMinCPU || l.CPU > maxCPU {|	if maxCPU := m.cpus() * 100; l.CPU < 0 && maxCPU > 0 {'   # GRP-01: a group gets more CPU than the server has
+  'internal/sites/groups.go|	if out, err := m.fw.Host(ctx, nil, "systemctl", args...); err != nil {|	if out, err := []byte(nil), error(nil); err != nil {'   # GRP-01: new limits wait for a reboot
+  'internal/sites/groups.go|		if s.Group == name {|		if false {'   # GRP-01: a group removed under its websites
   'internal/sites/disk.go|func named(r imageRow, keep map[string]bool) bool {|func named(r imageRow, keep map[string]bool) bool {
 	return false'   # DISK-01: clean-up removes images websites name (WP-CLI, built images)
   'internal/sites/disk.go|	return strings.HasPrefix(r.Repository, "nostek/") |	return false && strings.HasPrefix(r.Repository, "nostek/") '   # DISK-01: clean-up removes the panel's own images (agent build, previous panel)

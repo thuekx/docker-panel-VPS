@@ -58,5 +58,6 @@ after AUTH-02
 ├── INST-02 ● LIVE v1.47.0 2026-11-27 13:34 WIB
 ├── HELP-01 changelog + guides in the panel ● LIVE v1.50.0 2026-11-27 16:49 WIB
 ├── WP-02 WordPress safe update + staging copy ● LIVE v1.51.0 + v1.52.0 2026-11-28 02:07 WIB
-└── EXT-01 extension points (panel as a library, deny by default for other users) ✓ BUILT v1.53.0 2026-11-28
+├── EXT-01 extension points (panel as a library, deny by default for other users) ✓ BUILT v1.53.0 2026-11-28
+└── GRP-01 website groups (shared CPU, memory and process limits in one systemd slice) ✓ BUILT v1.54.0 2026-11-28
 ```
