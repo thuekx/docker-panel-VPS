@@ -1,6 +1,6 @@
 # Extension points (EXT-01)
 
-Status: BUILT 2026-11-28 (v1.53.0). Roadmap slot 15l.
+Status: LIVE 2026-11-28 19:05 WIB (v1.53.0, installed from Settings → Update). Roadmap slot 15l.
 
 ## Goal
 A program built on the panel can let people other than the server's admins sign in and use only the websites it

@@ -12,6 +12,7 @@ jobs:
       host02: ${{ steps.f.outputs.host02 }}
       inst01: ${{ steps.f.outputs.inst01 }}
       upd01: ${{ steps.f.outputs.upd01 }}
+      quota01: ${{ steps.f.outputs.quota01 }}
       panel01: ${{ steps.f.outputs.panel01 }}
       app: ${{ steps.f.outputs.app }}
       agent: ${{ steps.f.outputs.agent }}
@@ -27,7 +28,7 @@ jobs:
         run: |
           base="${{ github.event.pull_request.base.sha }}"
           changed="$(git diff --name-only "$base" HEAD)"
-          for p in host-01 host-02 inst-01 upd-01; do
+          for p in host-01 host-02 inst-01 upd-01 quota-01; do
             k="${p/-0/0}"
             if grep -qE "^(packages/$p/|\.github/workflows/packages\.yml)" <<<"$changed"; then echo "$k=true" >> "$GITHUB_OUTPUT"; else echo "$k=false" >> "$GITHUB_OUTPUT"; fi
           done
@@ -99,6 +100,19 @@ jobs:
         run: cd packages/upd-01 && sha256sum -c upd-01.lock
       - name: harness
         run: sudo bash packages/upd-01/tests/harness.sh
+  quota-01:
+    needs: select
+    if: needs.select.outputs.quota01 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck -S warning packages/quota-01/quota-01.sh packages/quota-01/tests/*.sh
+      - name: lock
+        run: cd packages/quota-01 && sha256sum -c quota-01.lock
+      - name: harness
+        run: sudo bash packages/quota-01/tests/harness.sh
   app:
     needs: select
     if: needs.select.outputs.app == 'true'
