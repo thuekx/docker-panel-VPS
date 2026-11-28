@@ -1,6 +1,6 @@
 # HELP-02: the panel's guide (v1.55.0, wave 1)
 
-Roadmap 15m, decision HELP-2 (2026-11-28). Builds on HELP-01 (Help menu, articles shipped with the release).
+Roadmap 15o, decision HELP-2 (2026-11-28). Builds on HELP-01 (Help menu, articles shipped with the release).
 
 ## Articles
 - One article = `docs/guides/<slug>.md` (English) + `docs/guides/<slug>.id.md` (Indonesian), copied into the panel by
