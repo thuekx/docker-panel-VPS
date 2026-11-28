@@ -26,6 +26,7 @@ type User struct {
 	TOTPLastStep        int64
 	FailedCount         int
 	LockedUntil         time.Time
+	Disabled            bool // EXT-01: locked by an extension until it unlocks it (never an admin)
 }
 
 type Session struct {
@@ -81,7 +82,7 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema + apiKeySchema + passkeySchema); err != nil {
+	if _, err := db.Exec(schema + apiKeySchema + passkeySchema + userSchema); err != nil {
 		return nil, fmt.Errorf("schema: %w", err)
 	}
 	return &Store{DB: db, Path: path}, nil
@@ -155,7 +156,7 @@ func scanUser(row interface{ Scan(...any) error }) (*User, error) {
 	var u User
 	var en int
 	var locked int64
-	err := row.Scan(&u.ID, &u.OrgID, &u.Email, &u.PwHash, &u.Role, &u.TOTPSecret, &en, &u.TOTPLastStep, &u.FailedCount, &locked)
+	err := row.Scan(&u.ID, &u.OrgID, &u.Email, &u.PwHash, &u.Role, &u.TOTPSecret, &en, &u.TOTPLastStep, &u.FailedCount, &locked, &u.Disabled)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -167,7 +168,8 @@ func scanUser(row interface{ Scan(...any) error }) (*User, error) {
 	return &u, nil
 }
 
-const userCols = `id,org_id,email,pw_hash,role,totp_secret,totp_enabled,totp_last_step,failed_count,locked_until`
+const userCols = `id,org_id,email,pw_hash,role,totp_secret,totp_enabled,totp_last_step,failed_count,locked_until,
+  EXISTS(SELECT 1 FROM user_locks l WHERE l.user_id=users.id)`
 
 func (s *Store) UserByID(id int64) (*User, error) {
 	return scanUser(s.DB.QueryRow(`SELECT `+userCols+` FROM users WHERE id=?`, id))
