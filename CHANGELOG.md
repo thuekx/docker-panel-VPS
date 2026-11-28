@@ -3,6 +3,17 @@
 All notable changes to Nostek Panel. Versions follow [Semantic Versioning](https://semver.org/):
 MAJOR for changes that need manual steps, MINOR for new features, PATCH for fixes. Dates in WIB.
 
+## [1.54.0] — 2026-11-28
+
+### Added
+- **Website groups** (GRP-01) for programs built on the panel: several websites can share one set of limits for
+  CPU, memory and the number of processes, so together they never take more than the group has.
+  - A group is a systemd slice. Docker websites run their containers inside it, native websites their PHP and
+    WP-CLI. Each website's own limits still apply inside the group.
+  - New limits apply at once, without restarting the websites. A website moved into or out of a group restarts.
+  - Used through the extension points (`panel/ext`) and the agent's API; without groups nothing changes.
+  - Design: [docs/design/grp-01.md](docs/design/grp-01.md).
+
 ## [1.53.0] — 2026-11-28
 
 ### Added

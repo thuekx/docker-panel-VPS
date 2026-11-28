@@ -691,6 +691,44 @@ func (c *Client) SetLimits(ctx context.Context, id string, ch LimitChange) error
 	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/limits", ch, nil)
 }
 
+// GroupLimits are the limits a website group shares (GRP-01): CPU (100 = one core), memory and processes.
+type GroupLimits struct {
+	CPU    int `json:"cpu_percent"`
+	Memory int `json:"memory_mb"`
+	Tasks  int `json:"tasks"`
+}
+
+// Group is a website group with its websites and the memory it uses now (-1 = unknown).
+type Group struct {
+	Name string `json:"name"`
+	GroupLimits
+	Sites   []string `json:"sites"`
+	MemUsed int      `json:"memory_used_mb"`
+}
+
+// Groups lists the website groups.
+func (c *Client) Groups(ctx context.Context) ([]Group, error) {
+	var v struct {
+		Groups []Group `json:"groups"`
+	}
+	return v.Groups, c.call(ctx, "GET", "/v1/groups", nil, &v)
+}
+
+// SetGroup makes a website group or changes its limits.
+func (c *Client) SetGroup(ctx context.Context, name string, l GroupLimits) error {
+	return c.call(ctx, "PUT", "/v1/groups/"+url.PathEscape(name), l, nil)
+}
+
+// DeleteGroup removes a website group that has no website.
+func (c *Client) DeleteGroup(ctx context.Context, name string) error {
+	return c.call(ctx, "POST", "/v1/groups/"+url.PathEscape(name)+"/delete", nil, nil)
+}
+
+// SetSiteGroup moves a website into a group ("" = none); the agent restarts it there.
+func (c *Client) SetSiteGroup(ctx context.Context, id, group string) error {
+	return c.call(ctx, "POST", "/v1/sites/"+url.PathEscape(id)+"/group", map[string]string{"group": group}, nil)
+}
+
 // DiskRow is one folder or file of a website's disk drill-down (DISK-01).
 type DiskRow struct {
 	Name  string `json:"name"`

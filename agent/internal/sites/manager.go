@@ -113,6 +113,8 @@ type Manager struct {
 	hookWait  map[string]bool
 	hookRetry time.Duration
 	memFn     func() int // RES-01: the server's memory in MB (tests replace it)
+	cpuFn     func() int // GRP-01: the server's CPU cores (tests replace it)
+	cgroupFS  string     // GRP-01: where cgroups are mounted ("" = /sys/fs/cgroup; tests set theirs)
 	memFreeFn func() int // SEC-01: the server's free memory in MB (tests replace it)
 	scanMu    sync.Mutex // one malware scan at a time
 	logins    *loginStore

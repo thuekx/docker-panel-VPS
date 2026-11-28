@@ -70,6 +70,7 @@ type fakeAgent struct {
 	imgOld     bool // IMG-01: the database runs an older image
 	imgCalls   int
 	limCalls   []string // RES-01: bodies of the limit changes
+	grpCalls   []string // GRP-01: "method path body" of every group call
 	cleans     []string // DISK-01: clean-up bodies
 	diskPaths  []string // DISK-01: drill-down paths asked
 	native     bool     // NATIVE-01: the server has the native engine
@@ -337,6 +338,12 @@ func (f *fakeAgent) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		f.cleans = append(f.cleans, string(b))
 		write(200, map[string]string{"freed": "2 images, 1.2 GB"})
+	case r.URL.Path == "/v1/groups":
+		write(200, map[string]any{"groups": []agent.Group{{Name: "a1", GroupLimits: agent.GroupLimits{CPU: 100, Memory: 1024, Tasks: 256}, Sites: []string{"voltix-id"}, MemUsed: 300}}})
+	case strings.HasPrefix(r.URL.Path, "/v1/groups/") || r.URL.Path == "/v1/sites/voltix-id/group":
+		b, _ := io.ReadAll(r.Body)
+		f.grpCalls = append(f.grpCalls, strings.TrimSpace(r.Method+" "+r.URL.Path+" "+strings.TrimSpace(string(b))))
+		write(200, map[string]bool{"ok": true})
 	case r.URL.Path == "/v1/sites/voltix-id/limits" && r.Method == "GET":
 		write(200, agent.Limits{Services: []agent.ServiceRAM{{Service: "db", Standard: 512, Current: 1024}, {Service: "php", Standard: 512, Current: 512, PHP: true}, {Service: "web", Standard: 128, Current: 128}},
 			RAMChoice: []int{768, 1024, 1536, 2048}, PHP: &agent.PHPSettings{Memory: 256, Upload: 512, ExecTime: 120, InputVars: 1000},

@@ -88,6 +88,8 @@ type Site struct {
 	AllowIPs []string     `json:"allow_ips,omitempty"`
 	// OPS-01: scheduled commands
 	Crons []CronJob `json:"crons,omitempty"`
+	// GRP-01: the group whose limits the website shares ("" = none)
+	Group string `json:"group,omitempty"`
 
 	keyID string // deploy key made before the website (SSH repository), moved in by the create job
 }
@@ -415,7 +417,7 @@ networks:
     external: true
   out: {}
 `)
-	return applyRAM(s.ionCubeMounts(s.redisClients(b.String())), s.RAM), nil
+	return applyGroup(applyRAM(s.ionCubeMounts(s.redisClients(b.String())), s.RAM), s.Group), nil
 }
 
 func (s Site) wpServices(b *strings.Builder, p catalog.PHPVersion) {

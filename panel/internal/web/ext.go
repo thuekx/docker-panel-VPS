@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/thuekx/docker-panel-VPS/panel/ext"
+	"github.com/thuekx/docker-panel-VPS/panel/internal/agent"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/auth"
 	"github.com/thuekx/docker-panel-VPS/panel/internal/store"
 )
@@ -292,4 +293,40 @@ func (h extHost) DeleteSite(ctx context.Context, id string) (string, error) {
 		return "", errors.New("bad website")
 	}
 	return h.s.ag.Delete(ctx, id)
+}
+
+var groupRe = regexp.MustCompile(`^[a-z0-9]{1,24}$`)
+
+func (h extHost) Groups(ctx context.Context) ([]ext.Group, error) {
+	list, err := h.s.ag.Groups(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ext.Group, 0, len(list))
+	for _, g := range list {
+		out = append(out, ext.Group{Name: g.Name, GroupLimits: ext.GroupLimits{CPU: g.CPU, Memory: g.Memory, Tasks: g.Tasks},
+			Sites: g.Sites, MemUsed: g.MemUsed})
+	}
+	return out, nil
+}
+
+func (h extHost) SetGroup(ctx context.Context, name string, l ext.GroupLimits) error {
+	if !groupRe.MatchString(name) {
+		return errors.New("bad group name")
+	}
+	return h.s.ag.SetGroup(ctx, name, agent.GroupLimits{CPU: l.CPU, Memory: l.Memory, Tasks: l.Tasks})
+}
+
+func (h extHost) DeleteGroup(ctx context.Context, name string) error {
+	if !groupRe.MatchString(name) {
+		return errors.New("bad group name")
+	}
+	return h.s.ag.DeleteGroup(ctx, name)
+}
+
+func (h extHost) SetSiteGroup(ctx context.Context, site, group string) error {
+	if !siteRe.MatchString(site) || (group != "" && !groupRe.MatchString(group)) {
+		return errors.New("bad website or group")
+	}
+	return h.s.ag.SetSiteGroup(ctx, site, group)
 }

@@ -329,6 +329,20 @@ api POST /v1/sites/d-example-test/limits '{"ram":{"db":256}}'; ok "below the sta
 api POST /v1/sites/d-example-test/limits '{"ram":{"db":512,"php":512},"php":{"memory_mb":256,"upload_mb":128,"exec_seconds":120,"max_input_vars":1000}}'
 ok "back to the standard" '[ "$CODE" = 200 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-php-1)" = 536870912 ] && [ "$(docker inspect -f "{{.HostConfig.Memory}}" np-site-d-example-test-db-1)" = 536870912 ] && [ "$(docker exec np-site-d-example-test-php-1 php -r "echo ini_get(\"memory_limit\");")" = 256M ] && grep -q "client_max_body_size 128m;" "$SITE01_TEST_ROOT/srv/nostek/sites/d-example-test/nginx.conf"'
 
+# --- GRP-01 website groups: one systemd slice with CPU, memory and process limits for all its websites together
+api PUT /v1/groups/hx '{"cpu_percent":5,"memory_mb":1024,"tasks":512}'; ok "group limits below the minimum are refused" '[ "$CODE" = 400 ]'
+api PUT /v1/groups/hx '{"cpu_percent":100,"memory_mb":1024,"tasks":512}'
+ok "group made: slice unit written and running with its limits" '[ "$CODE" = 200 ] && grep -q "MemoryMax=1024M" /etc/systemd/system/npgroup-hx.slice && [ "$(systemctl show -P MemoryMax npgroup-hx.slice)" = 1073741824 ] && [ "$(systemctl show -P CPUQuotaPerSecUSec npgroup-hx.slice)" = 1s ] && [ "$(systemctl show -P TasksMax npgroup-hx.slice)" = 512 ]'
+api POST /v1/sites/d-example-test/group '{"group":"hx"}'
+ok "website in the group: every container runs inside the slice and the website still answers" '[ "$CODE" = 200 ] && for c in $(docker ps -q --filter label=com.docker.compose.project=np-site-d-example-test); do [ "$(docker inspect -f "{{.HostConfig.CgroupParent}}" "$c")" = npgroup-hx.slice ] || exit 1; if [ "$(docker info -f "{{.CgroupDriver}}")" = systemd ]; then grep -q "npgroup-hx.slice" "/proc/$(docker inspect -f "{{.State.Pid}}" "$c")/cgroup" || exit 1; fi; done && [ "$(site_get d-example-test d-example-test.$ZONE /after)" = "front:/after" ]'
+api PUT /v1/groups/hx '{"cpu_percent":150,"memory_mb":2048,"tasks":1024}'
+ok "new group limits apply at once to the running slice" '[ "$CODE" = 200 ] && [ "$(systemctl show -P MemoryMax npgroup-hx.slice)" = 2147483648 ] && [ "$(systemctl show -P TasksMax npgroup-hx.slice)" = 1024 ]'
+api GET /v1/groups; ok "group list shows its website and memory in use" '[ "$CODE" = 200 ] && python3 -c "import json,sys; g=json.load(sys.stdin)[\"groups\"]; assert g[0][\"name\"]==\"hx\" and g[0][\"sites\"]==[\"d-example-test\"], g" <<<"$BODY"'
+api POST /v1/groups/hx/delete; ok "a group with a website is not removed" '[ "$CODE" = 400 ]'
+api POST /v1/sites/d-example-test/group '{"group":""}'
+ok "out of the group: containers back in the default place" '[ "$CODE" = 200 ] && for c in $(docker ps -q --filter label=com.docker.compose.project=np-site-d-example-test); do [ -z "$(docker inspect -f "{{.HostConfig.CgroupParent}}" "$c")" ] || exit 1; done && [ "$(site_get d-example-test d-example-test.$ZONE /after)" = "front:/after" ]'
+api POST /v1/groups/hx/delete; ok "empty group removed with its slice unit" '[ "$CODE" = 200 ] && [ ! -e /etc/systemd/system/npgroup-hx.slice ]'
+
 # --- DISK-01 disk usage: per website with a drill-down, the server view, clean-ups that keep every website
 head -c 3000000 /dev/zero > "$T/big.bin"; raw PUT '/v1/sites/d-example-test/files/content?path=/big.bin' "$T/big.bin"
 api GET '/v1/sites/d-example-test/disk?path=/'
